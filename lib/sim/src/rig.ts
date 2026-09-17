@@ -47,10 +47,39 @@ function solveKnee(
   const a = (l1 * l1 - l2 * l2 + reach * reach) / (2 * reach);
   const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
   const ux = dx / d, uy = dy / d, uz = dz / d;
+
+  /**
+   * The bend offset must be PERPENDICULAR to the root->target line.
+   *
+   * `bendDir` arrives as a fixed hint ([0,-1,0] for an elbow, [1,0,0] for a knee)
+   * and was used raw. Whenever the limb happened to point along that hint the
+   * "perpendicular" offset ran ALONG the limb instead of across it, so the joint
+   * slid up the bone and both segment lengths broke — a guard, with the hand at
+   * chin height close to the shoulder, points an arm almost straight down the hint.
+   * Measured over a real fight: the forearm ranged 0.085-0.302 against a fixed
+   * 0.249, wrong in 98% of frames. Rubber arms.
+   *
+   * Gram-Schmidt against the limb keeps the hint's SIDE while guaranteeing the
+   * offset is square to the bone, which is what makes |root-joint| come out as l1.
+   */
+  const dot = bendDir[0] * ux + bendDir[1] * uy + bendDir[2] * uz;
+  let bx = bendDir[0] - ux * dot, by = bendDir[1] - uy * dot, bz = bendDir[2] - uz * dot;
+  let bl = Math.hypot(bx, by, bz);
+  if (bl < 1e-6) {
+    // hint is parallel to the limb and carries no side information; any
+    // perpendicular will do, so take one from the smallest axis of the limb.
+    const ax: [number, number, number] = Math.abs(ux) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+    bx = ax[1] * uz - ax[2] * uy;
+    by = ax[2] * ux - ax[0] * uz;
+    bz = ax[0] * uy - ax[1] * ux;
+    bl = Math.hypot(bx, by, bz) || 1;
+  }
+  bx /= bl; by /= bl; bz /= bl;
+
   return [
-    root[0] + ux * a + bendDir[0] * h,
-    root[1] + uy * a + bendDir[1] * h,
-    root[2] + uz * a + bendDir[2] * h,
+    root[0] + ux * a + bx * h,
+    root[1] + uy * a + by * h,
+    root[2] + uz * a + bz * h,
   ];
 }
 

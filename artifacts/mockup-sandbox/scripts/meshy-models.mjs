@@ -5,11 +5,11 @@ const key = (process.env.MESHY_API_KEY || await readFile('/private/tmp/flyweight
 if (!key || /[\r\n]/.test(key)) throw new Error('Save only the Meshy API key in the private input file.');
 const endpoint = 'https://api.meshy.ai/openapi/v2/text-to-3d';
 const names = ['drone', 'hornet', 'tank'];
-const common = 'Bipedal mechanical fly robot standing upright on exactly TWO legs in a boxing stance, knees bent, clawed feet flat on the ground. Two arms raised in a guard with blocky fists. Upright thorax, head on top with large compound camera eyes, abdomen angled down and back. Two folded metal wing blades. Chipped white armour over black steel, rivets, vents. Industrial manga machinery, humanoid proportions. No extra legs, no insect crawling pose, no colour, no text, no pedestal.';
+const common = 'STRICT T-POSE rigging reference. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS STRAIGHT OUT SIDEWAYS, horizontal, level with the shoulders, elbows locked. Each arm has an upper arm, a distinct slimmer FOREARM and a large blocky FIST, with clear elbow and wrist joints. Upright thorax, head with compound eyes, abdomen angled back, folded wing blades. Chipped white armour over black steel, rivets, industrial manga machinery. No bent or raised arms, no boxing stance, no extra legs, no colour, no text, no pedestal.';
 const prompts = {
- drone: 'Lightweight bipedal fruit-fly boxer robot. Slim frame, long slender legs, fast agile build, oversized faceted optical eyes, exposed thorax flywheel, narrow swept wing spars. ' + common,
- hornet: 'Bipedal hornet boxer robot. Lean athletic build, angular shoulder armour, long pointed abdomen behind, narrow twin optical housings, aggressive forward-leaning fighting stance. ' + common,
- tank: 'Heavy bipedal beetle boxer robot. Broad armoured torso with overlapping plates, thick powerful two legs, massive shoulders and heavy fists, short folded metal wings, recessed protected optical eyes. ' + common,
+ drone: 'Slim fruit-fly boxer robot, long limbs, big faceted eyes. ' + common,
+ hornet: 'Lean hornet boxer robot, angular shoulders, pointed abdomen. ' + common,
+ tank: 'Heavy beetle boxer robot, broad plated torso, big fists. ' + common,
 };
 await mkdir(root + 'public/models', { recursive: true });
 const recordPath = root + 'scripts/meshy-tasks.json';

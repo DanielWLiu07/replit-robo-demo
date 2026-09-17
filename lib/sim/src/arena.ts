@@ -55,8 +55,19 @@ const DT = 1 / TICK_HZ;
 // stable — impulses straight into a double integrator can only oscillate.
 const NMJ_SMOOTHING = 0.14;     // spike train -> graded drive
 const DRIVE_GAIN = 5.0;         // ~20% spike duty -> ~full command
-const MAX_SPEED = 4.2;          // m/s at full command, before chassis multiplier
-const MAX_OMEGA = 3.4;          // rad/s at full command
+/**
+ * Top speed, m/s at full command.
+ *
+ * Scaled down with the world. The arena went 14 m -> 5.2 m and torsos 1.2 m -> 0.4 m
+ * to match the drawn bodies, but these were left alone — so everything moved about
+ * three times too fast for its own size. Measured: 4.9 body-lengths per second and
+ * 296 deg/s of turn, which on a 1.8 m human is an 8.8 m/s sprint while pirouetting.
+ * That is what read as "weird, sometimes backwards, sometimes forwards": not the
+ * gait (the planted foot tracks correctly 98.9% of stance ticks) but the pace.
+ * Swept 1.00 / 0.55 / 0.40 of the old values: 4.9 / 2.7 / 2.0 body-lengths per sec.
+ */
+const MAX_SPEED = 1.68;         // m/s at full command, before chassis multiplier
+const MAX_OMEGA = 1.36;         // rad/s at full command
 const VEL_LAG = 0.16;           // how fast actual velocity chases commanded
 /**
  * What the legs can actually put into the ground, m/s^2 at the stock body.
@@ -86,6 +97,8 @@ const STEP_ARC = 0.1;
 const REACH_AHEAD = 0.58;
 /** Half the distance between the feet, metres. */
 const HALF_HIP = 0.12;
+/** Body rotation on a planted foot past which it takes a fresh step instead. */
+const PIVOT_STEP = 0.30;
 /** Fraction of the ceiling available at the worst point of the stride. */
 const SWING_LOSS = 0.34;
 const OMEGA_LAG = 0.30;
@@ -196,13 +209,21 @@ export const RANGES = {
   pocketFar: POCKET_FAR,
   strikeReach: STRIKE_REACH,
 } as const;
-const BREAK_PUSH = 26;          // m/s^2 of separation at full penetration
+/**
+ * Separation acceleration at full penetration, m/s^2.
+ *
+ * Scaled with the pace. Velocities came down to 0.40 of their old values when the
+ * world shrank, but the impulses that CHANGE velocity did not — so a shove became
+ * proportionally three times harder and repeatedly tore bodies off their planted
+ * feet. Foot slip went from 2.6% of distance travelled to 6.4%.
+ */
+const BREAK_PUSH = 10.4;
 
 // ── footwork ────────────────────────────────────────────────────────────────
 // Holding range is only half of it; standing still at range is not boxing either.
 // An uncommitted bot slides sideways around the pocket while its heading stays on
 // the target, so the fight circles instead of shuttling in and out on one axis.
-const STRAFE_SPEED = 1.8;       // m/s of lateral slide, before the chassis turn stat
+const STRAFE_SPEED = 0.72;      // m/s of lateral slide, before the chassis turn stat
 const CIRCLE_MIN = 45;          // ticks committed to one direction...
 const CIRCLE_SPAN = 120;        // ...plus up to this many more
 
@@ -264,6 +285,8 @@ interface Body {
   footFrom: Float64Array;
   /** recovery steps forced by drift, so the rate can be watched rather than assumed */
   replants: number;
+  /** heading when each foot went down, so a pivot can be turned into a step */
+  footPlantHeading: Float64Array;
   punchCd: number; punchSide: 0 | 1;
   guard: number; recovery: number; blocked: boolean; guardHold: number;
   lean: number; leanV: number; tilt: number; tiltV: number; down: number; swungAt: number;
@@ -388,7 +411,7 @@ export function* runMatch(
         spawnX - latX0, spawnY - latY0, 0,
         spawnX + latX0, spawnY + latY0, 0,
       ]),
-      footDown: [false, false], replants: 0,
+      footDown: [false, false], replants: 0, footPlantHeading: new Float64Array([heading0, heading0]),
       // Seeded like `feet`: a foot that spawns part-way through its SWING is
       // interpolated out of footFrom, and zeroed that is the world origin.
       footFrom: new Float64Array([
@@ -772,10 +795,22 @@ export function* runMatch(
           // down again. It is a discrete correction, and it is what a body does
           // when it is shoved: it takes a recovery step.
           const hipX = body.x + latX * lateral, hipY = body.y + latY * lateral;
-          if (!body.footDown[side]) {
+          /**
+           * Turning on a planted foot is a STEP, not a scrape.
+           *
+           * The foot plants correctly — 89.6% of stance ticks are perfectly still —
+           * but 80% of the remaining drag happens while the body is rotating: the
+           * hips swing around a foot that is pinned, the reach clamp catches it, and
+           * it scrapes. A boxer pivoting past this angle picks the foot up and puts
+           * it down again.
+           */
+          const turned = Math.abs(((body.heading - body.footPlantHeading[side]! + Math.PI)
+            % (2 * Math.PI)) - Math.PI);
+          if (!body.footDown[side] || turned > PIVOT_STEP) {
             // touchdown: commit to this spot and do not move it again until liftoff
             body.feet[o] = tx; body.feet[o + 1] = ty;
             body.footDown[side] = true;
+            body.footPlantHeading[side] = body.heading;
           }
           body.feet[o + 2] = 0;
 
@@ -885,7 +920,8 @@ export function* runMatch(
           def.leanV -= rock;
           def.tiltV += (((att.x * 7 + att.y * 13) % 2) - 0.5) * rock * 0.8;
           // knockback along the swing
-          const push = tipSpeed * 0.22 * (1 - def.guard * 0.8);
+          // knockback likewise: same fraction of the new speed scale
+          const push = tipSpeed * 0.09 * (1 - def.guard * 0.8);
           def.vx += Math.cos(wa) * push;
           def.vy += Math.sin(wa) * push;
           hits.push({ attacker: att.spec.id, damage: +dmg.toFixed(2) });

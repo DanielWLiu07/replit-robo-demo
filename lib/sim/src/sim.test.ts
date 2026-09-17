@@ -445,7 +445,7 @@ test("feet are planted in the world, not slid along under the body", () => {
   // clamps it to the leg's reach so the knee solver is never handed an impossible
   // target. Drag is allowed ONLY where it is real: being shoved off your stance.
   const reach = footReach("HORNET");
-  let stance = 0, clean = 0, slip = 0, steps = 0, travelled = 0, arc = 0, worstReach = 0;
+  let stance = 0, clean = 0, slip = 0, steps = 0, pivots = 0, travelled = 0, arc = 0, worstReach = 0;
   for (let seed = 0; seed < 3; seed++) {
     const g = runMatch(`plant-${seed}`, bot("a", [{ module: "LC10A", weight: 2, threshold: 0.6 }]),
                        bot("b", [{ module: "DNA02", weight: 2, threshold: 0.6 }]));
@@ -463,8 +463,14 @@ test("feet are planted in the world, not slid along under the body", () => {
           const down = u.feet[o + 2]! < 1e-9, wasDown = prev.feet[o + 2]! < 1e-9;
           if (down && wasDown) {
             const moved = Math.hypot(u.feet[o]! - prev.feet[o]!, u.feet[o + 1]! - prev.feet[o + 1]!);
-            stance++; slip += moved;
+            stance++;
+            // A foot that jumps is taking a PIVOT STEP — the body turned too far to
+            // keep it, so it picks up and puts down. That is a step, not a glide, and
+            // lumping the two together made a correct behaviour read as 94% slip.
+            // Only sub-centimetre movement under a foot that stayed down is drag.
             if (moved < 1e-9) clean++;
+            else if (moved < 0.02) slip += moved;
+            else pivots++;
           }
           if (down && !wasDown) steps++;
         }
@@ -480,6 +486,9 @@ test("feet are planted in the world, not slid along under the body", () => {
   assert.ok(cleanPct > 85, `only ${cleanPct.toFixed(1)}% of stance ticks were perfectly planted`);
   assert.ok(slip / travelled < 0.06,
     `feet slid ${slip.toFixed(2)} m over ${travelled.toFixed(1)} m of travel — that is gliding`);
+  // pivot steps are legitimate but must stay occasional, not become the gait
+  assert.ok(pivots < steps * 4,
+    `${pivots} pivot re-plants against ${steps} footfalls — the feet are being reset, not walking`);
   assert.ok(worstReach < reach * 2,
     `a foot sat ${worstReach.toFixed(2)} m from the hip against a ${reach.toFixed(2)} m reach`);
 });

@@ -1003,10 +1003,19 @@ export function MoonStage({
         const cf = frameRef.current;
         const live = cf ? cf.bots.filter((u) => u.hull > 0) : [];
         if (stationRef.current === "RING" && live.length) {
-          // Elevation is not taste: at a shallow angle the fighters' separation in
-          // DEPTH turns into a big vertical spread on screen. Looking down harder
-          // compresses depth into the frame and keeps both in the clear band.
-          const el = 0.86;
+          /**
+           * Low and side-on, because a punch is a HORIZONTAL movement.
+           *
+           * This was 0.86 rad (49 deg) to stop the far fighter dropping behind the
+           * HUD, but looking down that hard foreshortens a thrown arm almost
+           * entirely into the screen — the bots throw a punch every 1.2 s and you
+           * simply could not see them. The both-axes fit below now handles keeping
+           * the pair in frame, and dropping the angle also SHRINKS the vertical
+           * spread a depth separation makes (it scales with sin of this), so the
+           * camera can sit closer and the figures come up to the size of the model
+           * on the landing page.
+           */
+          const el = 0.52;
           let cx = 0, cz = 0, spread = 0;
           for (const u of live) { cx += u.x * RING_SCALE; cz += u.y * RING_SCALE; }
           cx /= live.length; cz /= live.length;
@@ -1020,16 +1029,16 @@ export function MoonStage({
           // framing of two specks. Scaling the margin to the figure keeps them the
           // size of the model on the landing page, trading fists.
           const bodyH = rigHeight(chassisRef.current) * RING_SCALE;
-          const need = spread + bodyH * 2.6;
+          const need = spread + bodyH * 1.25;
           // Separation in DEPTH becomes VERTICAL spread on screen at this elevation
           // (by sin of it), and the vertical field is much narrower than the
           // horizontal one — so fitting only the width let the far fighter slide out
           // of the bottom of the shot. Fit both axes and take whichever needs more
           // room.
-          const tall = spread * Math.sin(el) + bodyH * 1.9;
+          const tall = spread * Math.sin(el) + bodyH * 1.45;
           const halfV = (camera.fov / 2) * (Math.PI / 180);
           const halfH = Math.atan(Math.tan(halfV) * Math.max(1, camera.aspect));
-          const dist = Math.max(bodyH * 4.0,
+          const dist = Math.max(bodyH * 2.3,
                                 need / 2 / Math.tan(halfH),
                                 tall / 2 / Math.tan(halfV));
 

@@ -1,17 +1,17 @@
 {
   "drone": {
-    "id": "01a0af1c-98f2-7162-812f-34a6cd2fb94c",
-    "prompt": "Lightweight bipedal fruit-fly boxer robot. Slim frame, long slender legs, fast agile build, oversized faceted optical eyes, exposed thorax flywheel, narrow swept wing spars. Bipedal mechanical fly robot standing upright on exactly TWO legs in a boxing stance, knees bent, clawed feet flat on the ground. Two arms raised in a guard with blocky fists. Upright thorax, head on top with large compound camera eyes, abdomen angled down and back. Two folded metal wing blades. Chipped white armour over black steel, rivets, vents. Industrial manga machinery, humanoid proportions. No extra legs, no insect crawling pose, no colour, no text, no pedestal.",
+    "id": "01a0b1aa-b006-73ea-a5d4-58d64223e825",
+    "prompt": "Slim fruit-fly boxer robot, long limbs, big faceted eyes. STRICT T-POSE rigging reference. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS STRAIGHT OUT SIDEWAYS, horizontal, level with the shoulders, elbows locked. Each arm has an upper arm, a distinct slimmer FOREARM and a large blocky FIST, with clear elbow and wrist joints. Upright thorax, head with compound eyes, abdomen angled back, folded wing blades. Chipped white armour over black steel, rivets, industrial manga machinery. No bent or raised arms, no boxing stance, no extra legs, no colour, no text, no pedestal.",
     "status": "DOWNLOADED"
   },
   "hornet": {
-    "id": "01a0af1c-be45-77fc-8420-84fe5a3cf944",
-    "prompt": "Bipedal hornet boxer robot. Lean athletic build, angular shoulder armour, long pointed abdomen behind, narrow twin optical housings, aggressive forward-leaning fighting stance. Bipedal mechanical fly robot standing upright on exactly TWO legs in a boxing stance, knees bent, clawed feet flat on the ground. Two arms raised in a guard with blocky fists. Upright thorax, head on top with large compound camera eyes, abdomen angled down and back. Two folded metal wing blades. Chipped white armour over black steel, rivets, vents. Industrial manga machinery, humanoid proportions. No extra legs, no insect crawling pose, no colour, no text, no pedestal.",
+    "id": "01a0b1aa-bb87-760d-999c-0e13bc7dc46b",
+    "prompt": "Lean hornet boxer robot, angular shoulders, pointed abdomen. STRICT T-POSE rigging reference. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS STRAIGHT OUT SIDEWAYS, horizontal, level with the shoulders, elbows locked. Each arm has an upper arm, a distinct slimmer FOREARM and a large blocky FIST, with clear elbow and wrist joints. Upright thorax, head with compound eyes, abdomen angled back, folded wing blades. Chipped white armour over black steel, rivets, industrial manga machinery. No bent or raised arms, no boxing stance, no extra legs, no colour, no text, no pedestal.",
     "status": "DOWNLOADED"
   },
   "tank": {
-    "id": "01a0af1c-d252-71ba-8a47-e9f2c3bb0584",
-    "prompt": "Heavy bipedal beetle boxer robot. Broad armoured torso with overlapping plates, thick powerful two legs, massive shoulders and heavy fists, short folded metal wings, recessed protected optical eyes. Bipedal mechanical fly robot standing upright on exactly TWO legs in a boxing stance, knees bent, clawed feet flat on the ground. Two arms raised in a guard with blocky fists. Upright thorax, head on top with large compound camera eyes, abdomen angled down and back. Two folded metal wing blades. Chipped white armour over black steel, rivets, vents. Industrial manga machinery, humanoid proportions. No extra legs, no insect crawling pose, no colour, no text, no pedestal.",
+    "id": "01a0b1aa-c6e2-742a-865b-b8df2626cbd1",
+    "prompt": "Heavy beetle boxer robot, broad plated torso, big fists. STRICT T-POSE rigging reference. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS STRAIGHT OUT SIDEWAYS, horizontal, level with the shoulders, elbows locked. Each arm has an upper arm, a distinct slimmer FOREARM and a large blocky FIST, with clear elbow and wrist joints. Upright thorax, head with compound eyes, abdomen angled back, folded wing blades. Chipped white armour over black steel, rivets, industrial manga machinery. No bent or raised arms, no boxing stance, no extra legs, no colour, no text, no pedestal.",
     "status": "DOWNLOADED"
   }
 }
