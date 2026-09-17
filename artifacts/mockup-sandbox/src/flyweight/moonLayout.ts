@@ -30,6 +30,12 @@ export const SCENE_LAYOUT: SceneLayout = {
   "moon": { p: [0, -70, 0], r: [0, 0, 0], s: [1, 1, 1] },
   "title": { p: [-2.6, 2.637, -0.997], r: [-0.408, 0.226, 0.097], s: [1.6, 1.6, 1.6] },
   "enter": { p: [-5.9, 0.868, 0.165], r: [-0.408, 0.226, 0.097], s: [0.52, 0.52, 0.52] },
+  // The fly's rotation.y is deliberately pi off the authored value: the model faces
+  // away otherwise. bindChassis() has a facesPositiveZ() check that looks like it
+  // should own this, but it tests the mesh AFTER source.matrixWorld is applied and
+  // comes out false at runtime — even though the raw vertex data tests true for all
+  // three chassis. It is a no-op today. If that node transform changes it will start
+  // firing and double up with this, and the fly will be backwards again.
   "fly": { p: [2.6, 0, 3.4], r: [-0.186, 2.378, -0.015], s: [1.573, 1.573, 1.573] },
   "star-0": { p: [-7.877, 3.037, -6.027], r: [-0.785, 1.102, -2.039], s: [1, 1, 1] },
   "star-1": { p: [-5.808, 2.857, -9.265], r: [0.218, 0.762, 2.246], s: [1.261, 1.261, 1.261] },
