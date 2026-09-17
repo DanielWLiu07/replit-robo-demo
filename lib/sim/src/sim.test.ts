@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runMatch, Brain, LifNeuron, makeRng, arenaHalfAt, arenaHalfFor, ARENA_SIZE, evolve, fitness, randomBrain } from "./index.js";
+import { runMatch, Brain, LifNeuron, makeRng, arenaHalfAt, arenaHalfFor, ARENA_SIZE, evolve, fitness, randomBrain, simpleBrain, toSlot, toIntensity, budgetUsed } from "./index.js";
 import {
   BrainSpec, BotSpec as BotSpecSchema, MatchFrame as MatchFrameSchema,
   SUDDEN_DEATH_TICK, MATCH_MAX_TICKS, type BotSpec, type BrainSpec as TBrainSpec,
@@ -329,4 +329,25 @@ test("squad matches stay deterministic", () => {
 test("the arena grows with squad size so big fights are not instant scrums", () => {
   assert.ok(arenaHalfFor(5) > arenaHalfFor(1) * 1.5, "5v5 needs materially more floor");
   assert.equal(arenaHalfFor(1), ARENA_SIZE / 2, "1v1 must be unchanged");
+});
+
+test("the one-dial builder can never produce a brain the schema rejects", () => {
+  // Every dial position, including all five circuits maxed, must round-trip into a
+  // legal BrainSpec. Rounding after budget-scaling used to push five-slot brains
+  // fractionally over the cap — invisible in the UI, and it would have surfaced as
+  // a Launch button that silently did nothing.
+  const mods = ["LC10A", "DNA02", "LPLC2_DNP01", "P1", "MDN"] as const;
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    BrainSpec.parse(simpleBrain(mods.map((m) => ({ module: m, intensity: t }))));
+    BrainSpec.parse(simpleBrain(mods.map((m, k) => ({ module: m, intensity: (t + k / 5) % 1 }))));
+  }
+  const maxed = simpleBrain(mods.map((m) => ({ module: m, intensity: 1 })));
+  assert.ok(budgetUsed(maxed) <= 1, `maxed brain spends ${budgetUsed(maxed)} of budget`);
+
+  // and the dial must survive a round trip, or the UI will jump under the cursor
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10;
+    assert.ok(Math.abs(toIntensity(toSlot("LC10A", t)) - t) < 0.02, `dial ${t} did not round-trip`);
+  }
 });

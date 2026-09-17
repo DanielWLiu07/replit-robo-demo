@@ -10,3 +10,4 @@ export { profileBrain, profileBot, type BotProfile } from "./profile.js";
 export { buildBrainGeometry, totalFibres, BRAIN_EXTENT,
          type PopulationGeometry, type Fibre, type Vec3 } from "./brainviz.js";
 export { poseBot, rigHeight, hullFraction, type Pose, type Bone } from "./rig.js";
+export { simpleBrain, toSlot, toIntensity, budgetUsed } from "./simple.js";
