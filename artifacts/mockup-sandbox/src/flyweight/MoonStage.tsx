@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import type { ArenaBotState, Chassis } from "@workspace/contract";
+import type { ArenaBotState, BotSpec, Chassis, MatchFrame } from "@workspace/contract";
+import { MAX_SQUAD } from "@workspace/contract";
 import { bindChassis, buildSkinnedBot, poseSkinnedBot, type SkinnedBot } from "./skinnedBot";
 import { buildWordmark } from "./wordmark";
 import { MoonEditor, makeProp } from "./moonEditor";
-import { ADDED_PROPS, CAMERA, SCENE_LAYOUT, applyLayout, applyPlacement } from "./moonLayout";
+import { ADDED_PROPS, RING_CENTRE, SCENE_LAYOUT, STATIONS, applyLayout, applyPlacement, type StationName } from "./moonLayout";
 import { MoonOutliner } from "./MoonOutliner";
 
 /**
@@ -90,10 +91,27 @@ const PROP_FRAG = `precision highp float;uniform sampler2D hatchTex,paperTex;uni
       vec3 paper=vec3(0.93)*mix(vec3(1.0),texture2D(paperTex,gl_FragCoord.xy/620.0).rgb,0.14);
       gl_FragColor=vec4(mix(vec3(0.05),paper,clamp(m2,0.0,1.0)),1.0);}`;
 
-export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis }) {
+export function MoonStage({
+  chassis = "DRONE" as Chassis,
+  station = "ARRIVAL" as StationName,
+  frame = null as MatchFrame | null,
+  fighters,
+}: {
+  chassis?: Chassis;
+  station?: StationName;
+  frame?: MatchFrame | null;
+  fighters?: [BotSpec, BotSpec];
+}) {
   const host = useRef<HTMLDivElement>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [editor, setEditor] = useState<MoonEditor | null>(null);
+  // live values the frame loop reads; changing them must not rebuild the scene
+  const stationRef = useRef(station);
+  const frameRef = useRef(frame);
+  const fightersRef = useRef(fighters);
+  useEffect(() => { stationRef.current = station; }, [station]);
+  useEffect(() => { frameRef.current = frame; }, [frame]);
+  useEffect(() => { fightersRef.current = fighters; }, [fighters]);
 
   useEffect(() => {
     const element = host.current;
@@ -320,10 +338,26 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
     // The rig maps bone space with toArena = [-z, y, x], a 90 degree turn, so the
     // posed mesh does not face the same way the raw .glb does. Measured by eye:
     // this is the value that puts its face toward the camera at [0, 9, 10].
+    // NOTE: SCENE_LAYOUT's "fly" entry is applied by applyLayout() further down and
+    // overwrites position, rotation and scale. Change it there, not here.
     flyRoot.rotation.y = -0.5 + Math.PI;
     scene.add(flyRoot);
     // bindChassis re-centres to unit height with the feet on y=0, so the display
     // scale lives here and the layout's `fly` transform stays what it was.
+    const plinth = new THREE.Group();
+    plinth.position.set(2.6, 0, 3.4);
+    scene.add(plinth);
+    for (let i = 0; i < 3; i++) {
+      const r = 1.15 + i * 0.26;
+      const disc = new THREE.Mesh(
+        new THREE.RingGeometry(r, r + 0.03, 80),
+        new THREE.MeshBasicMaterial({ color: 0x0a0a0c, side: THREE.DoubleSide }),
+      );
+      disc.rotation.x = -Math.PI / 2;
+      disc.position.y = 0.015 + i * 0.001;
+      plinth.add(disc);
+    }
+
     const flyFit = new THREE.Group();
     // bindChassis normalises to UNIT HEIGHT, where the old path fitted the max
     // dimension (wings included). 4.6 stacked with the layout's 1.573 and made it
@@ -345,6 +379,8 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
       flyHull.mesh.scale.multiplyScalar(1.018);
       flyRig = buildSkinnedBot(bind, propMat, chassis);
       flyFit.add(flyHull.mesh, flyRig.mesh);
+      buildSide(0, bind);
+      buildSide(1, bind);
     }, undefined, () => {});
 
     /**
@@ -369,7 +405,44 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
       gait: (t * 0.12) % 1,
       struck: false, guard: 0.12, recovery: 0,
       blocked: false, countered: false, stamina: 1,
+      lean: 0, tilt: 0, down: 0,
     });
+
+    // ── THE RING ─────────────────────────────────────────────────────────
+    // Built into this scene rather than stacked as a second canvas: Arena runs a
+    // WebGPU renderer with node materials, so its scene cannot join this one —
+    // but the rig and the pose function are material-agnostic, so the fighters
+    // can be the same hatch-shaded bodies standing on the actual surface.
+    const ring = new THREE.Group();
+    ring.position.set(RING_CENTRE[0], RING_CENTRE[1], RING_CENTRE[2]);
+    scene.add(ring);
+    const ringMarks = new THREE.Group();
+    ring.add(ringMarks);
+    for (let i = 0; i < 3; i++) {
+      const r = 3.5 + i * 0.55;
+      const mark = new THREE.Mesh(
+        new THREE.RingGeometry(r, r + 0.035, 96),
+        new THREE.MeshBasicMaterial({ color: 0x0a0a0c, side: THREE.DoubleSide }),
+      );
+      mark.rotation.x = -Math.PI / 2;
+      mark.position.y = 0.02 + i * 0.001;
+      ringMarks.add(mark);
+    }
+
+    const ringRigs: { rig: SkinnedBot; hull: SkinnedBot; holder: THREE.Group }[][] = [[], []];
+    const buildSide = (side: 0 | 1, bind: ReturnType<typeof bindChassis>) => {
+      for (let i = 0; i < MAX_SQUAD; i++) {
+        const holder = new THREE.Group();
+        holder.visible = false;
+        holder.scale.setScalar(1.55);
+        const hull = buildSkinnedBot(bind, outlineMat, chassis);
+        hull.mesh.scale.multiplyScalar(1.018);
+        const rig = buildSkinnedBot(bind, propMat, chassis);
+        holder.add(hull.mesh, rig.mesh);
+        ring.add(holder);
+        ringRigs[side]!.push({ rig, hull, holder });
+      }
+    };
 
     const resize = () => {
       const { width, height } = element.getBoundingClientRect();
@@ -445,7 +518,12 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
     }
 
     applyLayout(registry, SCENE_LAYOUT);
-    if (CAMERA) { CAM_MOON.fromArray(CAMERA.position); CAM_TGT.fromArray(CAMERA.target); }
+    // Station rig: the camera is never cut, it is eased. Exponential smoothing on
+    // both the eye and the look-at, framerate-independent via dt.
+    const camWant = new THREE.Vector3();
+    const tgtWant = new THREE.Vector3();
+    CAM_MOON.fromArray(STATIONS.ARRIVAL.position);
+    CAM_TGT.fromArray(STATIONS.ARRIVAL.target);
 
     // the authored poses the idles animate around
     const enterBaseScale = enterGroup.scale.x;
@@ -544,17 +622,29 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
 
     let skT = 0, skS = 1;
     const RESEED_HZ = 9;
+    let prev = 0;
     const frame = (now: number) => {
       if (disposed) return;
       raf = requestAnimationFrame(frame);
       if (!visible || document.hidden) return;
+      const dt = prev ? Math.min(0.1, (now - prev) / 1000) : 0.016;
+      prev = now;
       shared.uTime.value = now / 1000;
       if (!reducedMotion && now - skT > 1000 / RESEED_HZ) {
         skT = now;
         skS = (skS % 37) + 1;
         turb.setAttribute("seed", String(skS));
       }
-      if (!camPinned) camera.position.copy(CAM_MOON);
+      if (!camPinned) {
+        const st = STATIONS[stationRef.current] ?? STATIONS.ARRIVAL;
+        camWant.fromArray(st.position);
+        tgtWant.fromArray(st.target);
+        // 1 - exp(-k*dt): same settle time whatever the framerate
+        const k = 1 - Math.exp(-2.1 * Math.min(dt, 0.1));
+        CAM_MOON.lerp(camWant, k);
+        CAM_TGT.lerp(tgtWant, k);
+        camera.position.copy(CAM_MOON);
+      }
       camera.lookAt(CAM_TGT);
       // The fly holds its authored pose: a per-frame write to rotation.y would
       // overwrite an R gesture every frame and make the object un-editable.
@@ -570,6 +660,29 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
           d.object.rotation.y = d.base.r.y + t * d.spin * 0.6;
           if (d.twinkle) {
             d.object.scale.setScalar(d.base.s * (1 + Math.sin(t * 1.7 + d.phase * 2) * d.twinkle));
+          }
+        }
+
+        // ── fighters at the ring ───────────────────────────────────────
+        // The frame the simulation emits drives the same rig type as the idle,
+        // so the fight needs no second animation path: place each unit on the
+        // ring floor, hand poseSkinnedBot the real state, hide the rest.
+        const f = frameRef.current;
+        const split = f?.teamSplit ?? 1;
+        for (let side = 0; side < 2; side++) {
+          const pool = ringRigs[side]!;
+          for (let i = 0; i < pool.length; i++) {
+            const slot = pool[i]!;
+            const idx = side === 0 ? i : split + i;
+            const unit = f && idx < f.bots.length && (side === 0 ? i < split : true) ? f.bots[idx] : undefined;
+            const alive = !!unit && unit.hull > 0;
+            slot.holder.visible = alive;
+            if (!unit || !alive) continue;
+            // sim metres -> ring units, and the ring group already carries the
+            // surface height, so the holder stays on y=0 inside it
+            slot.holder.position.set(unit.x * 0.45, 0, unit.y * 0.45);
+            poseSkinnedBot(slot.rig, unit, chassis);
+            poseSkinnedBot(slot.hull, unit, chassis);
           }
         }
 

@@ -28,9 +28,9 @@ export interface PropRecord extends Placement {
 // ── paste below ──────────────────────────────────────────────────────────
 export const SCENE_LAYOUT: SceneLayout = {
   "moon": { p: [0, -70, 0], r: [0, 0, 0], s: [1, 1, 1] },
-  "title": { p: [-3.856, 2.637, -0.997], r: [-0.408, 0.226, 0.097], s: [1.6, 1.6, 1.6] },
-  "enter": { p: [-7.448, 0.868, 0.165], r: [-0.408, 0.226, 0.097], s: [0.52, 0.52, 0.52] },
-  "fly": { p: [2.976, -1.732, 5.282], r: [-0.186, -0.764, -0.015], s: [1.573, 1.573, 1.573] },
+  "title": { p: [-2.6, 2.637, -0.997], r: [-0.408, 0.226, 0.097], s: [1.6, 1.6, 1.6] },
+  "enter": { p: [-5.9, 0.868, 0.165], r: [-0.408, 0.226, 0.097], s: [0.52, 0.52, 0.52] },
+  "fly": { p: [2.6, 0, 3.4], r: [-0.186, 2.378, -0.015], s: [1.573, 1.573, 1.573] },
   "star-0": { p: [-7.877, 3.037, -6.027], r: [-0.785, 1.102, -2.039], s: [1, 1, 1] },
   "star-1": { p: [-5.808, 2.857, -9.265], r: [0.218, 0.762, 2.246], s: [1.261, 1.261, 1.261] },
   "star-2": { p: [-12.243, 3.081, -10.69], r: [-2.019, -0.603, 2.316], s: [0.883, 0.883, 0.883] },
@@ -68,3 +68,30 @@ export function applyLayout(objects: Map<string, THREE.Object3D>, layout: SceneL
     if (object) applyPlacement(object, place);
   }
 }
+
+/**
+ * Camera stations on the one moon. The app does not swap pages; it flies the
+ * camera between these, so every entry is a pose on the same surface.
+ *
+ * Declared OUTSIDE the paste markers above: a "copy layout" bake rewrites that
+ * block wholesale and would otherwise delete them.
+ *
+ * RING sits out at d≈11.7 from the crown, where the sphere has already dropped
+ * to about y=-1.0 — the fighters stand on that, not on y=0.
+ */
+export type StationName = "ARRIVAL" | "BAY" | "RING";
+
+export interface Station {
+  position: Vec3Tuple;
+  target: Vec3Tuple;
+}
+
+export const RING_CENTRE: Vec3Tuple = [-19, -2.9, -6];
+
+export const STATIONS: Record<StationName, Station> = {
+  ARRIVAL: { position: [0, 9, 10], target: [0, 1.6, 0] },
+  // the plinth is the fly; aim left of it so it sits on the RIGHT of frame and
+  // the configuration glass has the left half to itself
+  BAY: { position: [0.2, 3.4, 9.4], target: [1.1, 1.35, 3.2] },
+  RING: { position: [-19, 3.4, 2.6], target: [-19, -2.2, -6] },
+};
