@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import type { Chassis } from "@workspace/contract";
+import type { ArenaBotState, Chassis } from "@workspace/contract";
+import { bindChassis, buildSkinnedBot, poseSkinnedBot, type SkinnedBot } from "./skinnedBot";
 import { buildWordmark } from "./wordmark";
 import { MoonEditor, makeProp } from "./moonEditor";
 import { ADDED_PROPS, CAMERA, SCENE_LAYOUT, applyLayout, applyPlacement } from "./moonLayout";
@@ -315,28 +316,60 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
     void typeReady.then((ok) => { if (!ok && !disposed) fallbackTitle(); }).catch(() => { if (!disposed) fallbackTitle(); });
 
     const flyRoot = new THREE.Group();
-    flyRoot.position.set(4.2, 0, 4.0);
-    flyRoot.rotation.y = -0.5;
+    flyRoot.position.set(3.1, 0, 3.6);
+    // The rig maps bone space with toArena = [-z, y, x], a 90 degree turn, so the
+    // posed mesh does not face the same way the raw .glb does. Measured by eye:
+    // this is the value that puts its face toward the camera at [0, 9, 10].
+    flyRoot.rotation.y = -0.5 + Math.PI;
     scene.add(flyRoot);
+    // bindChassis re-centres to unit height with the feet on y=0, so the display
+    // scale lives here and the layout's `fly` transform stays what it was.
+    const flyFit = new THREE.Group();
+    // bindChassis normalises to UNIT HEIGHT, where the old path fitted the max
+    // dimension (wings included). 4.6 stacked with the layout's 1.573 and made it
+    // twice the size it had been.
+    flyFit.scale.setScalar(2.9);
+    flyRoot.add(flyFit);
+
+    let flyRig: SkinnedBot | null = null;
+    let flyHull: SkinnedBot | null = null;
     new GLTFLoader().load(`${base}models/${chassis.toLowerCase()}.glb`, (gltf) => {
-      if (disposed) return;
-      const model = gltf.scene;
-      model.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const centre = box.getCenter(new THREE.Vector3());
-      const s = 5.4 / Math.max(size.x, size.y, size.z);
-      model.scale.setScalar(s);
-      model.position.set(-centre.x * s, -box.min.y * s, -centre.z * s);
-      model.traverse((o) => { if (o instanceof THREE.Mesh) o.material = propMat; });
-      // same ink hull as the title, so the fly reads against a bright moon
-      // instead of disappearing into it
-      const hull = model.clone(true);
-      hull.traverse((o) => { if (o instanceof THREE.Mesh) o.material = outlineMat; });
-      hull.scale.multiplyScalar(1.035);
-      flyRoot.add(hull);
-      flyRoot.add(model);
+      if (disposed) { return; }
+      let source: THREE.Mesh | undefined;
+      gltf.scene.traverse((o) => { if (!source && o instanceof THREE.Mesh) source = o; });
+      if (!source) return;
+      // One bind, two rigs: the inked body and the ink hull behind it. The hull has
+      // to be skinned too — a static clone would stay rigid while the body deforms.
+      const bind = bindChassis(source);
+      flyHull = buildSkinnedBot(bind, outlineMat, chassis);
+      flyHull.mesh.scale.multiplyScalar(1.018);
+      flyRig = buildSkinnedBot(bind, propMat, chassis);
+      flyFit.add(flyHull.mesh, flyRig.mesh);
     }, undefined, () => {});
+
+    /**
+     * A synthetic ArenaBotState for the idle.
+     *
+     * `poseSkinnedBot` takes exactly what the simulation emits, so the idle is
+     * authored in the same language as a real fight rather than as a separate
+     * animation path: the gait phase walks slowly enough to read as weight
+     * shifting instead of marching, the two arms breathe a few degrees out of
+     * phase so the guard settles, and a little heading sway keeps it alive.
+     * Nothing is struck, guard stays low, recovery is zero.
+     */
+    const idleState = (t: number): ArenaBotState => ({
+      botId: "idle",
+      x: 0, y: 0, heading: Math.sin(t * 0.23) * 0.07,
+      vx: 0, vy: 0, hull: 100,
+      spiked: [], potentials: {},
+      arousal: 1, gfFatigue: 0,
+      armL: 0.34 + Math.sin(t * 0.85) * 0.09,
+      armR: -0.34 + Math.sin(t * 0.85 + 1.9) * 0.09,
+      armLv: 0, armRv: 0,
+      gait: (t * 0.12) % 1,
+      struck: false, guard: 0.12, recovery: 0,
+      blocked: false, countered: false, stamina: 1,
+    });
 
     const resize = () => {
       const { width, height } = element.getBoundingClientRect();
@@ -414,7 +447,7 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
     applyLayout(registry, SCENE_LAYOUT);
     if (CAMERA) { CAM_MOON.fromArray(CAMERA.position); CAM_TGT.fromArray(CAMERA.target); }
 
-    // the authored pose the hover animates around
+    // the authored poses the idles animate around
     const enterBaseScale = enterGroup.scale.x;
     const enterBaseY = enterGroup.position.y;
 
@@ -451,10 +484,11 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
     // animation, and a G/S/R gesture is never fought by the clock.
     interface Drift {
       object: THREE.Object3D;
-      base: { p: THREE.Vector3; r: THREE.Euler };
+      base: { p: THREE.Vector3; r: THREE.Euler; s: number };
       phase: number;
       bob: number;
       spin: number;
+      twinkle: number;
     }
     const drifting: Drift[] = [];
     if (!moonEditor) {
@@ -472,10 +506,11 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
         const seed = hash(id);
         drifting.push({
           object,
-          base: { p: object.position.clone(), r: object.rotation.clone() },
+          base: { p: object.position.clone(), r: object.rotation.clone(), s: object.scale.x },
           phase: seed * Math.PI * 2,
-          bob: isStar ? 0.1 + seed * 0.12 : 0.05 + seed * 0.06,
-          spin: isStar ? 0.06 + seed * 0.1 : isPlanet ? 0.03 : 0.02,
+          bob: isStar ? 0.2 + seed * 0.22 : 0.09 + seed * 0.1,
+          spin: isStar ? 0.14 + seed * 0.2 : isPlanet ? 0.05 : 0.04,
+          twinkle: isStar ? 0.05 + seed * 0.05 : 0,
         });
       }
     }
@@ -529,11 +564,20 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
       if (!reducedMotion && !moonEditor) {
         const t = now / 1000;
         for (const d of drifting) {
-          d.object.position.y = d.base.p.y + Math.sin(t * 0.55 + d.phase) * d.bob;
-          d.object.position.x = d.base.p.x + Math.cos(t * 0.31 + d.phase) * d.bob * 0.5;
-          d.object.rotation.z = d.base.r.z + Math.sin(t * d.spin * 2 + d.phase) * 0.22;
-          d.object.rotation.y = d.base.r.y + t * d.spin * 0.35;
+          d.object.position.y = d.base.p.y + Math.sin(t * 0.75 + d.phase) * d.bob;
+          d.object.position.x = d.base.p.x + Math.cos(t * 0.41 + d.phase) * d.bob * 0.55;
+          d.object.rotation.z = d.base.r.z + Math.sin(t * d.spin * 2 + d.phase) * 0.3;
+          d.object.rotation.y = d.base.r.y + t * d.spin * 0.6;
+          if (d.twinkle) {
+            d.object.scale.setScalar(d.base.s * (1 + Math.sin(t * 1.7 + d.phase * 2) * d.twinkle));
+          }
         }
+
+        // The fly's idle comes off its own rig, not a root bob: the mesh is
+        // skinned, so the legs shift weight at the joints instead of the whole
+        // body translating. Only the authored pose is held here.
+        if (flyRig) poseSkinnedBot(flyRig, idleState(t), chassis);
+        if (flyHull) poseSkinnedBot(flyHull, idleState(t), chassis);
         // ENTER swells under the cursor; eased so it never snaps
         enterEase += ((enterHover ? 1 : 0) - enterEase) * 0.14;
         const k = 1 + enterEase * 0.16;

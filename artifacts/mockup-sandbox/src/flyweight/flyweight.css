@@ -168,7 +168,7 @@
 .landing-stage{position:relative;min-height:calc(100svh - 92px);display:flex;flex-direction:column;justify-content:flex-end;padding:0 5% 58px;pointer-events:none}
 .landing-stage .specimen-label{position:absolute;right:5%;bottom:auto;top:44%;font-size:8px!important}
 .landing-entry{display:flex;flex-direction:column;align-items:flex-start;gap:20px;max-width:440px;pointer-events:auto}
-.landing-entry p{margin:0;font-size:9px;letter-spacing:.14em;color:#9d9d9e;line-height:1.9}
+.landing-entry p{margin:0;font-size:10px;letter-spacing:.14em;line-height:1.9;color:#12120f;background:rgba(255,255,255,.72);backdrop-filter:blur(3px);padding:6px 10px;border:1px solid rgba(0,0,0,.14)}
 .landing-aside{position:absolute;right:5%;bottom:58px;display:flex;flex-direction:column;gap:7px;text-align:right;font-size:8px!important;color:#8a8a8c}
 .landing-aside strong{color:#ededea;font-weight:600}
 @media(max-width:900px){.landing-stage{padding-bottom:40px}.landing-aside{display:none}}
@@ -323,3 +323,158 @@ body.title2d .landing-title{display:block}
 /* the CTA is geometry now; keep the real button reachable by keyboard */
 .route-home .landing-entry .button{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .route-home .landing-entry .button:focus-visible{position:static;width:auto;height:auto;padding:17px 22px;margin:0;clip-path:none}
+
+/* ═══ DARK GLASS ═══════════════════════════════════════════════════════════
+   Every screen is the same room as the landing: near-black ground, frosted
+   panels, hairline light borders, light type. Instrumentation over space —
+   restrained, not neon. Numerics stay monospace.                           */
+.flyweight{
+ --paper:#07070a; --ink:#e8e8e4; --line:#2b2c33;
+ --glass:#12131ab8; --glass-line:#ffffff20; --muted:#8e8f98; --dim:#65666f;
+ color:var(--ink);
+}
+.world-stage{background:#07070a}
+.flyweight button:focus-visible,.flyweight a:focus-visible,
+.flyweight input:focus-visible,.flyweight select:focus-visible{outline:2px solid #e8e8e4}
+
+/* panels */
+.glass{background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(18px)}
+.scope,.chassis-panel,.stat-panel,.vs-plate,.brainview,.fight-brain,
+.route-select .vs-plate,.route-select .stat-panel{
+ background:var(--glass);border-color:var(--glass-line);backdrop-filter:blur(20px)}
+.module-card,.route-select .roster-card,.roster-card{
+ background:#0f1016a6;border-color:var(--line);backdrop-filter:blur(14px);color:var(--ink)}
+.module-card:hover:not(:disabled),.roster-card:hover,.roster-card.highlighted{
+ background:#181a23cc;border-color:#ffffff4d;transform:translateY(-2px)}
+.roster-card.boss,.route-select .roster-card.boss{background:#e8e8e4;color:#07070a;border-color:#e8e8e4}
+.roster-card.boss .silhouette{color:#07070a}
+.roster-card.boss small,.roster-card.boss em{color:#4a4a52}
+.arena-controls,.fight-controls{background:#0b0c11cc;border-color:var(--line);color:var(--ink)}
+.hud-hull{background:#0d0e14c4;border-color:var(--glass-line)}
+.lab-specimen{background:transparent}
+
+/* type */
+.section-label,.edition,.scope-note,.brainview-note,.stat-footnote,
+.module-card p,.module-card small,.vs-plate small,.vs-plate p,.brainview-key,
+.section-heading>p,.hud-chassis,.fight-readout,.lab-message,.squad-note,
+.stat-name,.readout-cells,.brain-size span,.roster-card small,.empty-slot{color:var(--muted)}
+.roster-card em,.stat-group-label,.arena-time small,.hud-round{color:var(--dim)}
+.muted{color:var(--dim)}
+.topbar{border-bottom-color:var(--line);background:#07070acc}
+.topbar nav a:hover,.topbar nav a.current{border-color:var(--ink)}
+.flyweight footer{background:#07070a;border-top-color:var(--line)}
+.stat-value,.readout-circuit,.readout-weight,.playstyle,.vs-plate strong,
+.roster-card strong,.stat-panel h3,.brain-size strong,.hud-hull strong{color:var(--ink)}
+
+/* controls */
+.button{border-color:var(--ink);color:var(--ink);background:transparent}
+.button:hover{background:#ffffff14;transform:translateY(-2px)}
+.button.primary{background:var(--ink);color:#07070a}
+.button.primary:hover{background:#ffffff}
+.bot-marker{background:var(--ink);color:#07070a}
+.bot-1 .bot-marker{background:transparent;color:var(--ink);border:1px solid var(--ink)}
+.chassis-options button,.squad-stepper button,.slot{border-color:var(--line);color:var(--ink)}
+.chassis-options .selected{background:var(--ink);color:#07070a;border-color:var(--ink)}
+.chassis-options .selected small{color:#44454c}
+.chassis-options small{color:var(--muted)}
+.empty-slot{border-color:#2f3038}
+.slot-title>button{color:var(--ink)}
+.slot-title .mono{color:var(--dim)}
+.field-label input{color:var(--ink);border-bottom-color:var(--line)}
+.arena-controls button,.arena-controls select,.fight-controls button,.fight-controls select{color:var(--ink)}
+.fight-controls a{color:var(--muted)}
+.slot-controls input{accent-color:#e8e8e4}
+.card-slot{background:var(--ink);color:#07070a}
+.roster-card.taken-p2 .card-slot{background:transparent;color:var(--ink);border-color:var(--ink)}
+.roster-card.taken-p1,.roster-card.taken-p2{border-color:var(--ink);box-shadow:inset 0 0 0 1px #ffffff5c}
+.boss-flag{border-color:currentColor}
+
+/* meters: dark track, light fill */
+.bot-score progress,.hud-hull progress,.brain-meters progress{background:#23242b}
+.bot-score progress::-webkit-progress-bar,.hud-hull progress::-webkit-progress-bar,
+.brain-meters progress::-webkit-progress-bar{background:#23242b}
+.bot-score progress::-webkit-progress-value,.hud-hull progress::-webkit-progress-value,
+.brain-meters progress::-webkit-progress-value{background:#e8e8e4}
+.bot-score progress::-moz-progress-bar,.hud-hull progress::-moz-progress-bar{background:#e8e8e4}
+.budget meter::-webkit-meter-bar{background:#23242b}
+.budget meter::-webkit-meter-optimum-value{background:#e8e8e4}
+.stat-track{background:#23242b}
+.stat-track i{background:#e8e8e4}
+.stat-bar.accent .stat-track i{background:repeating-linear-gradient(90deg,#e8e8e4 0 3px,transparent 3px 5px)}
+.hud-pips .pip{background:#e8e8e4}
+.hud-pips .pip.down{background:transparent;box-shadow:inset 0 0 0 1px #4a4b54}
+.brainview-key i{background:#e8e8e4}
+.brainview-key i.glu{background:repeating-linear-gradient(90deg,#e8e8e4 0 3px,transparent 3px 5px)}
+.readout-tx{border-color:#3a3b44;color:var(--muted)}
+.readout-tx.glu{background:var(--ink);color:#07070a;border-color:var(--ink)}
+.sudden-death{background:var(--ink);color:#07070a}
+.sudden-death i{background:#07070a}
+.status-dot,.live-label i{background:var(--ink)}
+
+/* hairlines that were drawn in light grey */
+.module-readout li,.stat-group-label,.brain-size,.scope-note,.brainview-note,
+.science-facts,.arena-shell{border-color:var(--line)}
+.fitness svg line{stroke:#3a3b44}
+.fitness-best{stroke:#e8e8e4}
+.fitness-mean{stroke:#7d7e88}
+.render-fallback{color:var(--muted)}
+
+/* refractory period: the slider keeps its full 0-30 contract range and carries the
+   measurement on it, so the useful band is visible rather than legislated away */
+.refractory{margin-top:22px}
+.refractory .field-label{margin-top:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
+.refractory .field-label output{margin-left:auto;font-size:10px}
+.refractory input[type=range]{flex:0 0 100%;width:100%;height:12px;margin:10px 0 0;accent-color:var(--ink)}
+.refractory-chart{position:relative;height:38px;margin-top:6px;border-bottom:1px solid var(--line)}
+.refractory-band{position:absolute;top:0;bottom:0;background:var(--ink);opacity:.08;border-left:1px solid var(--ink);border-right:1px solid var(--ink)}
+.refractory-chart i{position:absolute;bottom:0;width:4px;margin-left:-2px;background:var(--ink)}
+.refractory-axis{position:relative;height:11px;font-size:7px;color:var(--muted,#777777)}
+.refractory-axis span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.refractory-axis .edge:first-child{transform:none}
+.refractory-axis .edge:last-child{transform:translateX(-100%)}
+.refractory-note{display:block;margin:8px 0 0;font-size:8px;line-height:1.7;color:var(--muted,#777777)}
+.refractory-note em{display:block;margin-top:5px;font-style:normal;color:var(--ink);opacity:.8}
+.lab-actions{display:grid;gap:8px;margin-top:4px}
+
+/* The stage is veiled on the roster/lab, so whatever is BEHIND it shows through.
+   That was the white page: the panels went dark but the ground stayed lit. */
+html,body{background:#07070a}
+.flyweight{background:#07070a}
+.route-home,.route-home .world-stage{background:#07070a}
+/* with a dark ground the backdrop can carry more of itself without shouting */
+.route-select .world-stage{opacity:.34}
+.route-lab .world-stage{opacity:.6}
+.route-select .section-heading h2,.route-select .section-heading p{background:transparent;backdrop-filter:none}
+/* the headings carried a light scrim for legibility over the old paper stage */
+.section-heading h2,.section-heading p{background:transparent;backdrop-filter:none}
+.flyweight h2{color:var(--ink)}
+/* higher specificity than the .scope rule above, so it has to be restated */
+.fight-scopes .scope{background:var(--glass);border-color:var(--glass-line);backdrop-filter:blur(20px)}
+.fight-scopes .scope .section-label{color:var(--muted)}
+/* .world-stage is z-index:-1 inside .flyweight's stacking context, so an opaque
+   background on .flyweight paints straight over the canvas. The dark ground has
+   to live on the page behind it, and .flyweight stays transparent. */
+.flyweight,.route-home{background:transparent}
+
+/* live profile: recomputed from the draft as the sliders move */
+.lab-readout{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.readout-bars{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.readout-bar,.readout-spend>div{display:grid;grid-template-columns:78px 1fr 62px;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.05em}
+.readout-bar>span,.readout-spend>div>span{color:var(--muted,#777777);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.readout-bar i,.readout-spend i{display:block;height:3px;background:var(--line)}
+.readout-bar b,.readout-spend b{display:block;height:100%;background:var(--ink)}
+.readout-bar output,.readout-spend output{text-align:right;color:var(--ink)}
+.readout-style{margin:12px 0 0;font-size:11px;line-height:1.6;color:var(--ink);opacity:.85}
+.readout-spend{margin-top:14px;display:flex;flex-direction:column;gap:5px}
+.readout-spend .readout-free output{color:var(--muted,#777777)}
+.readout-spend .readout-free i{opacity:.35}
+/* The landing copy sat over a light page. It now sits over a BRIGHT moon inside
+   a black sky, so it needs light type plus an ink shadow — one colour cannot
+   carry both grounds, but light-on-ink-shadow reads on either. */
+.route-home .landing-entry p,
+.route-home .landing-aside,
+.route-home .specimen-label{
+ color:#f1f1ed;
+ text-shadow:0 1px 2px #05050a, 0 0 7px rgba(5,5,10,.85), 0 0 18px rgba(5,5,10,.6);
+}
+.route-home .landing-aside strong{color:#ffffff}
