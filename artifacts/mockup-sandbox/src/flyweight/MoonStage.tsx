@@ -197,6 +197,8 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
     const inkTextures: THREE.CanvasTexture[] = [];
     const inkMaterials: THREE.MeshBasicMaterial[] = [];
     let enterMesh: THREE.Mesh | null = null;
+    let enterHover = false;
+    let enterEase = 0;
     const titleGroup = new THREE.Group();
     titleGroup.position.set(-3.6, 2.1, -0.6);
     titleGroup.rotation.y = 0.26;
@@ -412,6 +414,10 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
     applyLayout(registry, SCENE_LAYOUT);
     if (CAMERA) { CAM_MOON.fromArray(CAMERA.position); CAM_TGT.fromArray(CAMERA.target); }
 
+    // the authored pose the hover animates around
+    const enterBaseScale = enterGroup.scale.x;
+    const enterBaseY = enterGroup.position.y;
+
     // ?edit turns the page into a viewport with an Outliner beside it. The
     // displacement filter is off while editing: it moves pixels by up to six,
     // so a click would otherwise land somewhere the object visibly is not.
@@ -439,6 +445,41 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
       (window as unknown as { fwEditor: MoonEditor | null }).fwEditor = moonEditor;
     }
 
+    // Idle motion for the sky dressing. Every term is an OFFSET from the pose
+    // the layout authored, and none of it runs while the editor is mounted —
+    // so "copy layout" always emits the authored numbers, never a frame of
+    // animation, and a G/S/R gesture is never fought by the clock.
+    interface Drift {
+      object: THREE.Object3D;
+      base: { p: THREE.Vector3; r: THREE.Euler };
+      phase: number;
+      bob: number;
+      spin: number;
+    }
+    const drifting: Drift[] = [];
+    if (!moonEditor) {
+      // deterministic per-id, so the scene is the same on every load
+      const hash = (str: string) => {
+        let h = 2166136261;
+        for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+        return ((h >>> 0) % 1000) / 1000;
+      };
+      for (const [id, object] of registry) {
+        const isStar = id.startsWith("star");
+        const isCrescent = id.startsWith("crescent");
+        const isPlanet = id.startsWith("planet");
+        if (!isStar && !isCrescent && !isPlanet) continue; // the arch is terrain
+        const seed = hash(id);
+        drifting.push({
+          object,
+          base: { p: object.position.clone(), r: object.rotation.clone() },
+          phase: seed * Math.PI * 2,
+          bob: isStar ? 0.1 + seed * 0.12 : 0.05 + seed * 0.06,
+          spin: isStar ? 0.06 + seed * 0.1 : isPlanet ? 0.03 : 0.02,
+        });
+      }
+    }
+
     // ENTER is geometry, so it needs its own hit test. Only in view mode — while
     // editing, a click belongs to selection and gesture confirmation.
     const enterRay = new THREE.Raycaster();
@@ -460,7 +501,8 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
     };
     const onEnterHover = (e: PointerEvent) => {
       if (moonEditor || !enterMesh) return;
-      document.body.style.cursor = hitEnter(e) ? "pointer" : "";
+      enterHover = hitEnter(e);
+      document.body.style.cursor = enterHover ? "pointer" : "";
     };
     window.addEventListener("pointerdown", onEnterClick);
     window.addEventListener("pointermove", onEnterHover, { passive: true });
@@ -483,6 +525,21 @@ export function MoonStage({ chassis = "DRONE" as Chassis }: { chassis?: Chassis 
       // overwrite an R gesture every frame and make the object un-editable.
       // The moon keeps the prototype's drift, but only when nothing is editing.
       if (!reducedMotion && !moonEditor) moon.rotation.y += 0.0003;
+
+      if (!reducedMotion && !moonEditor) {
+        const t = now / 1000;
+        for (const d of drifting) {
+          d.object.position.y = d.base.p.y + Math.sin(t * 0.55 + d.phase) * d.bob;
+          d.object.position.x = d.base.p.x + Math.cos(t * 0.31 + d.phase) * d.bob * 0.5;
+          d.object.rotation.z = d.base.r.z + Math.sin(t * d.spin * 2 + d.phase) * 0.22;
+          d.object.rotation.y = d.base.r.y + t * d.spin * 0.35;
+        }
+        // ENTER swells under the cursor; eased so it never snaps
+        enterEase += ((enterHover ? 1 : 0) - enterEase) * 0.14;
+        const k = 1 + enterEase * 0.16;
+        enterGroup.scale.setScalar(enterBaseScale * k);
+        enterGroup.position.y = enterBaseY + enterEase * 0.12;
+      }
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(frame);
