@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { ArenaBotState, BotSpec, Chassis, MatchFrame } from "@workspace/contract";
-import { MAX_SQUAD } from "@workspace/contract";
-import { bindChassis, buildSkinnedBot, poseSkinnedBot, type SkinnedBot } from "./skinnedBot";
+import { ARM_REST, MAX_SQUAD } from "@workspace/contract";
+import { DISPLAY, bindChassis, buildSkinnedBot, poseSkinnedBot, type SkinnedBot } from "./skinnedBot";
+import { rigHeight } from "@workspace/sim";
 import { buildWordmark } from "./wordmark";
 import { MoonEditor, makeProp } from "./moonEditor";
-import { ADDED_PROPS, RING_CENTRE, SCENE_LAYOUT, STATIONS, applyLayout, applyPlacement, type StationName } from "./moonLayout";
+import { ADDED_PROPS, RING_CENTRE, SCENE_LAYOUT, STATIONS, applyLayout, applyPlacement, groundY, type StationName } from "./moonLayout";
 import { MoonOutliner } from "./MoonOutliner";
 
 /**
@@ -80,7 +81,36 @@ const MOON_FRAG = `precision highp float;uniform sampler2D hatchTex,paperTex;uni
       vec3 paper=vec3(0.93)*mix(vec3(1.0),texture2D(paperTex,gl_FragCoord.xy/620.0).rgb,0.14);
       gl_FragColor=vec4(mix(vec3(0.05),paper,clamp(m2,0.0,1.0)),1.0);}`;
 
-const PROP_VERT = `varying vec3 vN;void main(){vN=normalize(mat3(modelMatrix)*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
+/**
+ * Prop / chassis vertex shader — WITH SKINNING.
+ *
+ * This used to transform `position` directly, which is the BIND POSE vertex. A raw
+ * ShaderMaterial gets no skinning unless it asks for it, so every skinned body on
+ * screen was rendered rigid: the skeleton animated correctly in memory and none of
+ * it reached the GPU. Bodies slid and turned (that is the object transform) while
+ * the limbs never moved.
+ *
+ * It hid well. `SkinnedMesh.applyBoneTransform` is a CPU re-implementation of the
+ * skinning maths, so every measurement taken through it — bone quaternions, swept
+ * vertex range, joint amplitudes against the goose — was correct AND blind to this.
+ * The only thing that would have caught it is looking at rendered pixels.
+ *
+ * The chunks are `#ifdef USE_SKINNING`, which the renderer defines per-object, so
+ * the same material still works on the static props and stars.
+ */
+const PROP_VERT = `
+#include <common>
+#include <skinning_pars_vertex>
+varying vec3 vN;
+void main(){
+  #include <skinbase_vertex>
+  #include <beginnormal_vertex>
+  #include <skinnormal_vertex>
+  vN = normalize(mat3(modelMatrix) * objectNormal);
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  #include <project_vertex>
+}`;
 
 const PROP_FRAG = `precision highp float;uniform sampler2D hatchTex,paperTex;uniform vec3 uL1;uniform float uTime,uHscale;varying vec3 vN;
     void main(){vec3 N=normalize(vN);float ndl=max(dot(N,normalize(uL1)),0.0);float shade=clamp(ndl*0.85+0.17,0.0,1.0);float t=1.0-shade;
@@ -137,6 +167,57 @@ void main() {
   vec3 ink = vec3(0.03, 0.03, 0.04);
   gl_FragColor = vec4(mix(base.rgb, ink, edge), max(base.a, edge));
 }`;
+
+/**
+ * The moon is a sphere of radius 70 centred at (0, -70, 0), so its surface passes
+ * through the origin. Anything standing on it has to be placed ON that sphere and
+ * stood up along ITS normal, not along world up.
+ */
+const MOON_R = 70;
+const MOON_C = new THREE.Vector3(0, -70, 0);
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+/**
+ * Simulation metres to scene units.
+ *
+ * This has to be the SAME number for positions and for body height or the fight is
+ * unreadable. It was 0.45 for positions while the bodies were scaled to 1.55 units
+ * tall - but a bot is only 1.06 m, which at 0.45 is 0.48 units. The figures were
+ * three times too big for the floor they stood on, so two fighters 11 m apart read
+ * as two giants shoulder to shoulder, barely moving.
+ */
+const RING_SCALE = 0.64;
+const _tiltQ = new THREE.Quaternion();
+const _headQ = new THREE.Quaternion();
+const _axis = new THREE.Vector3();
+const _mid = new THREE.Vector3();
+const _off = new THREE.Vector3();
+const _vtx = new THREE.Vector3();
+
+/** Display scale of the fly on the plinth, before the per-chassis correction. */
+const FLY_FIT = 2.9;
+
+/**
+ * How much of the chassis size difference the SHOWCASE keeps.
+ *
+ * The ring shows fighters at true scale, because there the size difference is
+ * information: a TANK really does have the reach and the hull to match. The
+ * showcase is a portrait at a fixed camera, and at true scale a TANK is 1.44x a
+ * DRONE and does not fit the shot — measured at 883px tall in a 937px frame with
+ * its head 101px above the top edge, while the DRONE sat at 625px.
+ *
+ * So compress the spread rather than flattening it: the TANK still reads as the
+ * heavy one, and all three are framed the same.
+ *
+ * Normalised on DRONE, not on the middle chassis, because DRONE is the default
+ * build — it is what the landing shows, and that shot is already framed tight.
+ * Anchoring here leaves it at exactly the size it was and only brings the other
+ * two down to meet it.
+ */
+const SHOWCASE_SPREAD = 0.25;
+const showcaseScale = (chassis: Chassis) => {
+  const t = rigHeight(chassis) / rigHeight("DRONE");
+  return (1 + (t - 1) * SHOWCASE_SPREAD) / t;
+};
 
 const OUTLINE_VERT = `varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`;
 
@@ -357,16 +438,32 @@ export function MoonStage({
       art.x.textBaseline = "alphabetic";
       art.x.fillText(text, pad + left, pad + ascent);
 
-      const tint = (color: string) => {
+      /**
+       * `alphaGain` is what keeps the centre of the letter light.
+       *
+       * KatieRoze is watercolour, so its glyphs carry PARTIAL alpha across the
+       * whole stroke, not just at the edge. Fill that with white and the black
+       * ring stamped underneath reads straight through it, which is why the
+       * middle of FLYWEIGHT came out closer to the outline than to the fill.
+       * Lifting alpha before the tint makes the body opaque while leaving enough
+       * variation to still look painted.
+       */
+      const tint = (color: string, alphaGain = 1) => {
         const t = layer();
         t.x.drawImage(art.c, 0, 0);
+        if (alphaGain !== 1) {
+          const px = t.x.getImageData(0, 0, w, h);
+          const d = px.data;
+          for (let i = 3; i < d.length; i += 4) d[i] = Math.min(255, d[i]! * alphaGain);
+          t.x.putImageData(px, 0, 0);
+        }
         t.x.globalCompositeOperation = "source-in";
         t.x.fillStyle = color;
         t.x.fillRect(0, 0, w, h);
         return t.c;
       };
       const blackCopy = tint("#08080a");
-      const whiteCopy = tint("#f6f6f2");
+      const whiteCopy = tint("#fbfbf7", 2.8);
 
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
@@ -400,7 +497,11 @@ export function MoonStage({
 
     const typeReady = (async () => {
       try {
-        const face = new FontFace("KatieRoze", `url(${base}fonts/KatieRoze-display-512.woff2)`);
+        // One subset for every string the UI sets in this face. The old display cut
+        // was missing F, G, H, I and Y, so five of FLYWEIGHT's nine letters were
+        // silently falling back to `cursive` — a subset miss does not error, it
+        // just quietly renders in the next font.
+        const face = new FontFace("KatieRoze", `url(${base}fonts/katieroze-ui.woff2)`);
         await face.load();
         document.fonts.add(face);
       } catch {
@@ -434,7 +535,7 @@ export function MoonStage({
     // bindChassis normalises to UNIT HEIGHT, where the old path fitted the max
     // dimension (wings included). 4.6 stacked with the layout's 1.573 and made it
     // twice the size it had been.
-    flyFit.scale.setScalar(2.9);
+    flyFit.scale.setScalar(FLY_FIT);
     flyRoot.add(flyFit);
 
     let flyRig: SkinnedBot | null = null;
@@ -468,11 +569,59 @@ export function MoonStage({
       // as the limbs swing. The hatch shader already carries the figure against
       // the moon, so the outline is not paying for itself here.
       flyRig = buildSkinnedBot(bind, propMat, name);
+      // buildSkinnedBot sizes the mesh at true scale for the ring; the portrait
+      // wants the chassis spread compressed so every one of them fits the shot.
+      flyFit.scale.setScalar(FLY_FIT * showcaseScale(name));
       flyFit.add(flyRig.mesh);
       buildSide(0, bind, name);
       buildSide(1, bind, name);
+      snapFlyToGround();
       }, undefined, () => {});
     };
+    /**
+     * Feet on the floor, measured rather than authored.
+     *
+     * The layout's `fly` y is set by eye in the editor, and every chassis has a
+     * different stance, so a hand-picked number sinks one body into the regolith
+     * and floats the next. This reads the rig's real lowest vertex in world space
+     * and lifts the root by however far it sits under the surface — and the
+     * surface is a SPHERE, so the target height is the moon at this x/z, not zero.
+     * Idempotent: measuring after a shift gives a delta of zero.
+     */
+    const snapFlyToGround = () => {
+      const mesh = flyRig?.mesh;
+      if (!mesh) return;
+
+      // Walk the bind-pose vertices through the CURRENT world matrix.
+      //
+      // That looks like the naive reading and it is the only correct one here.
+      // Verified by translating the root a known +5 and watching what each
+      // candidate reports: this one moves by exactly 5, the other two do not.
+      //   Box3.setFromObject() runs SkinnedMesh.computeBoundingBox(), whose result
+      //   already carries the world transform, then applies matrixWorld on top of
+      //   it — it called this body 63 units tall and flung the root 14 into the air.
+      //   getVertexPosition() skins properly, but buildSkinnedBot binds BEFORE the
+      //   mesh is parented, so bindMatrix is identity and the bone matrices already
+      //   hold the world transform; times matrixWorld that counts the transform
+      //   twice (root +5 moved it +10), and because the layout's fly rotation is
+      //   most of a flip the error is nearly invariant to y — so a snap built on it
+      //   has a fixed point at a nonsense height and converges happily to it.
+      // The bind pose is also the honest reference: bindChassis puts the soles at
+      // y=0 and the idle is a weight shift, not a jump, so this does not jitter.
+      flyRoot.updateWorldMatrix(true, true);
+      mesh.updateWorldMatrix(true, false);
+      const pos = mesh.geometry.getAttribute("position");
+      let lowest = Infinity;
+      for (let i = 0; i < pos.count; i++) {
+        const y = _vtx.set(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(mesh.matrixWorld).y;
+        if (y < lowest) lowest = y;
+      }
+      if (!Number.isFinite(lowest)) return;
+
+      // The floor is a SPHERE, so the target is the moon's height at this x/z.
+      flyRoot.position.y += groundY(flyRoot.position.x, flyRoot.position.z) - lowest;
+    };
+
     loadChassis(chassisRef.current);
     swapChassis.current = loadChassis;
 
@@ -481,25 +630,89 @@ export function MoonStage({
      *
      * `poseSkinnedBot` takes exactly what the simulation emits, so the idle is
      * authored in the same language as a real fight rather than as a separate
-     * animation path: the gait phase walks slowly enough to read as weight
-     * shifting instead of marching, the two arms breathe a few degrees out of
-     * phase so the guard settles, and a little heading sway keeps it alive.
-     * Nothing is struck, guard stays low, recovery is zero.
+     * animation path. What it has to SAY, though, is "fighter waiting for the
+     * bell", and the first pass said "someone standing around": feet welded flat
+     * and square, both arms swinging +/-0.34 rad off `idleSwing`, and a guard of
+     * 0.12 — which in fistLocal is an OPEN guard, so the fists hung by the hips.
+     * Read as a person waiting for a bus, not a boxer.
+     *
+     * What it is now, in the sim's own terms:
+     *  - `feet` are planted in a stance, not square: left foot forward and inside,
+     *    right foot back and wider. That base is what makes the silhouette read as
+     *    a fighter before anything moves at all.
+     *  - the weight rocks between them at ~0.9 Hz, and the unloaded foot lifts a
+     *    few per cent of body height as it comes off — a boxer's rock, not a step.
+     *  - `gait` no longer walks. With the feet planted it only drives secondary
+     *    motion (torso sway, shoulder ride, the |sin| bob), so it oscillates about
+     *    zero instead of cycling 0..1, which used to march the figure on the spot.
+     *  - `guard` is up at 0.9, which tucks both fists to the chin.
+     *  - `lean` carries a small forward set with a slow weave, `tilt` rolls it.
+     *  - every few seconds one arm throws, alternating. The punch is a SWING about
+     *    the vertical axis because that is what the sim's arm model is: armL/armR
+     *    are angles resting at +/-ARM_REST, and fistLocal extends the arm by how
+     *    far the angle has travelled from rest. So the same excursion that lands a
+     *    hit in the arena is the one that reads as a punch here.
      */
-    const idleState = (t: number): ArenaBotState => ({
-      botId: "idle",
-      x: 0, y: 0, heading: Math.sin(t * 0.23) * 0.07,
-      vx: 0, vy: 0, hull: 100,
-      spiked: [], potentials: {},
-      arousal: 1, gfFatigue: 0,
-      armL: 0.34 + Math.sin(t * 0.85) * 0.09,
-      armR: -0.34 + Math.sin(t * 0.85 + 1.9) * 0.09,
-      armLv: 0, armRv: 0,
-      gait: (t * 0.12) % 1,
-      struck: false, guard: 0.12, recovery: 0,
-      blocked: false, countered: false, stamina: 1,
-      lean: 0, tilt: 0, down: 0,
-    });
+    const BOUNCE_HZ = 0.9;      // the rock between the feet
+    const PUNCH_EVERY = 3.4;    // seconds
+    const PUNCH_OUT = 0.11, PUNCH_HOLD = 0.05, PUNCH_BACK = 0.34;
+
+    /** 0 -> 1 -> 0 across one punch: out fast, brief hold, recover slower. */
+    const punchCurve = (dt: number): number => {
+      if (dt < PUNCH_OUT) { const u = dt / PUNCH_OUT; return u * u * (3 - 2 * u); }
+      if (dt < PUNCH_OUT + PUNCH_HOLD) return 1;
+      const u = (dt - PUNCH_OUT - PUNCH_HOLD) / PUNCH_BACK;
+      return u >= 1 ? 0 : 1 - u * u * (3 - 2 * u);
+    };
+
+    const idleState = (t: number): ArenaBotState => {
+      const rock = Math.sin(t * BOUNCE_HZ * Math.PI * 2);
+
+      const n = Math.floor(t / PUNCH_EVERY);
+      const swing = punchCurve(t - n * PUNCH_EVERY);
+      const throwL = n % 2 === 0 ? swing : 0;
+      const throwR = n % 2 === 0 ? 0 : swing;
+      const thrown = Math.max(throwL, throwR);
+
+      // the foot losing the weight comes off the floor, the loaded one stays down
+      const liftL = Math.max(0, -rock) * 0.04;
+      const liftR = Math.max(0, rock) * 0.04;
+
+      return {
+        botId: "idle",
+        x: 0, y: 0,
+        // Zero, deliberately. `feet` are world coordinates that poseBot rotates
+        // into the body frame by heading, and the showcase mesh's facing comes
+        // from the layout rather than from state — so a heading sway here would
+        // swivel the FEET under a body that never turned.
+        heading: 0,
+        vx: 0, vy: 0, hull: 100,
+        spiked: [], potentials: {},
+        arousal: 1, gfFatigue: 0,
+        // 0.66 rad off rest, not the 1.15 fistLocal treats as full excursion.
+        // A full-excursion swing is a COMMITTED punch: `open` goes to 1, which
+        // untucks the guard and drops the fist 0.34 of a body height, and the
+        // fist travels 7.3 units on an 8.1-unit body — measured, and it reads as
+        // a wild hook, which is not what a fighter does while waiting. At 0.57
+        // excursion the arm still snaps out to 0.70 extension but the fist stays
+        // high and goes FORWARD: a jab.
+        armL: ARM_REST - throwL * 0.66,
+        armR: -ARM_REST + throwR * 0.66,
+        armLv: 0, armRv: 0,
+        gait: rock * 0.055,
+        struck: false,
+        guard: 0.9,
+        recovery: 0,
+        blocked: false, countered: false, stamina: 1,
+        lean: 0.09 + Math.sin(t * 0.55) * 0.035 + thrown * 0.07,
+        tilt: Math.sin(t * 0.37 + 1.1) * 0.045,
+        down: 0,
+        // [Lx, Ly, Lz, Rx, Ry, Rz] in world metres: +x is forward of the hips and
+        // +y is the bot's left, so this is lead foot forward and inside, rear foot
+        // back and wider — a stance, not a parade rest.
+        feet: [0.13, -0.11, liftL, -0.10, 0.15, liftR],
+      };
+    };
 
     /**
      * An ink hull that survives a bent joint.
@@ -543,14 +756,22 @@ export function MoonStage({
     // but the rig and the pose function are material-agnostic, so the fighters
     // can be the same hatch-shaded bodies standing on the actual surface.
     const ring = new THREE.Group();
-    ring.position.set(RING_CENTRE[0], RING_CENTRE[1], RING_CENTRE[2]);
+    // Snap the ring exactly onto the sphere and lie it FLAT ON THE SURFACE. It used
+    // to sit at world-up, but the surface normal here is 16.8 degrees off vertical,
+    // so the fighters stood bolt upright on ground that sloped away beneath them.
+    const ringUp = new THREE.Vector3(...RING_CENTRE).sub(MOON_C).normalize();
+    ring.position.copy(MOON_C).addScaledVector(ringUp, MOON_R);
+    ring.quaternion.setFromUnitVectors(WORLD_UP, ringUp);
     scene.add(ring);
     const ringRigs: { rig: SkinnedBot; holder: THREE.Group }[][] = [[], []];
     const buildSide = (side: 0 | 1, bind: ReturnType<typeof bindChassis>, name: Chassis) => {
       for (let i = 0; i < MAX_SQUAD; i++) {
         const holder = new THREE.Group();
         holder.visible = false;
-        holder.scale.setScalar(1.55);
+        // buildSkinnedBot ALREADY scales the mesh by rigHeight * DISPLAY, so applying
+        // rigHeight here too squares it. Divide DISPLAY back out and the body ends up
+        // exactly rigHeight * RING_SCALE tall — the same scale as its own footsteps.
+        holder.scale.setScalar(RING_SCALE / DISPLAY);
         const rig = buildSkinnedBot(bind, propMat, name);
         holder.add(rig.mesh);
         ring.add(holder);
@@ -681,6 +902,7 @@ export function MoonStage({
       object: THREE.Object3D;
       base: { p: THREE.Vector3; r: THREE.Euler; s: number };
       phase: number;
+      flat: boolean;
       bob: number;
       spin: number;
       twinkle: number;
@@ -694,17 +916,26 @@ export function MoonStage({
         return ((h >>> 0) % 1000) / 1000;
       };
       for (const [id, object] of registry) {
-        const isStar = id.startsWith("star");
-        const isCrescent = id.startsWith("crescent");
-        const isPlanet = id.startsWith("planet");
-        if (!isStar && !isCrescent && !isPlanet) continue; // the arch is terrain
+        // Sky ids are prefixed `sky-<kind>-n`, hand-placed ones `<kind>-addN`,
+        // and the nine code stars `star-n`; matching on the kind word covers all
+        // three without a second table to keep in sync.
+        const isStar = id.includes("star");
+        const isCrescent = id.includes("crescent");
+        const isPlanet = id.includes("planet");
+        const isRock = id.includes("boulder");
+        if (!isStar && !isCrescent && !isPlanet && !isRock) continue;
         const seed = hash(id);
         drifting.push({
           object,
           base: { p: object.position.clone(), r: object.rotation.clone(), s: object.scale.x },
           phase: seed * Math.PI * 2,
-          bob: isStar ? 0.2 + seed * 0.22 : 0.09 + seed * 0.1,
-          spin: isStar ? 0.14 + seed * 0.2 : isPlanet ? 0.05 : 0.04,
+          flat: isStar || isCrescent,
+          // The sky field sits 13-58 units out, where a bob tuned for props a few
+          // units from the camera is invisible, so amplitude scales with depth.
+          // Rocks tumble rather than bob: they read as debris, not decoration.
+          bob: (isStar ? 0.2 + seed * 0.22 : isRock ? 0.12 + seed * 0.12 : 0.09 + seed * 0.1)
+             * (1 + Math.max(0, object.position.length() - 12) * 0.075),
+          spin: isStar ? 0.14 + seed * 0.2 : isRock ? 0.1 + seed * 0.14 : isPlanet ? 0.05 : 0.04,
           twinkle: isStar ? 0.05 + seed * 0.05 : 0,
         });
       }
@@ -758,8 +989,74 @@ export function MoonStage({
         const st = STATIONS[stationRef.current] ?? STATIONS.ARRIVAL;
         camWant.fromArray(st.position);
         tgtWant.fromArray(st.target);
-        // 1 - exp(-k*dt): same settle time whatever the framerate
-        const k = 1 - Math.exp(-2.1 * Math.min(dt, 0.1));
+
+        /**
+         * A fight camera, not a landscape shot.
+         *
+         * The static RING pose framed the whole 9-unit arena from 9 units away, so
+         * two 0.68-unit fighters came out about forty pixels tall, low in frame and
+         * behind the HUD glass — which is why the boxing looked like nothing was
+         * happening. Track the midpoint of whoever is still standing and pull back
+         * only as far as their separation actually needs: it closes on a clinch and
+         * opens out when they break, and they stay the size of the shot.
+         */
+        const cf = frameRef.current;
+        const live = cf ? cf.bots.filter((u) => u.hull > 0) : [];
+        if (stationRef.current === "RING" && live.length) {
+          // Elevation is not taste: at a shallow angle the fighters' separation in
+          // DEPTH turns into a big vertical spread on screen. Looking down harder
+          // compresses depth into the frame and keeps both in the clear band.
+          const el = 0.86;
+          let cx = 0, cz = 0, spread = 0;
+          for (const u of live) { cx += u.x * RING_SCALE; cz += u.y * RING_SCALE; }
+          cx /= live.length; cz /= live.length;
+          for (const u of live)
+            spread = Math.max(spread, Math.hypot(u.x * RING_SCALE - cx, u.y * RING_SCALE - cz) * 2);
+
+          // The pair, plus air either side — measured in BODIES, not in absolute
+          // units. The margin used to be a flat 2.7 against a body only 0.58 units
+          // tall, so once the collision geometry shrank to match the drawn torsos the
+          // fighters were four body-heights of empty moon apart on screen: correct
+          // framing of two specks. Scaling the margin to the figure keeps them the
+          // size of the model on the landing page, trading fists.
+          const bodyH = rigHeight(chassisRef.current) * RING_SCALE;
+          const need = spread + bodyH * 2.6;
+          // Separation in DEPTH becomes VERTICAL spread on screen at this elevation
+          // (by sin of it), and the vertical field is much narrower than the
+          // horizontal one — so fitting only the width let the far fighter slide out
+          // of the bottom of the shot. Fit both axes and take whichever needs more
+          // room.
+          const tall = spread * Math.sin(el) + bodyH * 1.9;
+          const halfV = (camera.fov / 2) * (Math.PI / 180);
+          const halfH = Math.atan(Math.tan(halfV) * Math.max(1, camera.aspect));
+          const dist = Math.max(bodyH * 4.0,
+                                need / 2 / Math.tan(halfH),
+                                tall / 2 / Math.tan(halfV));
+
+          // midpoint, on the curved surface, in world space
+          _mid.set(cx, -(cx * cx + cz * cz) / (2 * MOON_R), cz)
+              .applyQuaternion(ring.quaternion).add(ring.position);
+          // sit back along the ring's local +Z and above its local up
+
+          _off.set(0, Math.sin(el), Math.cos(el)).multiplyScalar(dist).applyQuaternion(ring.quaternion);
+          camWant.copy(_mid).add(_off);
+
+          // Aim BELOW them so they ride high in the shot: the brain panels own the
+          // bottom half of the screen, and a centred subject sits behind them.
+          // Aim at chest height on the bodies themselves. The old bias was written
+          // against a frame several times larger — subtracting a fraction of it from
+          // a flat 0.5 aimed BELOW the feet once the shot tightened, which threw the
+          // fighters up into the HUD.
+          tgtWant.copy(_mid).addScaledVector(ringUp, bodyH * 0.62);
+        }
+        // 1 - exp(-k*dt): same settle time whatever the framerate.
+        //
+        // The ring gets a much lazier constant. A camera locked to the midpoint of two
+        // fighters SUBTRACTS their movement from the shot: they stay pinned to the
+        // centre at a constant size and the fight looks static even while every limb
+        // is swinging. Following slowly lets them actually travel across the frame.
+        const follow = stationRef.current === "RING" ? 0.55 : 2.1;
+        const k = 1 - Math.exp(-follow * Math.min(dt, 0.1));
         CAM_MOON.lerp(camWant, k);
         CAM_TGT.lerp(tgtWant, k);
         camera.position.copy(CAM_MOON);
@@ -782,8 +1079,18 @@ export function MoonStage({
         for (const d of drifting) {
           d.object.position.y = d.base.p.y + Math.sin(t * 0.75 + d.phase) * d.bob;
           d.object.position.x = d.base.p.x + Math.cos(t * 0.41 + d.phase) * d.bob * 0.55;
-          d.object.rotation.z = d.base.r.z + Math.sin(t * d.spin * 2 + d.phase) * 0.3;
-          d.object.rotation.y = d.base.r.y + t * d.spin * 0.6;
+          if (d.flat) {
+            // Stars and crescents are flat extruded shapes, baked with their face
+            // aimed at the camera. Spinning them about world Y swings them edge-on
+            // and they read as white slivers for half of every cycle — measured at
+            // 25 of the 66 on screen. Euler XYZ applies Z FIRST, i.e. in the
+            // object's own plane, so spinning that keeps the face toward the
+            // camera and still turns the points of the star.
+            d.object.rotation.z = d.base.r.z + t * d.spin;
+          } else {
+            d.object.rotation.z = d.base.r.z + Math.sin(t * d.spin * 2 + d.phase) * 0.3;
+            d.object.rotation.y = d.base.r.y + t * d.spin * 0.6;
+          }
           if (d.twinkle) {
             d.object.scale.setScalar(d.base.s * (1 + Math.sin(t * 1.7 + d.phase * 2) * d.twinkle));
           }
@@ -802,11 +1109,41 @@ export function MoonStage({
             const idx = side === 0 ? i : split + i;
             const unit = f && idx < f.bots.length && (side === 0 ? i < split : true) ? f.bots[idx] : undefined;
             const alive = !!unit && unit.hull > 0;
-            slot.holder.visible = alive;
-            if (!unit || !alive) continue;
-            // sim metres -> ring units, and the ring group already carries the
-            // surface height, so the holder stays on y=0 inside it
-            slot.holder.position.set(unit.x * 0.45, 0, unit.y * 0.45);
+            // With no match running the ring still has to look inhabited, so the
+            // lead of each side stands there on the same idle the landing uses.
+            const idling = !f && i === 0;
+            slot.holder.visible = alive || idling;
+            if (!slot.holder.visible) continue;
+            if (!unit) {
+              const lx0 = side === 0 ? -2.2 : 2.2;
+              slot.holder.position.set(lx0, (-lx0 * lx0) / (2 * MOON_R), 0);
+              slot.holder.quaternion.identity();
+              slot.holder.rotateY(side === 0 ? Math.PI / 2 : -Math.PI / 2);
+              poseSkinnedBot(slot.rig, idleState(t), chassisRef.current);
+              continue;
+            }
+            // Sim metres to ring units. The ring plane is tangent to the moon at
+            // its centre, so the surface drops away as y = -r^2/2R - the sphere to
+            // well under a millimetre out here, and it is what keeps the feet on the
+            // ground at the edge of the arena instead of hovering above it.
+            const lx = unit.x * RING_SCALE, lz = unit.y * RING_SCALE;
+            const r2 = lx * lx + lz * lz, r = Math.sqrt(r2);
+            slot.holder.position.set(lx, -r2 / (2 * MOON_R), lz);
+
+            // Stand perpendicular to the ground actually underneath you: away from
+            // the ring centre the normal tilts by r/R, about the axis at right
+            // angles to the way you walked.
+            _tiltQ.identity();
+            if (r > 1e-6) _tiltQ.setFromAxisAngle(_axis.set(lz / r, 0, -lx / r), r / MOON_R);
+
+            // THEN face where you are going. The simulation has streamed `heading`
+            // since the first day and nothing ever read it, so the fighters slid
+            // around the ring permanently facing one fixed direction - no turning,
+            // and punches that landed sideways. The posed rig faces -Z (measured off
+            // the head bone, not assumed), so heading h wants -h - pi/2.
+            _headQ.setFromAxisAngle(WORLD_UP, -unit.heading - Math.PI / 2);
+            slot.holder.quaternion.copy(_tiltQ).multiply(_headQ);
+
             poseSkinnedBot(slot.rig, unit, chassisRef.current);
           }
         }

@@ -109,6 +109,10 @@ export type BotSpec = z.infer<typeof BotSpec>;
 
 // ── Simulation ───────────────────────────────────────────────────────────────
 export const TICK_HZ = 60;
+/** Ticks a body spends on the floor after being knocked down. */
+export const KNOCKDOWN_TICKS = 52;
+/** Radians the arms are held forward at rest, the angle a guard returns to. */
+export const ARM_REST = 0.35;
 export const MATCH_MAX_TICKS = TICK_HZ * 90; // 90s hard cap
 /** After this the walls close in, so nobody can simply outrun the fight. */
 export const SUDDEN_DEATH_TICK = TICK_HZ * 25;
@@ -136,6 +140,15 @@ export const ArenaBotState = z.object({
   armRv: z.number(),
   /** Procedural gait phase for the two-legged stance, 0..1. */
   gait: z.number(),
+  /**
+   * Where both feet are ON THE GROUND, in world metres: [Lx, Ly, Lz, Rx, Ry, Rz].
+   *
+   * Streamed rather than derived on the client because a planted foot is a physical
+   * fact about the fight, not a drawing detail: the body pivots over it, and the
+   * renderer must put it exactly where the simulation says it is or the contact is
+   * a lie. `z` is height above the surface — zero in stance, arced during the swing.
+   */
+  feet: z.array(z.number()).length(6),
   /** true on the tick a strike lands, for hit sparks and screen shake. */
   struck: z.boolean(),
   /** 0..1 guard. Arms up blunts an incoming strike, but you cannot punch while

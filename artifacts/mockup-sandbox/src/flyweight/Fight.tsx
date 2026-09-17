@@ -188,7 +188,7 @@ export function Fight({
                 <span className="char-type">{who.label}</span>
                 <span className="char-cells">{who.profile.neuronCount} cells</span>
               </div>
-              <BrainView equipped={equipped} spiked={teamSpikes(units)} height={148} />
+              <BrainView equipped={equipped} spiked={teamSpikes(units)} height={104} />
               <div className="brain-meters mono">
                 <div className="meter">
                   <span>AROUSAL</span>

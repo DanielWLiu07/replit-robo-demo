@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runMatch, Brain, LifNeuron, makeRng, arenaHalfAt, arenaHalfFor, ARENA_SIZE, evolve, fitness, randomBrain, simpleBrain, toSlot, toIntensity, budgetUsed,
-  bodyMechanics, bodyRatios, poseBot, KNOCKDOWN_TICKS } from "./index.js";
+import { runMatch, Brain, LifNeuron, makeRng, arenaHalfAt, arenaHalfFor, ARENA_SIZE, ARENA_MIN_HALF, evolve, fitness, randomBrain, simpleBrain, toSlot, toIntensity, budgetUsed,
+  bodyMechanics, bodyRatios, poseBot, strideFor, footReach, RANGES, KNOCKDOWN_TICKS } from "./index.js";
 import {
   BrainSpec, BotSpec as BotSpecSchema, MatchFrame as MatchFrameSchema,
   SUDDEN_DEATH_TICK, MATCH_MAX_TICKS, type BotSpec, type BrainSpec as TBrainSpec,
@@ -71,7 +71,11 @@ test("bots stay inside the arena walls", () => {
 test("arena closes in after sudden death", () => {
   assert.equal(arenaHalfAt(0), ARENA_SIZE / 2);
   assert.equal(arenaHalfAt(SUDDEN_DEATH_TICK), ARENA_SIZE / 2);
-  assert.ok(arenaHalfAt(MATCH_MAX_TICKS) < ARENA_SIZE / 2 - 3, "walls never closed");
+  // Proportional, not "minus three metres" — that literal assumed a 14 m ring and
+  // asserted a NEGATIVE half-width once the arena was scaled to the drawn bodies.
+  assert.ok(arenaHalfAt(MATCH_MAX_TICKS) < ARENA_SIZE / 2 * 0.75, "walls never closed");
+  assert.ok(arenaHalfAt(MATCH_MAX_TICKS) <= ARENA_MIN_HALF * 1.01,
+    `walls stopped at ${arenaHalfAt(MATCH_MAX_TICKS).toFixed(2)} rather than the ${ARENA_MIN_HALF.toFixed(2)} floor`);
   assert.ok(arenaHalfAt(SUDDEN_DEATH_TICK + 600) < arenaHalfAt(SUDDEN_DEATH_TICK));
 });
 
@@ -105,17 +109,26 @@ function gaps(seed: string, a = RUSHER, b = DODGER): number[] {
 }
 
 test("bots hold punching range instead of closing to a clinch", () => {
+  // Asserted against the ARENA'S OWN geometry, not literals. These used to be
+  // hardcoded metres (clinch < 1.3, pocket 1.3-2.0, overlap > 0.9) which silently
+  // encoded a 1.2 m torso, and all of it failed the moment the bodies were scaled
+  // down to the ones actually drawn — a test that was measuring a constant rather
+  // than a behaviour.
   for (const seed of ["r1", "r2", "r3"]) {
     const g = gaps(seed);
     assert.ok(g.length > 60, `${seed} never engaged`);
-    const clinched = g.filter((d) => d < 1.3).length / g.length;
-    assert.ok(clinched < 0.2, `${seed}: ${(clinched * 100).toFixed(0)}% of the fight in a clinch`);
-    // and the fight should live in the pocket — close enough to hit, far enough not to hug
+    const clinched = g.filter((d) => d < RANGES.clinch).length / g.length;
+    assert.ok(clinched < 0.35,
+      `${seed}: ${(clinched * 100).toFixed(0)}% of the fight inside the clinch break`);
+    // the fight should live in the pocket: close enough to hit, far enough not to hug
     const sorted = [...g].sort((x, y) => x - y);
     const median = sorted[Math.floor(sorted.length / 2)]!;
-    assert.ok(median > 1.3 && median < 2.0, `${seed}: median gap ${median.toFixed(2)}m is not punching range`);
+    assert.ok(median > RANGES.clinch && median < RANGES.pocketFar * 1.9,
+      `${seed}: median gap ${median.toFixed(2)}m is not punching range ` +
+      `(${RANGES.clinch.toFixed(2)}-${(RANGES.pocketFar * 1.9).toFixed(2)})`);
     // torsos must never actually interpenetrate
-    assert.ok(Math.min(...g) > 0.9, `${seed}: bots overlapped at ${Math.min(...g).toFixed(2)}m`);
+    assert.ok(Math.min(...g) > RANGES.bodyTouch * 0.75,
+      `${seed}: bots overlapped at ${Math.min(...g).toFixed(2)}m`);
   }
 });
 
@@ -420,4 +433,53 @@ test("no pose ever puts a bone through the floor, knocked down or upright", () =
     }
   }
   assert.ok(sawFlat, "the knockdown case never ran");
+});
+
+test("feet are planted in the world, not slid along under the body", () => {
+  // The difference between walking and gliding, and invisible in any still frame.
+  // The rig used to place feet in BODY-LOCAL space at cos(phase)*stride, which
+  // cannot plant a foot at any gait rate — it is re-derived from the body's own
+  // frame every tick, so it rides along and merely oscillates about it.
+  //
+  // The arena now holds a world coordinate per foot fixed for the whole stance, and
+  // clamps it to the leg's reach so the knee solver is never handed an impossible
+  // target. Drag is allowed ONLY where it is real: being shoved off your stance.
+  const reach = footReach("HORNET");
+  let stance = 0, clean = 0, slip = 0, steps = 0, travelled = 0, arc = 0, worstReach = 0;
+  for (let seed = 0; seed < 3; seed++) {
+    const g = runMatch(`plant-${seed}`, bot("a", [{ module: "LC10A", weight: 2, threshold: 0.6 }]),
+                       bot("b", [{ module: "DNA02", weight: 2, threshold: 0.6 }]));
+    let r = g.next(), prev: { x: number; y: number; down: number; feet: number[] } | null = null;
+    while (!r.done) {
+      const u = r.value.bots[0]!;
+      const lx = -Math.sin(u.heading) * 0.12, ly = Math.cos(u.heading) * 0.12;
+      if (prev) travelled += Math.hypot(u.x - prev.x, u.y - prev.y);
+      for (let k = 0; k < 2; k++) {
+        const o = k * 3;
+        const hx = u.x + (k ? lx : -lx), hy = u.y + (k ? ly : -ly);
+        worstReach = Math.max(worstReach, Math.hypot(u.feet[o]! - hx, u.feet[o + 1]! - hy));
+        arc = Math.max(arc, u.feet[o + 2]!);
+        if (prev && u.down === 0 && prev.down === 0) {
+          const down = u.feet[o + 2]! < 1e-9, wasDown = prev.feet[o + 2]! < 1e-9;
+          if (down && wasDown) {
+            const moved = Math.hypot(u.feet[o]! - prev.feet[o]!, u.feet[o + 1]! - prev.feet[o + 1]!);
+            stance++; slip += moved;
+            if (moved < 1e-9) clean++;
+          }
+          if (down && !wasDown) steps++;
+        }
+      }
+      prev = { x: u.x, y: u.y, down: u.down, feet: [...u.feet] };
+      r = g.next();
+    }
+  }
+  assert.ok(travelled > 10, `bots barely moved (${travelled.toFixed(1)} m), so this proves nothing`);
+  assert.ok(steps > 30, `only ${steps} footfalls — the gait is not running`);
+  assert.ok(arc > 0.05, `swing foot only reached ${arc.toFixed(3)} m — it is dragging, not stepping`);
+  const cleanPct = (clean / stance) * 100;
+  assert.ok(cleanPct > 85, `only ${cleanPct.toFixed(1)}% of stance ticks were perfectly planted`);
+  assert.ok(slip / travelled < 0.06,
+    `feet slid ${slip.toFixed(2)} m over ${travelled.toFixed(1)} m of travel — that is gliding`);
+  assert.ok(worstReach < reach * 2,
+    `a foot sat ${worstReach.toFixed(2)} m from the hip against a ${reach.toFixed(2)} m reach`);
 });

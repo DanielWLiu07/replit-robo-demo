@@ -21,7 +21,7 @@ import "./flyweight.css";
  * never the opponent you are handed. RUSHER is a peer: the stock build wins that one
  * 10-2 and the fight runs about 26 seconds, which is the length a stranger watches.
  */
-const DEFAULT_OPPONENT = ROSTER.find((r) => r.bot.id === "rusher")!.bot;
+const DEFAULT_OPPONENT = ROSTER.find((r) => r.bot.id === "hornet")!.bot;
 
 /** The saved Brain Lab build, if it still satisfies the contract. */
 function loadBuild(): BotSpec {
@@ -57,6 +57,21 @@ export default function Flyweight() {
     window.scrollTo(0, 0);
   }, [route]);
 
+  /**
+   * Keep the ring alive.
+   *
+   * A match runs about twenty seconds and then the generator is done, the frame loop
+   * stops, and the last frame stays on screen for ever. Walk up to the fight screen
+   * a minute after it loaded and you find two fighters frozen mid-stride — which
+   * reads, entirely reasonably, as "the limbs aren't moving". Give the result a beat
+   * to be read, then run the next round.
+   */
+  useEffect(() => {
+    if (route !== "/fight" || !match.result) return;
+    const t = setTimeout(() => setRound((n) => n + 1), 4200);
+    return () => clearTimeout(t);
+  }, [route, match.result]);
+
   const startFight = () => {
     setRound((n) => n + 1);
     go("/fight");
@@ -91,7 +106,7 @@ export default function Flyweight() {
             setP2={setP2}
             squad={squad}
             setSquad={setSquad}
-            onFight={startFight}
+            onNext={() => go("/lab")}
           />
         )}
         {route === "/fight" && (

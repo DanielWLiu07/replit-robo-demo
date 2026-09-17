@@ -64,6 +64,17 @@ function RefractoryCurve({ value }: { value: number }) {
   );
 }
 
+/**
+ * Points to spend across PRESSURE, EVASION and TRACKING.
+ *
+ * Deliberately well under 300, so the three dials cannot all be maxed and every
+ * build is a shape rather than a level — two strong instincts, or three
+ * middling ones, never three strong ones. Sized so the stock chassis builds
+ * (around 166) start just inside it with a little left to spend, rather than
+ * opening the lab already overdrawn.
+ */
+const INSTINCT_POOL = 180;
+
 export function BrainLab({
   bot,
   onLaunch,
@@ -89,9 +100,26 @@ export function BrainLab({
   const setBody = (patch: Partial<BodySpec>) =>
     setDraft((d) => ({ ...d, body: { ...(d.body ?? BODY_BY_CHASSIS[d.chassis]), ...patch } }));
 
+  /**
+   * Instinct is a fixed pool of points, not three free dials.
+   *
+   * It had to become one. The three targets are solved into synaptic weights and
+   * `simpleBrain` rescales the lot whenever they exceed BRAIN_WEIGHT_BUDGET — so
+   * pushing all three to 100 produced the same ratios, and therefore the same
+   * brain, as leaving all three at 50. The dials moved and nothing changed. A
+   * budget that is enforced by silent renormalisation is not a budget the player
+   * can see, and the fix is to spend it in the open: raise one and you have less
+   * for the others, which is the trade-off the loadout was always making anyway.
+   */
+  const instinctSpent = profile.aggression + profile.evasion + profile.tracking;
+  const instinctLeft = Math.max(0, INSTINCT_POOL - instinctSpent);
+
   /** Re-solve the wiring from three instinct targets — no circuit shopping. */
   const setInstinct = (key: "aggression" | "evasion" | "tracking", v: number) => {
-    const t = { aggression: profile.aggression, evasion: profile.evasion, tracking: profile.tracking, [key]: v };
+    // Never spend past the pool: the dial stops where the points run out.
+    const others = instinctSpent - profile[key];
+    const capped = Math.max(0, Math.min(v, INSTINCT_POOL - others));
+    const t = { aggression: profile.aggression, evasion: profile.evasion, tracking: profile.tracking, [key]: capped };
     const sol = solveBrain(t, { leak: draft.brain.membraneLeak, refractory: draft.brain.refractoryTicks });
     setDraft((d) => ({ ...d, brain: sol.brain }));
   };
@@ -154,26 +182,21 @@ export function BrainLab({
             aria-label="Bot name"
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
-          <div className="class-row">
-            {Chassis.options.map((c) => (
-              <button
-                key={c}
-                className={draft.chassis === c ? "on" : ""}
-                onClick={() => {
-                  // Switching class adopts that class's stock body, so the dials below
-                  // describe the thing now standing on the moon.
-                  setDraft((d) => ({ ...d, chassis: c, body: BODY_BY_CHASSIS[c] }));
-                  onChassisChange(c);
-                }}
-              >
-                {c}
-              </button>
-            ))}
+          {/*
+            The class is chosen on the roster, not here. This bench is for tuning
+            the body you already picked — offering the three classes again made
+            the lab a second character-select, and quietly threw away every dial
+            you had set, because switching adopted that class's stock body.
+          */}
+          <div className="class-locked mono">
+            <span className="class-locked-name">{draft.chassis}</span>
+            <span className="class-locked-note">CLASS</span>
+            <a href="#/select">change ↗</a>
           </div>
         </div>
 
         <div className="bench-group">
-          <h3>BODY</h3>
+          <h3>BODY <em>tune the frame</em></h3>
           {DIALS.map((d) => (
             <label className="dial" key={d.key} title={d.note}>
               <span className="dial-name">{d.label}</span>
@@ -217,7 +240,15 @@ export function BrainLab({
         </div>
 
         <div className="bench-group">
-          <h3>INSTINCT</h3>
+          <h3>INSTINCT <em>spend your points</em></h3>
+          <div className="point-pool mono" role="status">
+            <span>POINTS</span>
+            <progress max={INSTINCT_POOL} value={Math.min(instinctSpent, INSTINCT_POOL)} />
+            <b className={instinctSpent > INSTINCT_POOL ? "over" : undefined}>
+              {instinctSpent}
+              <small> / {INSTINCT_POOL}</small>
+            </b>
+          </div>
           {([
             ["PRESSURE", "aggression"],
             ["EVASION", "evasion"],
@@ -232,6 +263,8 @@ export function BrainLab({
                 aria-label={label}
                 onChange={(e) => setInstinct(key, +e.target.value)}
               />
+              {/* the ceiling this dial can still reach with the points left */}
+              <i className="dial-cap" style={{ width: `${Math.min(100, profile[key] + instinctLeft)}%` }} />
             </label>
           ))}
           <label className="dial with-sweep">
@@ -272,11 +305,11 @@ export function BrainLab({
         <div className="bench-actions go">
           <button className="button primary" disabled={!valid.success}
                   onClick={() => valid.success && commit(valid.data, onLaunch)}>
-            FIGHT ↗
+            NEXT · FIGHT →
           </button>
           <button className="button" disabled={!valid.success}
                   onClick={() => valid.success && commit(valid.data, onRoster)}>
-            OPPONENT →
+            ← ROSTER
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import type { ArenaBotState, Chassis } from "@workspace/contract";
-import { KNOCKDOWN_TICKS } from "./arena.js";
+import { ARM_REST, KNOCKDOWN_TICKS } from "@workspace/contract";
+
 import { CHASSIS_STATS } from "@workspace/contract";
 
 /**
@@ -57,6 +58,125 @@ function solveKnee(
  * Build the full skeleton for one bot on one tick. Pure function of state, so it is
  * as deterministic as the simulation and safe to call per frame.
  */
+/**
+ * Half the distance a foot swings, in metres, at this speed.
+ *
+ * The ONE definition: the arena reads it to advance the gait phase and the pose
+ * reads it to place the foot. Split them and the feet skate.
+ */
+export const strideFor = (speed: number, chassis: Chassis): number =>
+  Math.min(0.42, 0.12 + speed * 0.09) * SCALE[chassis];
+
+/**
+ * How far from directly under the hip a foot may be placed, horizontally, in metres.
+ *
+ * The leg is a two-bar linkage of fixed length standing at a fixed hip height, so
+ * this is just Pythagoras — and it is a HARD limit, not a preference. Ignoring it is
+ * what let the arena plant feet up to 5.2 m from a 0.52 m leg: the knee solver then
+ * has no valid answer, the limb straightens and stretches, and the whole figure
+ * distorts. The safety factor keeps the knee bent rather than locked straight, which
+ * is both what a leg does and what gives the solver something to work with.
+ */
+/** Shoulder-to-fist of the arm as DRAWN, metres. The arena resolves strikes with
+ *  this so the hit box is the hand on screen, not a longer notional one. */
+export const armReach = (chassis: Chassis): number => 0.55 * SCALE[chassis];
+
+export const footReach = (chassis: Chassis): number => {
+  const s = SCALE[chassis];
+  const leg = 0.6 * s, hip = 0.52 * s;
+  return Math.sqrt(Math.max(0, leg * leg - hip * hip)) * 0.82;
+};
+
+
+/** What the arm state the fist geometry needs — a subset of ArenaBotState. */
+export interface ArmState {
+  armL: number; armR: number; guard: number; recovery: number; gait: number;
+  vx: number; vy: number;
+}
+
+/**
+ * Where a fist actually IS, relative to the body, in metres: [x, y, z] with
+ * forward on −x and the sides on ±z.
+ *
+ * ONE definition, called by the pose that DRAWS the arm and by the strike test that
+ * RESOLVES it. They used to compute it separately and disagree badly: the arena put
+ * every fist at full extension (BOT_RADIUS + arm length) whenever a punch was live,
+ * while the rig drew it anywhere from 42% to 100% of the arm, swinging with the
+ * gait. So a punch could land with the visible arm still tucked in the guard, or
+ * sweep straight through a body and do nothing. Sharing the function is the only
+ * way the hit and the picture stay the same event.
+ */
+export function fistLocal(state: ArmState, chassis: Chassis, side: -1 | 1) {
+  const s = SCALE[chassis];
+  const hipH = 0.52 * s;
+  const shoulderH = hipH + 0.34 * s;
+  const halfSho = 0.17 * s;
+  const upperArm = 0.26 * s, foreArm = 0.29 * s;
+
+  const phase = state.gait * Math.PI * 2;
+  const sway = Math.sin(phase), bounce = Math.cos(phase * 2);
+  const bob = Math.abs(Math.sin(phase)) * 0.04 * s;
+  const lean = Math.min(0.28, Math.hypot(state.vx, state.vy) * 0.05);
+
+  const sho: [number, number, number] = [
+    -Math.sin(lean) * 0.18 * s,
+    shoulderH + bob + bounce * 0.014 * s,
+    -sway * 0.03 * s + side * halfSho,
+  ];
+  const ang = side < 0 ? state.armL : state.armR;
+  const reach = upperArm + foreArm;
+
+  /**
+   * How far through a swing this arm is: 0 at the guard, 1 fully committed.
+   * Read off the ANGLE, which integrates smoothly, not the rate, which steps the
+   * instant the impulse lands and teleported the fist ~0.3 m in one frame.
+   */
+  const excursion = Math.min(1, Math.abs(ang - (side < 0 ? ARM_REST : -ARM_REST)) / 1.15);
+  const thrown = excursion;
+  const open = Math.max(excursion, Math.min(1, state.recovery / 12));
+  const tuck = state.guard * (1 - open);
+
+  /**
+   * THE GUARD, and the punch as a departure from it.
+   *
+   * The hands used to be placed by swinging a fixed 42%-extended arm around the
+   * shoulder, which put the fists 0.16·s BELOW the shoulders and out in front —
+   * arms held out, not a boxer. A guard is hands at chin height, tucked in near the
+   * cheeks, inside the line of the shoulders, elbows down.
+   *
+   * So the rest pose is authored where a guard actually sits, and a punch
+   * INTERPOLATES from it out to full extension along the swing. `extend` is then
+   * measured back off the result rather than assumed, which matters because the
+   * arena resolves strikes with this same number.
+   */
+  const guardPos: [number, number, number] = [
+    -0.11 * s,                                   // just in front of the face
+    shoulderH + 0.07 * s - open * 0.30 * s,      // chin height; drops when caught open
+    side * 0.11 * s,                             // by the cheek, inside the shoulders
+  ];
+  // a small breath so the guard is alive — NOT a swing. At 0.34 rad this was as big
+  // as a punch (measured: 0.518 m of idle sway against 0.516 m of punch travel), so
+  // every strike disappeared into the noise.
+  const idleSwing = sway * 0.07 * side * (1 - excursion);
+  const swung = ang + idleSwing;
+  const committed: [number, number, number] = [
+    sho[0] - Math.cos(swung) * reach,
+    sho[1] - 0.02 * s + bounce * 0.02 * s * (1 - excursion),
+    sho[2] + Math.sin(swung) * reach,
+  ];
+  const k = thrown;
+  const fist: [number, number, number] = [
+    guardPos[0] + (committed[0] - guardPos[0]) * k,
+    guardPos[1] + (committed[1] - guardPos[1]) * k,
+    guardPos[2] + (committed[2] - guardPos[2]) * k,
+  ];
+  // measured, not assumed — the arena's hit test reads this
+  const extend = Math.min(1, Math.hypot(
+    fist[0] - sho[0], fist[1] - sho[1], fist[2] - sho[2]) / reach);
+
+  return { sho, fist, swung, thrown, open, tuck, extend, upperArm, foreArm };
+}
+
 export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   const s = SCALE[chassis];
   const hipH = 0.52 * s;          // hip height off the ground
@@ -66,7 +186,7 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   const halfHip = 0.12 * s, halfSho = 0.17 * s;
 
   const speed = Math.hypot(state.vx, state.vy);
-  const stride = Math.min(0.42, 0.12 + speed * 0.09) * s;
+  const stride = strideFor(speed, chassis);
   const phase = state.gait * Math.PI * 2;
   // vertical bob and a lean into the run
   const bob = Math.abs(Math.sin(phase)) * 0.04 * s;
@@ -76,27 +196,100 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   const bones: Bone[] = [];
   const P = (x: number, y: number, z: number): [number, number, number] => [x, y, z];
 
-  // torso, tilted forward by lean
-  const pelvis = P(0, hipH + bob, 0);
-  const chest  = P(-Math.sin(lean) * 0.18 * s, shoulderH + bob, 0);
-  const head   = P(-Math.sin(lean) * 0.3 * s, shoulderH + 0.2 * s + bob, 0);
+  /**
+   * SECONDARY MOTION — the goose rig's waddle, at a boxer's amplitude.
+   *
+   * Everything above the waist used to be rigid: unless a punch was in flight the
+   * arms sat in the guard and the torso did not move at all, so between exchanges
+   * the figure read as a statue sliding around the ring. Measured, the arm verts
+   * moved 0.027 of a body height over two thirds of a second — about five pixels.
+   *
+   * These are the terms the goose uses, driven by the same gait phase the legs
+   * already run on: the hips sway, the chest counter-rotates against them, and the
+   * head holds near level — the reflex that keeps a walking bird's eyes steady.
+   * `z` is the lateral axis in this frame (the sides sit at ±halfHip / ±halfSho).
+   */
+  const sway = Math.sin(phase);
+  const bounce = Math.cos(phase * 2);      // twice a stride, one per footfall
+
+  // torso, tilted forward by lean, swaying and bouncing with the stride
+  const pelvis = P(0, hipH + bob, sway * 0.05 * s);
+  const chest  = P(-Math.sin(lean) * 0.18 * s,
+                   shoulderH + bob + bounce * 0.014 * s,
+                   -sway * 0.03 * s);
+  const head   = P(-Math.sin(lean) * 0.3 * s,
+                   shoulderH + 0.2 * s + bob,
+                   sway * 0.012 * s);
   bones.push({ name: "spine", a: pelvis, b: chest, radius: 0.13 * s });
   bones.push({ name: "neck",  a: chest,  b: head,  radius: 0.055 * s });
   bones.push({ name: "head",  a: head,   b: P(head[0] - 0.1 * s, head[1] + 0.02 * s, 0), radius: 0.13 * s });
 
-  // legs: feet cycle fore/aft on the gait, knees solved by IK
+  /**
+   * LEGS — the foot goes where the SIMULATION planted it.
+   *
+   * This used to place each foot in body-local space at cos(phase)·stride, which
+   * cannot produce a planted foot at any gait rate: the foot is re-derived from the
+   * body's own frame every tick, so it travels with the body and merely oscillates
+   * about it. Matching the phase rate to ground speed made that right on average
+   * over a half cycle while the foot still swept back and forth inside it — the
+   * "gliding" look, and no amount of retiming fixes it.
+   *
+   * `state.feet` carries a world coordinate per foot that the arena HOLDS FIXED for
+   * the whole stance. Rotating it into the body frame and solving the knee to reach
+   * it means the leg is chasing a point nailed to the ground: the body travels over
+   * a stationary foot, which is what walking is.
+   *
+   * poseBot's frame has forward on −x and the sides on ±z, hence the mapping below.
+   */
+  const cosH = Math.cos(state.heading), sinH = Math.sin(state.heading);
+  const planted = state.feet && state.feet.length === 6;
   for (const side of [-1, 1] as const) {
     const ph = phase + (side < 0 ? Math.PI : 0);
     const footZ = side * halfHip;
-    const footX = Math.cos(ph) * stride;
-    const lift = Math.max(0, Math.sin(ph)) * 0.16 * s;   // swing phase lifts the foot
-    const hip: [number, number, number] = [0, hipH + bob, footZ];
-    const foot: [number, number, number] = [footX, lift, footZ];
+    let foot: [number, number, number];
+    if (planted) {
+      // world -> body: project the offset onto the heading and its perpendicular
+      const o = side < 0 ? 0 : 3;
+      const dx = state.feet[o]! - state.x, dy = state.feet[o + 1]! - state.y;
+      const ahead = dx * cosH + dy * sinH;      // metres in front of the hips
+      const across = -dx * sinH + dy * cosH;    // metres to the left
+      foot = [-ahead, state.feet[o + 2]!, across];
+    } else {
+      // no planted feet in this state (a synthetic pose): fall back to the cycle
+      foot = [Math.cos(ph) * stride, Math.max(0, Math.sin(ph)) * 0.16 * s, footZ];
+    }
+    const hip: [number, number, number] = [pelvis[0], hipH + bob, pelvis[2] + footZ];
     const knee = solveKnee(hip, foot, thigh, shin, [1, 0, 0]);  // knees bend forward
+
+    /**
+     * ANKLE — heel strike, roll flat, toe off, and lift the toe clear on the swing.
+     *
+     * The toe used to sit at a FIXED offset from the ankle, so the foot never
+     * rotated relative to the shin at all: measured 0.039 rad of ankle motion over a
+     * walk cycle against the goose clip's 0.80. That is a rigid block on the end of
+     * the leg, and it is most of why the walk read wrong even once the feet stopped
+     * sliding.
+     *
+     * Where we are through the stance comes from the foot's own position rather than
+     * from a phase constant: it lands AHEAD of the hip and leaves BEHIND it, so the
+     * signed distance already encodes the progress, and the two cannot disagree.
+     */
+    const rollSpan = footReach(chassis);
+    const ahead = -foot[0];                    // forward is −x in this frame
+    const through = Math.max(0, Math.min(1, 0.5 - ahead / (2 * rollSpan)));
+    const toePitch = foot[1] > 1e-6
+      ? 0.5                                     // dorsiflexed, clearing the ground
+      : 0.3 * Math.cos(through * Math.PI);      // +heel down … flat … toe down−
+    const toeLen = 0.12 * s;
+
     bones.push({ name: side < 0 ? "thighL" : "thighR", a: hip,  b: knee, radius: 0.07 * s });
     bones.push({ name: side < 0 ? "shinL"  : "shinR",  a: knee, b: foot, radius: 0.055 * s });
     bones.push({ name: side < 0 ? "footL"  : "footR",
-                 a: foot, b: [foot[0] + 0.12 * s, foot[1], footZ], radius: 0.045 * s });
+                 a: foot,
+                 b: [foot[0] - Math.cos(toePitch) * toeLen,
+                     foot[1] + Math.sin(toePitch) * toeLen,
+                     foot[2]],
+                 radius: 0.045 * s });
   }
 
   // arms: the sim runs each arm as an angular body swinging about the vertical axis.
@@ -108,34 +301,29 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   // Taking reach from cos(angle) instead, as this did, never went negative over the
   // real range (−0.94 to 0.63 rad), so both arms sat permanently extended and a punch
   // became a 40% stretch with no sweep — which is why the boxing did not read.
-  const guard = state.guard, open = state.recovery > 0 ? 1 : 0;
-  const tuck = guard * (1 - open);
   for (const side of [-1, 1] as const) {
-    const ang = side < 0 ? state.armL : state.armR;
-    const rate = Math.abs(side < 0 ? state.armLv : state.armRv);
-    const sho: [number, number, number] = [chest[0], chest[1], side * halfSho];
-    const reach = upperArm + foreArm;
-    // forward is −x and the swing rotates about y, so the fist rides (−cos, ·, sin)
-    const thrown = Math.min(1, rate / 8);       // 8 rad/s reads as committed
-    const extend = (0.42 + 0.58 * thrown) * (1 - tuck * 0.18);
-    const fist: [number, number, number] = [
-      sho[0] - Math.cos(ang) * reach * extend,
-      sho[1] - 0.06 * s - (1 - thrown) * 0.1 * s + tuck * 0.2 * s - open * 0.26 * s,
-      sho[2] + Math.sin(ang) * reach * extend,
-    ];
+    // Geometry comes from fistLocal, which the ARENA also calls to resolve strikes,
+    // so the arm you see and the arm that hits are the same arm.
+    const { sho, fist, swung, thrown } = fistLocal(state, chassis, side);
     const elbow = solveKnee(sho, fist, upperArm, foreArm, [0, -1, 0]);
     bones.push({ name: side < 0 ? "upperArmL" : "upperArmR", a: sho,   b: elbow, radius: 0.06 * s });
     bones.push({ name: side < 0 ? "foreArmL"  : "foreArmR",  a: elbow, b: fist,  radius: 0.05 * s });
     bones.push({ name: side < 0 ? "fistL" : "fistR", a: fist,
-                 b: [fist[0] - Math.cos(ang) * 0.07 * s, fist[1], fist[2] + Math.sin(ang) * 0.07 * s],
+                 b: [fist[0] - Math.cos(swung) * 0.07 * s, fist[1], fist[2] + Math.sin(swung) * 0.07 * s],
                  radius: 0.075 * s });
   }
 
   // wing spars, folded back — they read as a fly without needing to flap
   for (const side of [-1, 1] as const) {
-    const root: [number, number, number] = [chest[0] + 0.04 * s, chest[1] + 0.08 * s, side * 0.07 * s];
+    const root: [number, number, number] = [chest[0] + 0.04 * s, chest[1] + 0.08 * s,
+                                            chest[2] + side * 0.07 * s];
+    // a small flutter, twice a stride, so the wings are not welded to the back
+    const flutter = bounce * 0.05 * s * side;
     bones.push({ name: side < 0 ? "wingL" : "wingR",
-                 a: root, b: [root[0] + 0.42 * s, root[1] + 0.12 * s, side * 0.3 * s], radius: 0.028 * s });
+                 a: root,
+                 b: [root[0] + 0.42 * s, root[1] + 0.12 * s + Math.abs(flutter),
+                     chest[2] + side * 0.3 * s + flutter],
+                 radius: 0.028 * s });
   }
 
 
@@ -154,7 +342,11 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   // Over about ten ticks, lie there, then come back up over the last dozen. The sim
   // freezes `lean` at the tipping angle while you are down, so the rest of the fall
   // is rendered here rather than integrated there.
-  const fall = state.down > 0 ? Math.min(1, (1 - downT) * 5, downT * 4) : 0;
+  // Over about sixteen ticks, not ten. Ten put the body through 1.45 rad in 0.17 s
+  // — 8.7 rad/s, where a real body toppling about its feet comes down nearer 3.8 —
+  // and the fists covered enough ground per frame to read as a snap rather than a
+  // fall. The tail is unchanged, so getting up still takes the last dozen ticks.
+  const fall = state.down > 0 ? Math.min(1, (1 - downT) * 3.2, downT * 4) : 0;
   const FLOOR_PITCH = 1.45;   // radians — flat out, head a little off the deck
   const sign = state.lean >= 0 ? 1 : -1;
   const pitch = lean + state.lean + fall * (sign * FLOOR_PITCH - state.lean);

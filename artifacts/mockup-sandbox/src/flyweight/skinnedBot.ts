@@ -25,7 +25,7 @@ import { normalise, fitSkeleton, computeSkinWeights, facesPositiveZ, type RestBo
 const toArena = (v: readonly number[]): V3 => [-v[2], v[1], v[0]];
 
 /** Fighters read a little larger than the rig's nominal height at this camera. */
-const DISPLAY = 1.25;
+export const DISPLAY = 1.25;
 
 /** The expensive half of binding — fit and weights — done once per chassis. */
 export interface ChassisBind {

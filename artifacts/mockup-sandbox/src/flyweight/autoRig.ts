@@ -30,12 +30,19 @@ export interface RestBone {
   parent: string | null;
 }
 
-/** Bone names, matching poseBot() in @workspace/sim so its output can drive this. */
+/**
+ * Bone names, matching poseBot() in @workspace/sim so its output can drive this.
+ *
+ * IN THE ORDER fitSkeleton ACTUALLY PUSHES THEM: the torso, then one whole side
+ * (leg, then arm, then wing), then the other. It used to list every leg and then
+ * every arm, which is not what the loop below builds — nothing read it, so nothing
+ * broke, but it cost an afternoon of chasing a skinning bug that was not there.
+ * Rig code should index through `rest`, which carries its own names.
+ */
 export const BONE_NAMES = [
   'spine', 'neck', 'head',
-  'thighL', 'shinL', 'footL', 'thighR', 'shinR', 'footR',
-  'upperArmL', 'foreArmL', 'fistL', 'upperArmR', 'foreArmR', 'fistR',
-  'wingL', 'wingR',
+  'thighR', 'shinR', 'footR', 'upperArmR', 'foreArmR', 'fistR', 'wingR',
+  'thighL', 'shinL', 'footL', 'upperArmL', 'foreArmL', 'fistL', 'wingL',
 ] as const;
 
 const sub = (p: V3, q: V3): V3 => [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
@@ -270,30 +277,36 @@ export function fitSkeleton(positions: Float32Array): RestBone[] {
  * zone is deliberately narrow — wide enough that the shoulder stretches instead of
  * tearing, tight enough that the torso does not follow a punch.
  */
-export function computeSkinWeights(positions: ArrayLike<number>, bones: RestBone[], band = 0.05) {
+/**
+ * Smooth skin weights by inverse-power falloff — the goose rig's scheme.
+ *
+ * This used to keep only bones within a 0.05 BAND of the nearest one, which on a
+ * long thin limb is not a blend at all: `upperArm` is closest to nearly every arm
+ * vertex, so the elbow and wrist were excluded outright. Measured on the chassis,
+ * `foreArm` owned ~200 vertices per side and `fist` owned FOUR and ZERO. Rotating
+ * those joints deformed almost nothing, so an arm swung like one rigid stick and
+ * a thrown punch barely changed the silhouette.
+ *
+ * Weighting every bone by 1/d^falloff and keeping the best four gives each joint
+ * real ownership of the geometry around it, and the limb bends where a limb bends.
+ * Higher falloff = stiffer, more local; 3.2 is what the goose uses.
+ */
+export function computeSkinWeights(positions: ArrayLike<number>, bones: RestBone[], falloff = 3.2) {
   const n = positions.length / 3, nb = bones.length;
   const skinIndex = new Uint16Array(n * 4), skinWeight = new Float32Array(n * 4);
-  const d = new Float64Array(nb);
+  const scored: Array<{ b: number; w: number }> = [];
   for (let i = 0; i < n; i++) {
     const px = positions[i * 3], py = positions[i * 3 + 1], pz = positions[i * 3 + 2];
-    let best = Infinity;
+    scored.length = 0;
     for (let b = 0; b < nb; b++) {
-      d[b] = distToSegment(px, py, pz, bones[b].a, bones[b].b);
-      if (d[b] < best) best = d[b];
+      const d = distToSegment(px, py, pz, bones[b].a, bones[b].b);
+      scored.push({ b, w: 1 / Math.pow(d + 1e-4, falloff) });
     }
-    // keep the four closest bones that fall inside the blend band
-    const picked: Array<{ b: number; w: number }> = [];
-    for (let b = 0; b < nb; b++) {
-      if (d[b] > best + band) continue;
-      const t = 1 - (d[b] - best) / band;
-      picked.push({ b, w: t * t * t });
-    }
-    picked.sort((p, q) => q.w - p.w);
-    picked.length = Math.min(4, picked.length);
+    scored.sort((p, q) => q.w - p.w);
     let sum = 0;
-    for (const p of picked) sum += p.w;
+    for (let k = 0; k < 4; k++) sum += scored[k]?.w ?? 0;
     for (let k = 0; k < 4; k++) {
-      const p = picked[k];
+      const p = scored[k];
       skinIndex[i * 4 + k] = p ? p.b : 0;
       skinWeight[i * 4 + k] = p ? p.w / sum : 0;
     }

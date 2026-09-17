@@ -1,5 +1,6 @@
-export { runMatch, arenaHalfAt, arenaHalfFor, ARENA_SIZE, ARENA_MIN_HALF, BOT_RADIUS,
-         KNOCKDOWN_TICKS } from "./arena.js";
+export { runMatch, arenaHalfAt, arenaHalfFor, ARENA_SIZE, ARENA_MIN_HALF, BOT_RADIUS } from "./arena.js";
+export { KNOCKDOWN_TICKS } from "@workspace/contract";
+export { RANGES } from "./arena.js";
 export { Brain, type Senses, type MotorIntent } from "./brain.js";
 export { LifNeuron } from "./neuron.js";
 export { makeRng } from "./rng.js";
@@ -12,7 +13,7 @@ export { solveBrain, planStat, statCeiling, statCost, STAT_NAMES, REFRACTORY_WIN
          bestRefractory, nearestMeasured, type StatTargets, type Solution } from "./optimize.js";
 export { buildBrainGeometry, totalFibres, BRAIN_EXTENT,
          type PopulationGeometry, type Fibre, type Vec3 } from "./brainviz.js";
-export { poseBot, rigHeight, hullFraction, type Pose, type Bone } from "./rig.js";
+export { poseBot, rigHeight, hullFraction, strideFor, footReach, armReach, fistLocal, type Pose, type Bone, type ArmState } from "./rig.js";
 export { simpleBrain, toSlot, toIntensity, budgetUsed, WEIGHT_MIN, WEIGHT_MAX } from "./simple.js";
 export { bodyMechanics, bodyRatios, resolveBody, type Mechanics } from "./body.js";
 export { tuneBody, stockBody, type TuneStep } from "./tune.js";

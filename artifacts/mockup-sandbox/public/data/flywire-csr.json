@@ -1,0 +1,25 @@
+{
+ "neurons": 139248,
+ "edges": 2700429,
+ "threshold": 5,
+ "transmitters": [
+  "acetylcholine",
+  "gaba",
+  "glutamate",
+  "dopamine",
+  "serotonin",
+  "octopamine",
+  "unknown"
+ ],
+ "sign": {
+  "acetylcholine": 1,
+  "gaba": -1,
+  "glutamate": -1,
+  "dopamine": 0,
+  "serotonin": 0,
+  "octopamine": 0,
+  "unknown": 0
+ },
+ "note": "CSR out-edges. offsets uint32[N+1], targets uint32[E], weights uint16[E] (synapse count).",
+ "source": "FlyWire FAFB v783 proofread connections, Zenodo 10676866, CC-BY-4.0"
+}

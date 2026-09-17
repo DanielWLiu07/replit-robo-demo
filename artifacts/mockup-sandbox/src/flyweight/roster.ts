@@ -1,10 +1,18 @@
 import type { BotSpec, BrainSpec, NeuronModule } from "@workspace/contract";
-import { CHAMPION_BRAIN } from "./modules";
 
 /**
- * The selectable roster. These are the same four hand-designed archetypes the
- * balance pass in `lib/sim` measures its round robin against, plus the evolved
- * champion as the boss — so a card's numbers are the numbers that fight.
+ * The selectable roster: one entry per chassis class, and that is the whole list.
+ *
+ * It used to hold five named archetypes across three chassis — two HORNETs and an
+ * evolved boss — which made "pick a fighter" and "pick a class" two different
+ * questions with no obvious relationship. There are three models and three
+ * chassis, so there are three classes, and each one arrives with the loadout that
+ * suits its body: the light frame evades, the middleweight presses, the heavy one
+ * grinds. Escalation is the campaign's job now, not the roster's.
+ *
+ * The evolved champion is not gone — it is still seeded server-side and still the
+ * thing to beat on the Elo board; it is simply not one of the three bodies you
+ * can wear.
  */
 const brain = (
   slots: Array<{ module: NeuronModule; weight: number; threshold: number }>,
@@ -14,30 +22,17 @@ const brain = (
 
 export interface RosterEntry {
   bot: BotSpec;
-  /** short read on the archetype, shown under the name */
+  /** short read on how the class fights, shown under the name */
   tag: string;
   boss?: boolean;
 }
 
 export const ROSTER: RosterEntry[] = [
   {
-    tag: "FORWARD PRESSURE",
-    bot: {
-      id: "rusher",
-      name: "RUSHER",
-      chassis: "HORNET",
-      brain: brain([
-        { module: "LC10A", weight: 2.6, threshold: 0.6 },
-        { module: "DNA02", weight: 2.4, threshold: 0.6 },
-        { module: "P1", weight: 1.4, threshold: 1.0 },
-      ]),
-    },
-  },
-  {
     tag: "ESCAPE REFLEX",
     bot: {
-      id: "dodger",
-      name: "DODGER",
+      id: "drone",
+      name: "DRONE",
       chassis: "DRONE",
       brain: brain([
         { module: "LPLC2_DNP01", weight: 2.4, threshold: 0.5 },
@@ -47,10 +42,23 @@ export const ROSTER: RosterEntry[] = [
     },
   },
   {
+    tag: "FORWARD PRESSURE",
+    bot: {
+      id: "hornet",
+      name: "HORNET",
+      chassis: "HORNET",
+      brain: brain([
+        { module: "LC10A", weight: 2.6, threshold: 0.6 },
+        { module: "DNA02", weight: 2.4, threshold: 0.6 },
+        { module: "P1", weight: 1.4, threshold: 1.0 },
+      ]),
+    },
+  },
+  {
     tag: "ATTRITION",
     bot: {
-      id: "brawler",
-      name: "BRAWLER",
+      id: "tank",
+      name: "TANK",
       chassis: "TANK",
       brain: brain([
         { module: "LC10A", weight: 2.4, threshold: 0.7 },
@@ -59,23 +67,5 @@ export const ROSTER: RosterEntry[] = [
         { module: "P1", weight: 1.2, threshold: 1.1 },
       ]),
     },
-  },
-  {
-    tag: "TARGET ACQUISITION",
-    bot: {
-      id: "sniper",
-      name: "SNIPER",
-      chassis: "HORNET",
-      brain: brain([
-        { module: "LC11", weight: 2.0, threshold: 0.6 },
-        { module: "LC10A", weight: 2.2, threshold: 0.7 },
-        { module: "DNA02", weight: 2.0, threshold: 0.7 },
-      ]),
-    },
-  },
-  {
-    tag: "14 GENERATIONS / 20W 0L 0D",
-    boss: true,
-    bot: { ...CHAMPION_BRAIN, id: "champion", name: "CHAMPION" },
   },
 ];

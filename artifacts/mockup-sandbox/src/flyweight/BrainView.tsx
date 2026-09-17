@@ -1,124 +1,165 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { NeuronModule } from "@workspace/contract";
-import { BRAIN_EXTENT, buildBrainGeometry, totalFibres } from "@workspace/sim";
+import { buildBrainGeometry } from "@workspace/sim";
 import { MODULES } from "./modules";
+import {
+  CLASS_BRIGHTNESS,
+  CLOUD_MODULES,
+  loadConnectome,
+  type ConnectomeCloud,
+} from "./connectomeCloud";
 
 /**
- * The brain, drawn one line per counted cell.
+ * The brain, drawn as the brain: 139,248 neurons at their real FlyWire FAFB
+ * v783 coordinates, one point per cell, the whole adult fly.
  *
- * Every fibre here is a real neuron from the FlyWire 783 counts — LC10a is 234
- * threads because there are 234 LC10a cells, and the Giant Fiber is two lines
- * because there are two Giant Fibers. That is the whole argument for drawing it
- * at all: the shape of the table is the interesting part, and you can see it.
- * Arrangement is anatomical, not traced: visual projections run in from the
- * optic lobes, descending neurons head down toward the nerve cord.
+ * What replaced what: this used to draw one bezier per *counted* cell in an
+ * arrangement that was anatomical by hand — honest about the counts, invented
+ * about the positions. Every coordinate here is measured. The six circuits the
+ * simulation drives sit inside the real brain and light where they actually
+ * are, so a Giant Fiber spike lights two cells in the right place rather than
+ * two lines in a plausible place.
+ *
+ * Firing is brightness, not colour: the app is black and white, and the usual
+ * blue-sensory / red-motor scheme would fight every other surface on the page.
  */
-const GEOMETRY = buildBrainGeometry();
-const FIBRE_TOTAL = totalFibres(GEOMETRY);
-/** samples per fibre along its bezier */
-const SEG = 7;
+const COUNTS = buildBrainGeometry();
 
 const DIM = new THREE.Color(0x3a3b45);
-const LIT = new THREE.Color(0xf4f4ef);
+const LIT = new THREE.Color(0xf6f6f1);
 
-function fibrePositions(pop: (typeof GEOMETRY)[number]): Float32Array {
-  const out = new Float32Array(pop.fibres.length * SEG * 2 * 3);
-  let o = 0;
-  const point = (f: (typeof pop.fibres)[number], t: number) => {
-    const u = 1 - t;
-    return [
-      u * u * f.from[0] + 2 * u * t * f.ctrl[0] + t * t * f.to[0],
-      u * u * f.from[1] + 2 * u * t * f.ctrl[1] + t * t * f.to[1],
-      u * u * f.from[2] + 2 * u * t * f.ctrl[2] + t * t * f.to[2],
-    ];
-  };
-  for (const f of pop.fibres) {
-    for (let s = 0; s < SEG; s++) {
-      const a = point(f, s / SEG);
-      const b = point(f, (s + 1) / SEG);
-      out[o++] = a[0]; out[o++] = a[1]; out[o++] = a[2];
-      out[o++] = b[0]; out[o++] = b[1]; out[o++] = b[2];
+/** Index into the uniform array, 0 unused so a non-simulated cell reads 0 glow. */
+const GLOW_SLOTS = 7;
+
+const VERT = `
+  attribute float aBright;
+  attribute float aModule;
+  uniform float uGlow[${GLOW_SLOTS}];
+  uniform float uPixelRatio;
+  varying float vI;
+  void main() {
+    float g = 0.0;
+    int m = int(aModule + 0.5);
+    for (int i = 1; i < ${GLOW_SLOTS}; i++) {
+      if (i == m) g = uGlow[i];
     }
-  }
-  return out;
-}
+    vI = max(aBright, g);
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    // a firing cell swells as well as brightens, so four cells out of 139,248
+    // are still findable when the Giant Fiber goes off
+    gl_PointSize = uPixelRatio * (1.0 + g * 4.5) * (1.6 / -mv.z);
+    gl_Position = projectionMatrix * mv;
+  }`;
+
+const FRAG = `
+  uniform vec3 uDim;
+  uniform vec3 uLit;
+  varying float vI;
+  void main() {
+    // round the square point off, cheaper than a texture
+    vec2 d = gl_PointCoord - vec2(0.5);
+    if (dot(d, d) > 0.25) discard;
+    gl_FragColor = vec4(mix(uDim, uLit, vI), 0.45 + vI * 0.55);
+  }`;
 
 export function BrainView({
   equipped,
-  spiked = [],
-  height = 300,
+  spiked,
+  height = 190,
 }: {
   equipped: NeuronModule[];
-  spiked?: NeuronModule[];
+  spiked: NeuronModule[];
   height?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const [cloud, setCloud] = useState<ConnectomeCloud | null>(null);
+  const [failed, setFailed] = useState(false);
   const equippedRef = useRef(equipped);
   const spikedRef = useRef(spiked);
   useEffect(() => { equippedRef.current = equipped; }, [equipped]);
   useEffect(() => { spikedRef.current = spiked; }, [spiked]);
 
   useEffect(() => {
+    let alive = true;
+    loadConnectome()
+      .then((c) => { if (alive) setCloud(c); })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
     const element = host.current;
-    if (!element) return;
+    if (!element || !cloud) return;
     let disposed = false;
     let raf = 0;
     let visible = true;
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
     } catch {
       return;
     }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    const pixelRatio = Math.min(devicePixelRatio, 2);
+    renderer.setPixelRatio(pixelRatio);
     element.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 40);
-    camera.position.set(0.12, 0.36, 1.95);
+    // The brain is wide and shallow — x spans the full normalised unit, y only
+    // ~0.42 of it — so the panel is filled by fitting height, not width.
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 40);
+    camera.position.set(0, 0.06, 0.92);
     camera.lookAt(0, 0, 0);
 
     const root = new THREE.Group();
+    // FlyWire's y runs down the head; flip it so the brain is the right way up
+    root.scale.set(1, -1, 1);
     scene.add(root);
 
-    // a faint anatomical envelope so the fibres read as sitting inside a brain
-    const shell = new THREE.LineSegments(
-      new THREE.EdgesGeometry(
-        new THREE.BoxGeometry(BRAIN_EXTENT.x * 1.55, BRAIN_EXTENT.y * 1.75, BRAIN_EXTENT.z * 1.8),
-      ),
-      new THREE.LineBasicMaterial({ color: 0x2b2c34, transparent: true, opacity: 0.8 }),
-    );
-    root.add(shell);
+    const bright = new Float32Array(cloud.count);
+    const modules = new Float32Array(cloud.count);
+    for (let i = 0; i < cloud.count; i++) {
+      bright[i] = CLASS_BRIGHTNESS[cloud.classNames[cloud.classes[i]!] ?? "other"] ?? 0.25;
+      modules[i] = cloud.modules[i]!;
+    }
 
-    const layers = GEOMETRY.map((pop) => {
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute("position", new THREE.BufferAttribute(fibrePositions(pop), 3));
-      const material = new THREE.LineBasicMaterial({
-        color: DIM.clone(),
-        transparent: true,
-        opacity: 0.62,
-      });
-      const lines = new THREE.LineSegments(geometry, material);
-      root.add(lines);
-      return { module: pop.module, lines, material, glow: 0 };
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(cloud.positions, 3));
+    geometry.setAttribute("aBright", new THREE.BufferAttribute(bright, 1));
+    geometry.setAttribute("aModule", new THREE.BufferAttribute(modules, 1));
+
+    const material = new THREE.ShaderMaterial({
+      vertexShader: VERT,
+      fragmentShader: FRAG,
+      transparent: true,
+      depthWrite: false,
+      uniforms: {
+        uGlow: { value: new Array(GLOW_SLOTS).fill(0) },
+        uPixelRatio: { value: pixelRatio },
+        uDim: { value: new THREE.Color(DIM) },
+        uLit: { value: new THREE.Color(LIT) },
+      },
     });
+    const points = new THREE.Points(geometry, material);
+    points.frustumCulled = false;
+    root.add(points);
 
     const resize = () => {
       const { width } = element.getBoundingClientRect();
-      const h = height;
-      renderer.setSize(width, h);
-      camera.aspect = width / Math.max(h, 1);
+      renderer.setSize(width, height);
+      camera.aspect = width / Math.max(height, 1);
       camera.updateProjectionMatrix();
     };
     const observer = new ResizeObserver(resize);
     observer.observe(element);
     resize();
-    const intersection = new IntersectionObserver((e) => { visible = e[0].isIntersecting; });
+    const intersection = new IntersectionObserver((e) => { visible = e[0]!.isIntersecting; });
     intersection.observe(element);
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    // one decaying glow per simulated circuit
+    const glow = new Array(GLOW_SLOTS).fill(0) as number[];
     let last = 0;
     const draw = (now: number) => {
       if (disposed) return;
@@ -126,18 +167,16 @@ export function BrainView({
       if (!visible || document.hidden) return;
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 0.016;
       last = now;
-      if (!reducedMotion) root.rotation.y = now * 0.00016;
-      root.rotation.x = -0.18;
+      if (!reducedMotion) root.rotation.y = now * 0.00013;
+      root.rotation.x = -0.12;
 
-      for (const layer of layers) {
-        const on = equippedRef.current.includes(layer.module);
-        layer.lines.visible = on;
-        if (!on) continue;
-        // a spike lights the whole population, then it decays back to rest
-        if (spikedRef.current.includes(layer.module)) layer.glow = 1;
-        else layer.glow = Math.max(0, layer.glow - dt * 3.2);
-        layer.material.color.copy(DIM).lerp(LIT, layer.glow);
-        layer.material.opacity = 0.55 + layer.glow * 0.45;
+      for (let slot = 1; slot < GLOW_SLOTS; slot++) {
+        const module = CLOUD_MODULES[slot - 1]!;
+        const on = equippedRef.current.includes(module);
+        if (on && spikedRef.current.includes(module)) glow[slot] = 1;
+        else glow[slot] = Math.max(0, glow[slot]! - dt * 2.6);
+        // an unequipped circuit is still anatomy, it just never fires
+        material.uniforms.uGlow!.value[slot] = on ? glow[slot] : 0;
       }
       renderer.render(scene, camera);
     };
@@ -148,28 +187,27 @@ export function BrainView({
       cancelAnimationFrame(raf);
       observer.disconnect();
       intersection.disconnect();
-      for (const layer of layers) {
-        layer.lines.geometry.dispose();
-        layer.material.dispose();
-      }
-      shell.geometry.dispose();
-      (shell.material as THREE.Material).dispose();
+      geometry.dispose();
+      material.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [height]);
+  }, [height, cloud]);
 
-  const shown = GEOMETRY.filter((p) => equipped.includes(p.module));
+  const shown = COUNTS.filter((p) => equipped.includes(p.module));
   const cells = shown.reduce((sum, p) => sum + p.cells, 0);
 
   return (
     <div className="brainview">
       <div className="section-label">
-        <span>CONNECTOME / ONE LINE PER CELL</span>
+        <span>CONNECTOME / FLYWIRE FAFB v783</span>
         <span className="mono">{cells.toLocaleString()} CELLS EQUIPPED</span>
       </div>
       <div className="brainview-canvas" ref={host} style={{ height }} role="img"
-        aria-label={`Three-dimensional brain with ${cells} fibres, one per counted cell`} />
+        aria-label={`The fly brain, ${cloud?.count.toLocaleString() ?? ""} neurons at their measured positions`}>
+        {!cloud && !failed && <span className="brainview-loading mono">LOADING CONNECTOME…</span>}
+        {failed && <span className="brainview-loading mono">CONNECTOME UNAVAILABLE</span>}
+      </div>
       <ul className="brainview-key mono">
         {shown.map((p) => (
           <li key={p.module}>
@@ -180,8 +218,9 @@ export function BrainView({
         ))}
       </ul>
       <p className="brainview-note">
-        Arranged anatomically from the FlyWire 783 counts — not traced from the connectome.
-        {" "}{FIBRE_TOTAL.toLocaleString()} fibres available across all six populations.
+        Every neuron in the adult fly at its measured position —{" "}
+        {cloud?.count.toLocaleString() ?? "139,248"} cells, FlyWire FAFB v783. The equipped
+        circuits light where they actually sit.
       </p>
     </div>
   );

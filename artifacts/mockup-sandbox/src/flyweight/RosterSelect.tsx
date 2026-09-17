@@ -138,7 +138,7 @@ export function RosterSelect({
   setP2,
   squad,
   setSquad,
-  onFight,
+  onNext,
 }: {
   playerBuild: BotSpec;
   p1: BotSpec;
@@ -147,27 +147,26 @@ export function RosterSelect({
   setP2: (bot: BotSpec) => void;
   squad: number;
   setSquad: (n: number) => void;
-  onFight: () => void;
+  /** advance to the brain lab — the roster never starts a fight itself */
+  onNext: () => void;
 }) {
-  const [slot, setSlot] = useState<0 | 1>(0);
   const [highlight, setHighlight] = useState(0);
 
-  const entries: RosterEntry[] = [
-    { bot: playerBuild, tag: "YOUR BUILD / BRAIN LAB" },
-    ...ROSTER,
-  ];
+  // Three models, three chassis, three cards. The saved build used to sit here
+  // as a fourth entry, which made "pick a class" and "reuse what I tuned" the
+  // same control; the bench is where a build gets tuned, this is where a class
+  // gets chosen.
+  const entries: RosterEntry[] = ROSTER;
   const active = entries[highlight] ?? entries[0];
   const profile = profileBot(active.bot);
 
-  const choose = (entry: RosterEntry) => {
-    if (slot === 0) {
-      setP1(entry.bot);
-      setSlot(1);
-    } else {
-      setP2(entry.bot);
-      setSlot(0);
-    }
-  };
+  /**
+   * One seat to fill. The opponent is not picked here any more — the campaign
+   * generates it from the round you are on — so this screen is only ever about
+   * your own fighter, and clicking a card no longer silently flips you into
+   * "now choose their bot" mode.
+   */
+  const choose = (entry: RosterEntry) => setP1(entry.bot);
 
   return (
     <section className="select-section">
@@ -176,47 +175,16 @@ export function RosterSelect({
           ← Back
         </a>
         <span>01 / ROSTER SELECT</span>
-        <span className="mono">ASSIGNING {slot ? "P2 / OPPONENT" : "P1 / YOU"}</span>
+        <span className="mono">YOUR FIGHTER</span>
       </div>
       <div className="section-heading">
         <h2>Roster Select</h2>
-      </div>
-
-      <div className="vs-bar">
-        <Plate entry={{ bot: p1, tag: "" }} slot={0} />
-        <div className="vs-versus">
-          <span>VS</span>
-          <small className="mono">BEST OF ONE · 90 s CAP</small>
-          <div className="squad-stepper">
-            <button
-              aria-label="Fewer units per side"
-              onClick={() => setSquad(Math.max(1, squad - 1))}
-              disabled={squad <= 1}
-            >
-              −
-            </button>
-            <span className="squad-count">
-              <strong>{squad}</strong>
-              <small className="mono">v{squad}</small>
-            </span>
-            <button
-              aria-label="More units per side"
-              onClick={() => setSquad(Math.min(MAX_SQUAD, squad + 1))}
-              disabled={squad >= MAX_SQUAD}
-            >
-              +
-            </button>
-          </div>
-          <small className="mono squad-note">UNITS PER SIDE · FANNED ON SPAWN</small>
-        </div>
-        <Plate entry={{ bot: p2, tag: "", boss: p2.id === "champion" }} slot={1} />
       </div>
 
       <div className="select-grid">
         <div className="roster-cards">
           {entries.map((entry, i) => {
             const isP1 = entry.bot.id === p1.id;
-            const isP2 = entry.bot.id === p2.id;
             return (
               <button
                 key={entry.bot.id}
@@ -224,7 +192,6 @@ export function RosterSelect({
                   "roster-card",
                   i === highlight ? "highlighted" : "",
                   isP1 ? "taken-p1" : "",
-                  isP2 ? "taken-p2" : "",
                   entry.boss ? "boss" : "",
                 ]
                   .filter(Boolean)
@@ -232,11 +199,9 @@ export function RosterSelect({
                 onMouseEnter={() => setHighlight(i)}
                 onFocus={() => setHighlight(i)}
                 onClick={() => choose(entry)}
-                aria-label={`Select ${entry.bot.name} as ${slot ? "opponent" : "your fighter"}`}
+                aria-label={`Select ${entry.bot.name} as your fighter`}
               >
-                {(isP1 || isP2) && (
-                  <span className="card-slot mono">{isP1 ? "P1" : "P2"}</span>
-                )}
+                {isP1 && <span className="card-slot mono">SELECTED</span>}
                 {entry.boss && <span className="boss-flag mono">BOSS</span>}
                 <Silhouette chassis={entry.bot.chassis} />
                 <strong>{entry.bot.name}</strong>
@@ -250,11 +215,28 @@ export function RosterSelect({
       </div>
 
       <div className="select-actions">
-        <a className="button" href="#/lab">
-          Brain lab <span>↗</span>
-        </a>
-        <button className="button primary fight-button" onClick={onFight}>
-          Fight <span>↗</span>
+        <div className="squad-stepper">
+          <button
+            aria-label="Fewer units per side"
+            onClick={() => setSquad(Math.max(1, squad - 1))}
+            disabled={squad <= 1}
+          >
+            −
+          </button>
+          <span className="squad-count">
+            <strong>{squad}</strong>
+            <small className="mono">v{squad}</small>
+          </span>
+          <button
+            aria-label="More units per side"
+            onClick={() => setSquad(Math.min(MAX_SQUAD, squad + 1))}
+            disabled={squad >= MAX_SQUAD}
+          >
+            +
+          </button>
+        </div>
+        <button className="button primary fight-button" onClick={onNext}>
+          Next · Brain lab <span>→</span>
         </button>
       </div>
     </section>

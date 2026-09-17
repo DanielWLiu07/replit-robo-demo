@@ -1,13 +1,27 @@
 import {
-  CHASSIS_STATS, MATCH_MAX_TICKS, MAX_SQUAD, SUDDEN_DEATH_TICK, TICK_HZ,
+  ARM_REST, CHASSIS_STATS, KNOCKDOWN_TICKS, MATCH_MAX_TICKS, MAX_SQUAD, SUDDEN_DEATH_TICK, TICK_HZ,
   type ArenaBotState, type BotSpec, type MatchFrame, type MatchResult, type NeuronModule,
 } from "@workspace/contract";
 import { bodyRatios, type Ratios } from "./body.js";
+import { armReach, fistLocal, footReach, strideFor } from "./rig.js";
 import { Brain, type Senses } from "./brain.js";
 import { makeRng } from "./rng.js";
 
-export const ARENA_SIZE = 14;   // metres, square — tight enough to force engagement
-export const ARENA_MIN_HALF = 2.6;
+/**
+ * Ring size, metres. Scaled with the bodies: at the old 1.2 m torso this was 11.7
+ * body-widths across, and keeping 14 m once a torso became 0.4 m turned every match
+ * into a long walk — measured 4420 ticks against about 1300 before.
+ */
+export const ARENA_SIZE = 5.2;   // metres, square — tight enough to force engagement
+/**
+ * Half-width the walls close to in sudden death.
+ *
+ * Was a flat 2.6, which happened to equal the whole arena half once ARENA_SIZE came
+ * down to match the drawn bodies — so the walls "closed" to exactly where they
+ * already were and sudden death did nothing. Kept as the same FRACTION of the ring
+ * it used to be (2.6 of 7.0), so it scales with the geometry from here on.
+ */
+export const ARENA_MIN_HALF = ARENA_SIZE * 0.186;
 /** Bigger squads need more floor, or ten bots spawn inside one scrum and wipe
  *  each other out in four seconds. Scales the arena with the number of units. */
 export function arenaHalfFor(squad: number): number {
@@ -22,7 +36,19 @@ export function arenaHalfAt(tick: number, squad = 1): number {
   const t = (tick - SUDDEN_DEATH_TICK) / (MATCH_MAX_TICKS - SUDDEN_DEATH_TICK);
   return base + (floor - base) * Math.min(1, t);
 }
-export const BOT_RADIUS = 0.6;
+/**
+ * Torso radius, metres.
+ *
+ * Was 0.6 — a 1.2 m wide body on a creature 1.06 m TALL, and 4.1x wider than the
+ * one actually drawn (half-shoulder 0.146 m). Bodies therefore could never close
+ * inside 1.2 m while the visible arm reaches about 0.5 m, so every punch resolved
+ * with the drawn fist a measured 0.94 m — nearly a whole body-height — clear of the
+ * target. They looked like they were boxing past each other, because they were.
+ *
+ * Now it matches the shoulders that are on screen, so closing to contact means the
+ * fists arrive where the bodies are.
+ */
+export const BOT_RADIUS = 0.2;
 const DT = 1 / TICK_HZ;
 // Spike trains are impulses; muscle tension is graded. A neuromuscular junction
 // low-passes one into the other, and that filter is also what makes the plant
@@ -32,6 +58,36 @@ const DRIVE_GAIN = 5.0;         // ~20% spike duty -> ~full command
 const MAX_SPEED = 4.2;          // m/s at full command, before chassis multiplier
 const MAX_OMEGA = 3.4;          // rad/s at full command
 const VEL_LAG = 0.16;           // how fast actual velocity chases commanded
+/**
+ * What the legs can actually put into the ground, m/s^2 at the stock body.
+ *
+ * Until now the body simply became the velocity it was asked for — kinematics in a
+ * physics coat. Mass did nothing to how fast you got going, and the feet were drawn
+ * on afterwards. Now the demand is the same, but it has to be DELIVERED by a foot
+ * that is on the floor, and there is a ceiling on what one can deliver.
+ *
+ * Calibrated so a stock body is almost never capped: below the ceiling this is
+ * algebraically identical to the old lag, which is what keeps the balance table and
+ * the champion's fitness meaningful. What changes is the edges — a heavy body, or
+ * anyone demanding a violent direction change, now runs out of traction and slides.
+ */
+const PUSH_CEILING = 108;
+// ── FOOTFALL ────────────────────────────────────────────────────────────────
+/** Fraction of the gait cycle a foot spends on the ground. >0.5 so both overlap. */
+const STANCE = 0.62;
+/** How high the swing foot arcs, metres. */
+const STEP_ARC = 0.1;
+/**
+ * Where to put the foot down, as a fraction of a stride ahead of the hip.
+ *
+ * A stance runs from here backwards by one stride's worth of body travel, so the
+ * midpoint — where the leg is actually loaded — sits at this minus half the stance.
+ */
+const REACH_AHEAD = 0.58;
+/** Half the distance between the feet, metres. */
+const HALF_HIP = 0.12;
+/** Fraction of the ceiling available at the worst point of the stride. */
+const SWING_LOSS = 0.34;
 const OMEGA_LAG = 0.30;
 const RAM_DAMAGE = 0;          // bodies shove, they do not wound         // per m/s of closing speed
 const MIN_RAM_SPEED = 0.8;      // below this a touch does nothing
@@ -49,8 +105,18 @@ const PUNCH_RECOVERY = 16;      // ticks you are open after committing to a swin
 const GUARD_RISE = 0.30;
 const GUARD_HOLD = 14;          // ticks the arms stay up after the reflex fires        // how fast the arms come up
 const GUARD_BLOCK = 0.78;       // damage removed by a full guard      // ticks between throws, so it reads as a flurry
-const ARM_REST = 0.35;          // radians, arms held slightly forward
-const ARM_SPRING = 3.4;         // pulls arms back toward guard
+/**
+ * Pulls the arms back to the guard.
+ *
+ * Was 3.4, whose effective time constant works out to about 2.4 SECONDS — far
+ * longer than the gap between punches, so the arm never got home. Measured, the
+ * hands were in the guard only 20% of the time and spent the rest drifting
+ * half-extended: no stance to speak of, and a punch was indistinguishable from the
+ * drift. Swept 3.4 / 12 / 22 / 34 over 14 seeded matches, guard occupancy
+ * 20 / 60 / 80 / 85% against punch travel 0.46 / 0.46 / 0.41 / 0.36 m. 22 is where
+ * the hands are up and a strike still reads as a strike.
+ */
+const ARM_SPRING = 22;
 
 // ── ragdoll ─────────────────────────────────────────────────────────────────
 // Not a physics engine: a handful of springs integrated at the same fixed timestep
@@ -63,11 +129,35 @@ const WHIFF_LEAN = 1.05;        // a committed swing that hits nothing pitches y
 const HIT_LEAN = 1.9;           // taking one rocks you back
 const TILT_DAMP = 0.88;
 const KNOCKDOWN_LEAN = 0.82;    // past this angle you are going over
-export const KNOCKDOWN_TICKS = 52;     // time on the floor before you get up
+     // time on the floor before you get up
 const GETUP_LEAN = 0.5;         // you come up part-way bent, not snapping upright
-const STRIKE_MIN_TIP_SPEED = 3.2;   // m/s at the fist
-const STRIKE_DAMAGE = 2.9;      // per m/s of tip speed over the threshold
-const STRIKE_REACH = BOT_RADIUS + ARM_LENGTH;
+/**
+ * m/s at the fist below which a swing is a nudge, not a punch.
+ *
+ * Tuned against a 0.55 m arm. Now that the arena uses the arm the rig actually
+ * DRAWS, a shorter-armed chassis reaches a lower tip speed for the same shoulder
+ * work, and since damage is (tip − threshold) a fixed bar gutted it: median damage
+ * fell to 3.2 and matches ran to the 90 s cap instead of ending in a knockout.
+ * Scaling the bar with the arm keeps it meaning the same thing on every build.
+ */
+const STRIKE_MIN_TIP_SPEED = 3.2;   // m/s at the fist, for a 0.55 m arm
+const TIP_BAR_ARM = 0.55;
+/**
+ * Damage per m/s of tip speed over the bar.
+ *
+ * Retuned from 2.9 when the collision geometry came down to the drawn bodies. The
+ * fist radius shrank with BOT_RADIUS, so glancing contact became far more common
+ * and the median hit fell to about 3 damage against an 80-100 hull — fights stopped
+ * ending in knockouts and ran to the 90 s cap on a hull tiebreak. Swept 4.5 / 5.5 /
+ * 6.5 against 16 seeded matches: 47 s / 44 s / 39 s, all decisive.
+ */
+const STRIKE_DAMAGE = 6.5;
+/**
+ * How far a fist gets from the body CENTRE. The rig hangs the shoulder on the
+ * midline, so this is the arm — adding a torso radius on top, as this did, put the
+ * hit half a metre beyond the hand.
+ */
+const STRIKE_REACH = ARM_LENGTH;
 /** How close the fist has to pass to the torso to count. Tight enough that footwork
  *  and a slip can take you off the end of a punch — with a generous hitbox nothing
  *  ever whiffed, and a counter-punch bonus with no whiffs to punish is decoration. */
@@ -77,7 +167,7 @@ const FIST_RADIUS = BOT_RADIUS * 1.18;
  *  the approach, which left an LC11 build winless in 18 matches. */
 const LOCK_REACH = 0.15;
 const LOCK_DAMAGE = 0.38;
-const PUNCH_RANGE = STRIKE_REACH + 0.50;
+const PUNCH_RANGE = STRIKE_REACH * 1.43;   // start the swing a little before it lands
 
 // ── range discipline ────────────────────────────────────────────────────────
 // A boxer does not walk into his opponent; he stands at the end of his own reach
@@ -85,9 +175,27 @@ const PUNCH_RANGE = STRIKE_REACH + 0.50;
 // pair spent 61% of every match welded to exactly that wall, trading from inside a
 // clinch — which reads as two bodies colliding, not as a fight. The pocket is the
 // band where a fist lands but a torso does not.
-const POCKET_FAR = 1.68;        // stop closing here: your fist already reaches
-const POCKET_NEAR = 1.44;       // forward drive is gone entirely inside this
-const CLINCH_RANGE = 1.38;      // soft break below this — boxers separate, they do not hug
+// Derived from the reach rather than written as absolutes, so the pocket keeps its
+// shape if the geometry moves again. The multipliers are the ratios the hand-tuned
+// values had against the old reach, so the FEEL of the pocket is preserved.
+const POCKET_FAR = STRIKE_REACH * 1.46;   // stop closing here: your fist already reaches
+const POCKET_NEAR = STRIKE_REACH * 1.25;  // forward drive is gone entirely inside this
+const CLINCH_RANGE = BOT_RADIUS * 2.3;    // soft break below this — boxers separate, they do not hug
+
+/**
+ * The engagement distances, published for the balance tests.
+ *
+ * They used to be asserted as literals (clinch < 1.3 m, pocket 1.3–2.0 m), which
+ * silently encoded a 1.2 m torso and all failed the moment the bodies were scaled
+ * to the ones on screen. A test that reads these still means what it says.
+ */
+export const RANGES = {
+  bodyTouch: BOT_RADIUS * 2,
+  clinch: CLINCH_RANGE,
+  pocketNear: POCKET_NEAR,
+  pocketFar: POCKET_FAR,
+  strikeReach: STRIKE_REACH,
+} as const;
 const BREAK_PUSH = 26;          // m/s^2 of separation at full penetration
 
 // ── footwork ────────────────────────────────────────────────────────────────
@@ -148,6 +256,14 @@ interface Body {
   /** arm angles and angular velocities, relative to torso heading */
   armL: number; armR: number; armLv: number; armRv: number;
   gait: number; struck: boolean;
+  /** world metres, [Lx,Ly,Lz,Rx,Ry,Rz] — where each foot IS, not where it is drawn */
+  feet: Float64Array;
+  /** was this foot on the ground last tick, so a touchdown can be detected */
+  footDown: [boolean, boolean];
+  /** where the foot lifted off from, to swing out of */
+  footFrom: Float64Array;
+  /** recovery steps forced by drift, so the rate can be watched rather than assumed */
+  replants: number;
   punchCd: number; punchSide: 0 | 1;
   guard: number; recovery: number; blocked: boolean; guardHold: number;
   lean: number; leanV: number; tilt: number; tiltV: number; down: number; swungAt: number;
@@ -199,7 +315,7 @@ function senses(self: Body, foe: Body): Senses {
   // their range nobody charges: blocks collapsed to 5.7% of hits. Same channel, same
   // cell, because the fly does not have a separate detector for punches.
   const foeTip = Math.max(Math.abs(foe.armLv), Math.abs(foe.armRv)) * foe.armLength;
-  const incoming = distance < foe.punchRange * 1.2 && foeTip > STRIKE_MIN_TIP_SPEED * 0.55
+  const incoming = distance < foe.punchRange * 1.2 && foeTip > STRIKE_MIN_TIP_SPEED * (foe.armLength / TIP_BAR_ARM) * 0.55
     ? foeTip * 0.22 * (1 - 0.5 * distance / (foe.punchRange * 1.2))
     : 0;
   const half = self.arenaHalf;
@@ -231,6 +347,7 @@ function toState(b: Body, spiked: NeuronModule[]): ArenaBotState {
     armL: +b.armL.toFixed(3), armR: +b.armR.toFixed(3),
     armLv: +b.armLv.toFixed(3), armRv: +b.armRv.toFixed(3),
     gait: +b.gait.toFixed(3), struck: b.struck,
+    feet: Array.from(b.feet, (v) => +v.toFixed(4)),
   };
 }
 
@@ -250,15 +367,34 @@ export function* runMatch(
     // fan the squad out along an arc so they do not spawn stacked
     const spread = n === 1 ? 0 : (idx / (n - 1) - 0.5) * 0.9;
     const a = angle + spread;
+    // Hoisted so the feet can be placed relative to it. Reconstructing it inside the
+    // literal is not possible — it consumes the rng, and the spawn must stay seeded.
+    const heading0 = a + Math.PI + (rng() - 0.5) * 0.5;
+    const spawnX = Math.cos(a) * r, spawnY = Math.sin(a) * r;
+    const latX0 = -Math.sin(heading0) * HALF_HIP, latY0 = Math.cos(heading0) * HALF_HIP;
     return {
       spec: n === 1 ? spec : { ...spec, id: `${spec.id}#${idx}` },
       team, alive: true,
       brain: new Brain(spec.brain, rng),
-      x: Math.cos(a) * r, y: Math.sin(a) * r,
-      heading: a + Math.PI + (rng() - 0.5) * 0.5,
+      x: spawnX, y: spawnY,
+      heading: heading0,
       vx: 0, vy: 0, omega: 0,
       driveFwd: 0, driveTurn: 0,
       armL: ARM_REST, armR: -ARM_REST, armLv: 0, armRv: 0, gait: rng(), struck: false,
+      // Under the hips from tick zero. Zeroed, these sat at the world ORIGIN while
+      // the bot spawned five metres out, so both legs reached across the arena until
+      // the first touchdown.
+      feet: new Float64Array([
+        spawnX - latX0, spawnY - latY0, 0,
+        spawnX + latX0, spawnY + latY0, 0,
+      ]),
+      footDown: [false, false], replants: 0,
+      // Seeded like `feet`: a foot that spawns part-way through its SWING is
+      // interpolated out of footFrom, and zeroed that is the world origin.
+      footFrom: new Float64Array([
+        spawnX - latX0, spawnY - latY0, 0,
+        spawnX + latX0, spawnY + latY0, 0,
+      ]),
       punchCd: 0, punchSide: 0, guard: 0, recovery: 0, blocked: false, guardHold: 0,
       lean: 0, leanV: 0, tilt: 0, tiltV: 0, down: 0, swungAt: -99,
       countered: false, stamina: 1, gassed: false, comboLeft: 0,
@@ -267,7 +403,8 @@ export function* runMatch(
       ...(() => {
         // Derived once per bot, not per tick: the body does not change mid-fight.
         const phys = bodyRatios(spec.chassis, spec.body);
-        const armLength = ARM_LENGTH * phys.reach;
+        // the arm the RIG draws for this chassis, so the hit is the hand on screen
+        const armLength = armReach(spec.chassis) * phys.reach;
         const strikeReach = BOT_RADIUS + armLength;
         return {
           phys, armLength, strikeReach,
@@ -375,8 +512,36 @@ export function* runMatch(
           * (body.recovery > 0 ? 0.35 : 1);
       }
 
-      body.vx += (Math.cos(body.heading) * wantSpeed + lx * strafe - body.vx) * VEL_LAG;
-      body.vy += (Math.sin(body.heading) * wantSpeed + ly * strafe - body.vy) * VEL_LAG;
+      // ── LOCOMOTION: the foot pushes the ground, the ground pushes back ──────
+      // The brain still asks for a velocity. Getting it is now the legs' problem.
+      const wantVx = Math.cos(body.heading) * wantSpeed + lx * strafe;
+      const wantVy = Math.sin(body.heading) * wantSpeed + ly * strafe;
+
+      // A leg can only push while its foot is down. The two alternate, so contact
+      // never drops to zero, but thrust dips as weight transfers — which is what
+      // gives a stride its surge instead of a constant glide. Same gait phase the
+      // pose plants the foot on, so the push happens on the leg you can see loaded.
+      const stanceLoad = 1 - SWING_LOSS * Math.abs(Math.sin(body.gait * Math.PI * 2));
+
+      // Square-cube law, already computed for this body: leg force goes as m^(2/3)
+      // while the mass to shift goes as m, so deliverable acceleration is m^(-1/3).
+      const canPush = PUSH_CEILING * body.phys.accel * stanceLoad
+        // you cannot drive off a leg that is carrying a falling body
+        * (body.down > 0 ? 0 : 1);
+
+      // Demand is the old first-order response, expressed as an acceleration. Under
+      // the ceiling `v += a*DT` reduces exactly to `v += (want - v) * VEL_LAG`, so
+      // nothing changes for a bot that is not asking for more grip than it has.
+      let pushX = ((wantVx - body.vx) * VEL_LAG) / DT;
+      let pushY = ((wantVy - body.vy) * VEL_LAG) / DT;
+      const demand = Math.hypot(pushX, pushY);
+      if (demand > canPush) {
+        // out of traction: you get what the foot can give and slide the rest
+        const slip = canPush / demand;
+        pushX *= slip; pushY *= slip;
+      }
+      body.vx += pushX * DT;
+      body.vy += pushY * DT;
       const prevVx = body.vx, prevVy = body.vy;
       body.omega += (wantOmega - body.omega) * OMEGA_LAG;
 
@@ -397,7 +562,11 @@ export function* runMatch(
 
       if (Math.abs(body.lean) > body.knockdownLean || Math.abs(body.tilt) > body.knockdownLean) {
         body.down = KNOCKDOWN_TICKS;
+        // Clamp BOTH axes. Only lean was held, so roll kept whatever value tipped
+        // the body over and then froze there for the whole count — measured out to
+        // 1.61 rad, which is a bot lying fully on its side rather than going down.
         body.lean = Math.sign(body.lean) * body.knockdownLean;
+        body.tilt = Math.sign(body.tilt) * Math.min(Math.abs(body.tilt), body.knockdownLean);
       }
 
       // Arms. A punch is an EVENT, not an oscillation: when the brain is driving
@@ -412,9 +581,37 @@ export function* runMatch(
       // come up part-way bent rather than snapping vertical.
       if (body.down > 0) {
         body.down--;
+        // Feet are not bearing weight while you are down, and leaving them pinned
+        // where you fell means the legs stretch back to them as the body slides and
+        // then snap on the getup. Park them under the hips and re-plant on the way up.
+        for (let side = 0; side < 2; side++) {
+          const o = side * 3;
+          const lat = (side === 0 ? -1 : 1) * HALF_HIP;
+          body.feet[o] = body.x + -Math.sin(body.heading) * lat;
+          body.feet[o + 1] = body.y + Math.cos(body.heading) * lat;
+          body.feet[o + 2] = 0;
+          body.footDown[side] = false;
+        }
         body.guard = 0; body.guardHold = 0;
         body.vx *= 0.82; body.vy *= 0.82; body.omega *= 0.7;
-        if (body.down === 0) { body.lean = GETUP_LEAN; body.leanV = 0; body.tilt *= 0.3; }
+        if (body.down === 0) {
+          // Come up on the side you went down on.
+          //
+          // This used to snap to a POSITIVE GETUP_LEAN whatever direction you fell,
+          // so a body that went over backwards flipped from -0.79 to +0.50 in one
+          // tick. The ragdoll rotates the whole figure about its feet, so that is
+          // 74 degrees of whole-body rotation in a single frame and the fists
+          // teleport about 0.9 m — measured at 53 m/s against a true tip speed near
+          // 4. Preserving the sign keeps the getup on the correct side and turns a
+          // 1.29 rad discontinuity into a 0.29 rad one the lean spring can absorb.
+          body.lean = (body.lean < 0 ? -1 : 1) * GETUP_LEAN;
+          body.leanV = 0;
+          // Roll gets the same treatment rather than being multiplied to a third of
+          // itself, which was its own 0.39 rad step. Easing it to just under the
+          // tipping angle keeps it below the knockdown test without the jolt.
+          body.tilt = (body.tilt < 0 ? -1 : 1) * Math.min(Math.abs(body.tilt), GETUP_LEAN);
+          body.tiltV = 0;
+        }
         return;
       }
 
@@ -490,13 +687,139 @@ export function* runMatch(
       body.armL += body.armLv * DT; body.armR += body.armRv * DT;
       body.armL = Math.max(-2.2, Math.min(2.2, body.armL));
       body.armR = Math.max(-2.2, Math.min(2.2, body.armR));
-      body.gait = (body.gait + (0.02 + Math.hypot(body.vx, body.vy) * 0.055)) % 1;
+      // Gait advances so the PLANTED FOOT STAYS PUT.
+      //
+      // The swing foot travels 2·stride while the body covers v·T over the same
+      // half cycle, so not slipping means T = 2·stride/v and the phase rate is
+      // v/(4·stride). It used to be a flat 0.02 + 0.055·v, which at walking pace
+      // cycles the legs about five times faster than the ground actually moves:
+      // the feet scrabbled in place and the whole fight read as sliding rather
+      // than walking. `strideFor` is the same function the pose uses to put the
+      // foot down, so the two cannot drift apart.
+      const gaitSpeed = Math.hypot(body.vx, body.vy);
+      /**
+       * The step is sized by the LEG, not by a curve fitted to speed.
+       *
+       * A foot plants `reach` ahead of the hip and stays put until the body has
+       * carried it `reach` behind, so one stance sweeps 2·reach of ground. That
+       * sweep is the whole budget: it is the furthest the leg can span without
+       * straightening. The cycle then follows from how long that takes —
+       * T_stance = 2·reach / v, and the stance is STANCE of a full cycle.
+       *
+       * Deriving it the other way round, from a stride curve, is what broke it:
+       * the body travelled 2.48 strides during a stance the leg could only span
+       * 0.26 m of, so 62% of planted feet were beyond reach and the limb stretched.
+       */
+      const reach = footReach(body.spec.chassis);
+      const sweep = 2 * reach;
+      const stride = reach;
+      // a slow weight shift so a bot that has stopped is not frozen solid
+      body.gait = (body.gait + Math.max(0.004, (STANCE * gaitSpeed) / (sweep * TICK_HZ))) % 1;
+
     });
 
     // move
     for (const body of bodies) {
       if (!body.alive) continue;
       body.x += body.vx * DT; body.y += body.vy * DT; body.heading += body.omega * DT;
+
+      if (body.down === 0) {
+      /**
+       * FOOTFALL — plant the foot in the WORLD and leave it there.
+       *
+       * This is the difference between walking and sliding, and no amount of gait
+       * timing fixes it. The pose used to place each foot in BODY-LOCAL space at
+       * cos(phase)·stride, so the foot was repositioned relative to the body every
+       * frame and could never actually be stationary on the ground — matching the
+       * phase rate to ground speed only made it right ON AVERAGE across a half
+       * cycle, while instantaneously the foot still swept back and forth.
+       *
+       * Now a foot in stance holds a fixed world coordinate, full stop. The body
+       * travels over it, the leg solves to reach it, and the contact is real. A
+       * foot in swing arcs from where it lifted off to where it will next land,
+       * one stride ahead of the hip.
+       */
+      // Runs AFTER integration so the reach clamp is applied against where the body
+      // actually ended up this tick, not where it was a tick ago.
+      const reach = footReach(body.spec.chassis);
+      const stepX = Math.cos(body.heading), stepY = Math.sin(body.heading);
+      const latX = -stepY, latY = stepX;
+      // direction of travel, falling back to the heading when barely moving
+      const vmag = Math.hypot(body.vx, body.vy);
+      const goX = vmag > 0.05 ? body.vx / vmag : stepX;
+      const goY = vmag > 0.05 ? body.vy / vmag : stepY;
+      for (let side = 0; side < 2; side++) {
+        const o = side * 3;
+        // the two feet run half a cycle apart
+        const ph = (body.gait + (side === 0 ? 0 : 0.5)) % 1;
+        const inStance = ph < STANCE;
+        const lateral = (side === 0 ? -1 : 1) * HALF_HIP;
+        // where this foot would land if it came down now
+        // Step where the body is actually GOING, not where it is facing.
+        //
+        // Boxers circle and strafe: a lot of the travel during a stance is sideways,
+        // and aiming the plant down the heading budgeted none of it. The foot then
+        // ran out of reach halfway through and was dragged — 47% of stance ticks.
+        const tx = body.x + goX * reach + latX * lateral;
+        const ty = body.y + goY * reach + latY * lateral;
+
+        if (inStance) {
+          // A shove, a knockback or a hard turn can carry the body further in one
+          // stance than the gait budgeted for, and a foot left pinned behind it
+          // stretches the leg to a length it does not have — measured out to 5.2 m
+          // on a 0.52 m leg, which the knee solver cannot answer and the mesh wears
+          // as a distortion. Past the limit the foot is simply picked up and put
+          // down again. It is a discrete correction, and it is what a body does
+          // when it is shoved: it takes a recovery step.
+          const hipX = body.x + latX * lateral, hipY = body.y + latY * lateral;
+          if (!body.footDown[side]) {
+            // touchdown: commit to this spot and do not move it again until liftoff
+            body.feet[o] = tx; body.feet[o + 1] = ty;
+            body.footDown[side] = true;
+          }
+          body.feet[o + 2] = 0;
+
+          /**
+           * The leg may never be asked for more than it has.
+           *
+           * A stance is budgeted to sweep exactly 2·reach of ground, which works
+           * while the body travels at the speed the gait was derived from. It does
+           * not survive a shove, a knockback or a hard strafe — the body outruns
+           * its own foot, and no re-planting rule fixes that, because by the time
+           * the rule trips the leg is already stretched. Re-planting on drift also
+           * fired more often than feet actually landed.
+           *
+           * So the invariant is enforced directly: a planted foot is pulled back to
+           * the edge of the reachable circle whenever the body has gone too far.
+           * That IS a drag, and it is meant to be — being shoved off your stance
+           * scrapes your foot along the floor. Normal walking never reaches it, so
+           * slip stays exactly zero there.
+           */
+          const dxh = body.feet[o] - hipX, dyh = body.feet[o + 1] - hipY;
+          const dh = Math.hypot(dxh, dyh);
+          if (dh > reach) {
+            const k = reach / dh;
+            body.feet[o] = hipX + dxh * k;
+            body.feet[o + 1] = hipY + dyh * k;
+            body.replants++;
+          }
+        } else {
+          if (body.footDown[side]) {
+            // liftoff: remember where we left, to swing out of it
+            body.footFrom[o] = body.feet[o];
+            body.footFrom[o + 1] = body.feet[o + 1];
+            body.footDown[side] = false;
+          }
+          const t = (ph - STANCE) / (1 - STANCE);
+          // ease in and out so the foot does not jerk off the floor or slam down
+          const e = t * t * (3 - 2 * t);
+          body.feet[o] = body.footFrom[o] + (tx - body.footFrom[o]) * e;
+          body.feet[o + 1] = body.footFrom[o + 1] + (ty - body.footFrom[o + 1]) * e;
+          body.feet[o + 2] = Math.sin(Math.PI * t) * STEP_ARC;
+        }
+      }
+      }
+
       const lim = Math.max(BOT_RADIUS, half - BOT_RADIUS);
       if (Math.abs(body.x) > lim) { body.x = Math.sign(body.x) * lim; body.vx *= -0.35; }
       if (Math.abs(body.y) > lim) { body.y = Math.sign(body.y) * lim; body.vy *= -0.35; }
@@ -513,10 +836,29 @@ export function* runMatch(
         const ang = side ? att.armR : att.armL;
         const av = Math.abs(side ? att.armRv : att.armLv);
         const tipSpeed = av * att.armLength;
-        if (tipSpeed < STRIKE_MIN_TIP_SPEED) continue;
-        const wa = att.heading + ang;
-        const fx = att.x + Math.cos(wa) * att.strikeReach;
-        const fy = att.y + Math.sin(wa) * att.strikeReach;
+        const tipBar = STRIKE_MIN_TIP_SPEED * (att.armLength / TIP_BAR_ARM);
+        if (tipSpeed < tipBar) continue;
+
+        /**
+         * Resolve the strike against the arm that is actually DRAWN.
+         *
+         * This used to place the fist at full extension the instant a swing was
+         * live — `BOT_RADIUS + armLength`, always — while the rig drew the hand
+         * anywhere from 42% to 100% of the way out, swinging with the gait. The
+         * hit and the picture were two different events: a punch could land with
+         * the visible arm still tucked into the guard, or sweep clean through a
+         * body and do nothing.
+         *
+         * `fistLocal` is the same function the pose calls, so the angle and the
+         * extension here are the ones on screen. The reach stays on the arena's
+         * scale (BOT_RADIUS is a collision radius, not a drawing measurement) —
+         * what changes is that the arm must genuinely be out and pointed at you.
+         */
+        const drawn = fistLocal(att, att.spec.chassis, side ? 1 : -1);
+        const wa = att.heading + drawn.swung;
+        const fistOut = BOT_RADIUS + att.armLength * drawn.extend;
+        const fx = att.x + Math.cos(wa) * fistOut;
+        const fy = att.y + Math.sin(wa) * fistOut;
         for (const def of bodies) {
           if (def === att || !def.alive || def.team === att.team) continue;
           const lock = att.brain.lockLevel;
@@ -532,14 +874,14 @@ export function* runMatch(
           // this expression, so only the arm-mass half is applied here — scaling by the
           // whole energy ratio would count v twice.
           const armMass = att.phys.impactEnergy / att.phys.tipSpeed ** 2;
-          const raw = (tipSpeed - STRIKE_MIN_TIP_SPEED) * STRIKE_DAMAGE * armMass * flush / Math.sqrt(n)
+          const raw = (tipSpeed - tipBar) * STRIKE_DAMAGE * armMass * flush / Math.sqrt(n)
             * (counter ? COUNTER_BONUS : 1);
           const dmg = raw * (1 - def.guard * GUARD_BLOCK);
           if (def.guard > 0.45) def.blocked = true;
           if (counter) def.countered = true;
           def.hull -= dmg; def.damageThisTick += dmg; def.struck = true;
           // rock the defender: back along the swing, and sideways off-centre
-          const rock = (1 - def.guard * 0.75) * HIT_LEAN * Math.min(1.6, tipSpeed / STRIKE_MIN_TIP_SPEED);
+          const rock = (1 - def.guard * 0.75) * HIT_LEAN * Math.min(1.6, tipSpeed / tipBar);
           def.leanV -= rock;
           def.tiltV += (((att.x * 7 + att.y * 13) % 2) - 0.5) * rock * 0.8;
           // knockback along the swing

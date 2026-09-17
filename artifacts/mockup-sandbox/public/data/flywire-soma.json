@@ -1,0 +1,32 @@
+{
+ "count": 139248,
+ "classes": [
+  "optic",
+  "central",
+  "sensory",
+  "visual_projection",
+  "ascending",
+  "descending",
+  "sensory_ascending",
+  "visual_centrifugal",
+  "motor",
+  "endocrine",
+  "other"
+ ],
+ "modules": [
+  "LC10a",
+  "LPLC2",
+  "LC11",
+  "DNa02",
+  "MDN",
+  "DNp01"
+ ],
+ "span": 204405.0,
+ "centre": [
+  123517.5,
+  62124.0,
+  34955.0
+ ],
+ "layout": "uint16 xyz per neuron, then uint8 meta per neuron ((module<<4)|class)",
+ "source": "FlyWire FAFB v783 annotations (Schlegel et al. 2024)"
+}

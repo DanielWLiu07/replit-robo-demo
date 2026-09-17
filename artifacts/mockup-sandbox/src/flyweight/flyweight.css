@@ -222,13 +222,13 @@
 
 /* Keep a clear band so the arena canvas behind the fight screen is visible.
    Without this the instrumentation covers the fight completely. */
-.fight-viewport{height:min(46vh,430px);pointer-events:none}
+.fight-viewport{height:min(58vh,560px);pointer-events:none}
 .fight-brains{gap:14px;margin-top:10px}
 .fight-brain{padding:9px 11px 8px;background:rgba(255,255,255,.72)}
 .fight-brain .brainview-note{font-size:9.5px;line-height:1.35;margin-top:6px}
 .fight-brain .brainview-key{font-size:9.5px;gap:6px 12px}
 .fight-scopes{margin-top:12px}
-@media (max-height:820px){.fight-viewport{height:34vh}}
+@media (max-height:820px){.fight-viewport{height:46vh}}
 
 /* ── Landing is the gacha moon: ink on paper, so the page is paper too ───── */
 .route-home{--paper:#eeeeea;--ink:#181818;--line:#cccccc;color:var(--ink)}
@@ -683,11 +683,14 @@ html,body{background:#07070a}
     outline is built from drop-shadows: those act on the rendered ALPHA, which
     invert/grayscale leave untouched. Eight offsets make a ring rather than the
     four-way cross a smaller set gives on diagonals. */
- filter:grayscale(1) invert(1) brightness(1.12)
-  drop-shadow(2px 0 0 #050508) drop-shadow(-2px 0 0 #050508)
-  drop-shadow(0 2px 0 #050508) drop-shadow(0 -2px 0 #050508)
-  drop-shadow(1.4px 1.4px 0 #050508) drop-shadow(-1.4px 1.4px 0 #050508)
-  drop-shadow(1.4px -1.4px 0 #050508) drop-shadow(-1.4px -1.4px 0 #050508);
+ /* KatieRoze's artwork is DARK, so invert is what makes it read light on the
+    black ground. The earlier illegibility was not the invert: it was the outline.
+    A script face has thin strokes, and an 8-way 2.4px black halo is wider than
+    the stroke, so it closed over the letters and left dark mush. 1px keeps the
+    edge without eating the glyph. */
+ filter:grayscale(1) invert(1) brightness(1.45) contrast(1.15)
+  drop-shadow(1px 0 0 #050508) drop-shadow(-1px 0 0 #050508)
+  drop-shadow(0 1px 0 #050508) drop-shadow(0 -1px 0 #050508);
 }
 
 /* the back link sat at --muted over a bright moon and disappeared */
@@ -851,3 +854,251 @@ html,body{background:#07070a}
   .bench { grid-template-columns: 1fr; padding: 16px; }
   .bench-panel { max-height: none; }
 }
+
+/* ── Instinct points ────────────────────────────────────────────────────────
+   The pool, made visible. The dials used to be free 0-100 sliders whose totals
+   were silently renormalised into the weight budget downstream, so raising all
+   three changed nothing at all. Now the spend is on screen and the ghost mark
+   on each track shows how far that dial could still go with the points left. */
+.point-pool{
+  display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:10px;
+  margin:2px 0 14px;font-size:9px;letter-spacing:.08em;color:#6a6a66;
+}
+.point-pool progress{appearance:none;width:100%;height:4px;background:#e6e6e0;border:0}
+.point-pool progress::-webkit-progress-bar{background:#e6e6e0}
+.point-pool progress::-webkit-progress-value{background:#141414}
+.point-pool b{font-weight:600;color:#141414}
+.point-pool small{color:#8d8d8d;font-weight:400}
+.dial{position:relative}
+.dial-cap{
+  position:absolute;left:0;bottom:0;height:2px;
+  border-right:2px solid #b4b4ae;pointer-events:none;
+}
+/* Overdrawn: a loadout carried over from a build made before the pool existed.
+   Shown honestly rather than clamped — you can lower a dial, not raise one. */
+.point-pool b.over{color:#1c1c1c;background:#e2e2dc;padding:1px 5px}
+
+/* ── Bench on the right ─────────────────────────────────────────────────────
+   The configuration glass moves to the right half and the fly takes the left.
+   The BAY camera target in moonLayout.ts is mirrored to match — move one
+   without the other and the panel sits on top of the model. */
+.bench{
+  grid-template-columns:1fr minmax(340px,30vw);
+  padding:26px 26px 26px 0;
+}
+.bench-panel{grid-column:2}
+
+
+/* The fight is the point of the fight screen. The instrumentation had grown until
+   it owned the bottom half of the window and the fighters were behind it. */
+.fight-brains { gap: 12px; margin-top: 8px; }
+.fight-brain { padding: 7px 10px 6px; }
+.fight-brain .brainview-note { display: none; }
+.brain-meters { gap: 4px; margin-top: 6px; font-size: 9px; }
+.brain-meters .meter { grid-template-columns: 66px 1fr 38px; gap: 6px; }
+
+/* ── Bench: class is chosen, not chosen here ────────────────────────────────
+   The lab used to re-offer DRONE/HORNET/TANK, which made it a second character
+   select — and picking one silently reset the body dials to that class's stock
+   values, losing the tuning you came here to do. Now it states what you are
+   wearing and sends you back to the roster to change it. */
+.class-locked{
+  display:flex;align-items:baseline;gap:10px;
+  margin-top:10px;padding:8px 10px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.05);
+  font-size:9px;letter-spacing:.14em;
+}
+.class-locked-name{font-size:13px;letter-spacing:.06em;color:#f7f8fa}
+.class-locked-note{color:rgba(242,243,245,.45)}
+.class-locked a{margin-left:auto;color:rgba(242,243,245,.6);letter-spacing:.1em}
+.class-locked a:hover{color:#f7f8fa}
+.bench-group h3 em{
+  font-style:normal;float:right;font-weight:400;
+  color:rgba(242,243,245,.4);letter-spacing:.12em;
+}
+
+/* ── One seat, not two ──────────────────────────────────────────────────────
+   The opponent comes from the campaign, so the versus bar lost its right half
+   and the grid closes up behind it. */
+.vs-bar.solo{grid-template-columns:1fr auto}
+.vs-bar.solo .vs-versus{text-align:right}
+.roster-card .card-slot{letter-spacing:.14em}
+
+/* Squad size moved out of the (now removed) versus bar and in beside the
+   action button, so the control survives the layout change. */
+.select-actions{display:flex;align-items:center;gap:20px}
+.select-actions .squad-stepper{margin:0}
+
+/* ── Roster select: bigger title, one button design ─────────────────────────
+   Back and Next were two different objects — a small dark chip in the top
+   strip and a wide bordered button at the bottom — so the two ways out of the
+   screen looked unrelated. They now share a box: same height, same padding,
+   same type, differing only in fill, which is what marks one as the way on. */
+.route-select .section-heading h2{
+  font-size:clamp(64px,8.5vw,132px);
+}
+
+.route-select .back-link,
+.route-select .select-actions .button{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-weight:500;
+  min-width:210px;
+  padding:14px 20px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  border:1px solid rgba(255,255,255,.28);
+  background:rgba(10,10,14,.55);
+  color:#f1f1ed;
+  backdrop-filter:blur(8px);
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.route-select .back-link:hover,
+.route-select .select-actions .button:hover{
+  background:rgba(255,255,255,.14);
+  border-color:#e8e8e4;
+  transform:translateY(-2px);
+}
+/* the way on is the filled one */
+.route-select .select-actions .button.primary{
+  background:#f1f1ed;
+  color:#07070a;
+  border-color:#f1f1ed;
+}
+.route-select .select-actions .button.primary:hover{background:#ffffff}
+/* .fight-button's 64px gap was for a space-between layout this no longer uses */
+.route-select .fight-button{gap:12px}
+.brainview-loading{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-size:9px;letter-spacing:.14em;color:rgba(242,243,245,.35);
+}
+
+/* ── FIGHT HUD: horizontal, and flush to the bottom ──────────────────────────
+   The instrumentation was two TALL stacked cards — head, then a brain canvas,
+   then meters underneath — with a gap below them. Two columns of that ate the
+   middle of the window and left the actual fight in a letterbox strip.
+   Now each panel is one horizontal band: the connectome beside its readout
+   rather than above it, mirrored so both brains sit on the outer edges and the
+   numbers face each other in the middle. Pinned to the bottom edge, no gap. */
+.fight-brains {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 0;
+  /* flush to the bottom edge — no strip of moon showing under the panels */
+  padding: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.fight-brain {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  grid-template-areas: "head head" "brain meters";
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 2px;
+  padding: 5px 12px 6px;
+  border-bottom: 0;
+}
+/* player two is mirrored: readout inboard, brain outboard */
+.fight-brain.brain-1 {
+  grid-template-columns: 1fr 210px;
+  grid-template-areas: "head head" "meters brain";
+}
+.fight-brain-head { grid-area: head; }
+.fight-brain .brainview { grid-area: brain; min-width: 0; }
+.fight-brain .brain-meters { grid-area: meters; min-width: 0; margin: 0; }
+.fight-brain.brain-1 .fight-brain-head { flex-direction: row-reverse; }
+
+/* the connectome gets a short, wide window instead of a tall one */
+.fight-brain .brainview-canvas { height: 62px !important; }
+.fight-brain .brainview .section-label { display: none; }
+.fight-brain .brainview-key { display: none; }
+
+/* meters on one line each, packed */
+.fight-brain .brain-meters { display: grid; gap: 3px; font-size: 8.5px; }
+.fight-brain .brain-meters .meter { grid-template-columns: 62px 1fr 34px; gap: 6px; }
+.fight-brain .brain-meters progress { height: 3px; }
+.fight-brain .fight-state { display: flex; gap: 6px; margin-top: 2px; }
+
+/* the section no longer reserves space under itself */
+.fight-section { padding-bottom: 0; min-height: 100svh; }
+.fight-viewport { height: auto !important; flex: 1 1 auto; }
+
+/* ── top strip: compact ─────────────────────────────────────────────────── */
+.fight-section { padding-top: 8px; }
+.fight-hud { gap: 14px; align-items: center; }
+.fight-hud .bot-score > div { gap: 7px; }
+.fight-hud .bot-score progress { margin-top: 7px; }
+.fight-readout { margin-top: 5px; font-size: 7.5px; }
+.fight-controls { margin-top: 0; padding: 6px 14px; gap: 16px; }
+
+/* the head line is one compact row, not a stack */
+.fight-brain-head { display: flex; align-items: center; gap: 8px; font-size: 9px; line-height: 1; }
+.fight-brain-head strong { font-size: 11px; }
+.fight-brain-head .char-cells { margin-left: auto; opacity: .55; }
+.fight-brain.brain-1 .fight-brain-head .char-cells { margin-left: 0; margin-right: auto; }
+.fight-brain .fight-state i { font-size: 7.5px; padding: 2px 5px; }
+
+/* ── Fight HUD: one connected bar ───────────────────────────────────────────
+   The top was three separate objects — a hull panel, a floating clock with no
+   surface under it, another hull panel — with 28px of moon showing between
+   them, so the clock read as debris rather than as part of the HUD. It is now
+   a single bar: the two hull halves and the clock share one surface, divided
+   by rules rather than by gaps, and the clock squeezes in between them. */
+.route-fight .fight-hud{
+  gap:0;
+  align-items:stretch;
+  background:#0d0e14d9;
+  border:1px solid var(--glass-line,#2b2c34);
+  backdrop-filter:blur(14px);
+  overflow:hidden;
+}
+/* the halves lose their own edges — the bar owns them now */
+.route-fight .fight-hud .hud-hull{
+  background:transparent;
+  border:0;
+  padding:12px 16px;
+}
+.route-fight .hud-centre{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:10px 20px;
+  /* hairlines instead of a gap: that is what joins the three into one bar */
+  border-left:1px solid var(--glass-line,#2b2c34);
+  border-right:1px solid var(--glass-line,#2b2c34);
+  min-width:180px;
+}
+
+/* Sudden death sat in the flow and its width pushed the whole centre column
+   open, spreading the two halves apart mid-fight. It floats under the bar
+   instead, so the layout does not move when it appears. */
+.route-fight .hud-centre{position:relative}
+.route-fight .sudden-death{
+  position:absolute;
+  top:100%;
+  left:50%;
+  transform:translateX(-50%);
+  margin-top:8px;
+  white-space:nowrap;
+  z-index:3;
+}
+/* It was rendering as a blank white slab: the inherited pairing left the label
+   with almost no contrast against its own background. Stated explicitly. */
+.route-fight .sudden-death{
+  background:#f2f2ee;
+  color:#111116;
+  font-weight:600;
+  padding:6px 12px;
+  border:1px solid #f2f2ee;
+}
+.route-fight .sudden-death i{background:#111116}
