@@ -1,0 +1,1 @@
+Vendored subset of Daniel W Liu's blender-to-threejs, local source snapshot 2026-09-17. ISC license. Sources kept unchanged; manga composition is an authored adaptation, not an exact Blender scene port.

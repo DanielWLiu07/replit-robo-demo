@@ -46,6 +46,7 @@ export default defineConfig({
       : []),
   ],
   resolve: {
+    dedupe: ["three"],
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
     },
@@ -56,6 +57,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    proxy: { "/api": "http://localhost:5050", "/ws": { target: "ws://localhost:5050", ws: true } },
     port,
     host: "0.0.0.0",
     allowedHosts: true,

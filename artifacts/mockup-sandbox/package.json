@@ -70,5 +70,11 @@
     "vaul": "^1.1.2",
     "vite": "catalog:",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "three": "^0.185.1",
+    "@types/three": "^0.185.0",
+    "@workspace/contract": "workspace:*",
+    "@workspace/sim": "workspace:*"
   }
 }

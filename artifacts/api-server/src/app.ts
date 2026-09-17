@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -8,7 +9,9 @@ import {
   clerkProxyMiddleware,
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
+import { identityMiddleware } from "./middlewares/identity";
 import router from "./routes";
+import { errorHandler } from "./lib/http";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -34,6 +37,7 @@ app.use(
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -45,6 +49,12 @@ app.use(
   })),
 );
 
+// Clerk when there's a session, a guest cookie otherwise — see identity.ts.
+app.use(identityMiddleware());
+
 app.use("/api", router);
+
+// Last: every HttpError, ValidationError and stray throw becomes an ApiError.
+app.use(errorHandler);
 
 export default app;

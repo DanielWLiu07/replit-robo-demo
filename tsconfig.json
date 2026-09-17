@@ -4,6 +4,9 @@
   "files": [],
   "references": [
     {
+      "path": "./lib/contract"
+    },
+    {
       "path": "./lib/db"
     },
     {
