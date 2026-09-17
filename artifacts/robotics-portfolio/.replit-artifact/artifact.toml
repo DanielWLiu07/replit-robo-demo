@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
-title = "Daniel Liu — Robotics Portfolio"
-description = "A robotics-themed personal portfolio for Daniel Liu's Replit internship application, featuring his engineering profile, selected GitHub projects, technical interests, and contact links in a focused black-and-white interface."
+title = "FLYWEIGHT — Small brain. Big fight."
+description = "FLYWEIGHT is a browser-based robotics experiment where users build connectome-inspired battle bots and watch their brains compete."
 version = "1.0.0"
 id = "artifacts/robotics-portfolio"
 router = "path"
@@ -12,12 +12,12 @@ paths = [ "/" ]
 localPort = 25039
 
 [services.development]
-run = "pnpm --filter @workspace/robotics-portfolio run dev"
+run = "pnpm --filter @workspace/mockup-sandbox run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/robotics-portfolio", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/mockup-sandbox", "run", "build" ]
 serve = "static"
-publicDir = "artifacts/robotics-portfolio/dist/public"
+publicDir = "artifacts/mockup-sandbox/dist"
 
 [[services.production.rewrites]]
 from = "/*"
