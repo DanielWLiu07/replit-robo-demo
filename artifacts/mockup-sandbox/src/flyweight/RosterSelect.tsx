@@ -174,8 +174,6 @@ export function RosterSelect({
         <a className="back-link" href="#/">
           ← Back
         </a>
-        <span>01 / ROSTER SELECT</span>
-        <span className="mono">YOUR FIGHTER</span>
       </div>
       <div className="section-heading">
         <h2>Roster Select</h2>
@@ -215,26 +213,6 @@ export function RosterSelect({
       </div>
 
       <div className="select-actions">
-        <div className="squad-stepper">
-          <button
-            aria-label="Fewer units per side"
-            onClick={() => setSquad(Math.max(1, squad - 1))}
-            disabled={squad <= 1}
-          >
-            −
-          </button>
-          <span className="squad-count">
-            <strong>{squad}</strong>
-            <small className="mono">v{squad}</small>
-          </span>
-          <button
-            aria-label="More units per side"
-            onClick={() => setSquad(Math.min(MAX_SQUAD, squad + 1))}
-            disabled={squad >= MAX_SQUAD}
-          >
-            +
-          </button>
-        </div>
         <button className="button primary fight-button" onClick={onNext}>
           Next · Brain lab <span>→</span>
         </button>

@@ -1,17 +1,17 @@
 {
   "drone": {
-    "id": "01a0b1aa-b006-73ea-a5d4-58d64223e825",
-    "prompt": "Slim fruit-fly boxer robot, long limbs, big faceted eyes. STRICT T-POSE rigging reference. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS STRAIGHT OUT SIDEWAYS, horizontal, level with the shoulders, elbows locked. Each arm has an upper arm, a distinct slimmer FOREARM and a large blocky FIST, with clear elbow and wrist joints. Upright thorax, head with compound eyes, abdomen angled back, folded wing blades. Chipped white armour over black steel, rivets, industrial manga machinery. No bent or raised arms, no boxing stance, no extra legs, no colour, no text, no pedestal.",
+    "id": "01a0b1ba-55f5-7587-b328-b231fac04ad9",
+    "prompt": "Slim fruit-fly boxer robot, long thin arms. STRICT T-POSE. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS VERY LONG, stretched FULLY HORIZONTAL out to each side at shoulder height, reaching far past the body, elbows locked. Clear OPEN GAP under each armpit: arms completely SEPARATE from the torso, never merged. Each arm has a long upper arm, a long slimmer FOREARM and a blocky FIST, with clear elbow and wrist. Narrow thorax, head with compound eyes, SMALL wings folded flat. Chipped white armour over black steel. No bent arms, no big wings, no colour.",
     "status": "DOWNLOADED"
   },
   "hornet": {
-    "id": "01a0b1aa-bb87-760d-999c-0e13bc7dc46b",
-    "prompt": "Lean hornet boxer robot, angular shoulders, pointed abdomen. STRICT T-POSE rigging reference. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS STRAIGHT OUT SIDEWAYS, horizontal, level with the shoulders, elbows locked. Each arm has an upper arm, a distinct slimmer FOREARM and a large blocky FIST, with clear elbow and wrist joints. Upright thorax, head with compound eyes, abdomen angled back, folded wing blades. Chipped white armour over black steel, rivets, industrial manga machinery. No bent or raised arms, no boxing stance, no extra legs, no colour, no text, no pedestal.",
+    "id": "01a0b1ba-60d2-775e-8977-8ce05123f0f9",
+    "prompt": "Lean hornet boxer robot, long arms. STRICT T-POSE. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS VERY LONG, stretched FULLY HORIZONTAL out to each side at shoulder height, reaching far past the body, elbows locked. Clear OPEN GAP under each armpit: arms completely SEPARATE from the torso, never merged. Each arm has a long upper arm, a long slimmer FOREARM and a blocky FIST, with clear elbow and wrist. Narrow thorax, head with compound eyes, SMALL wings folded flat. Chipped white armour over black steel. No bent arms, no big wings, no colour.",
     "status": "DOWNLOADED"
   },
   "tank": {
-    "id": "01a0b1aa-c6e2-742a-865b-b8df2626cbd1",
-    "prompt": "Heavy beetle boxer robot, broad plated torso, big fists. STRICT T-POSE rigging reference. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS STRAIGHT OUT SIDEWAYS, horizontal, level with the shoulders, elbows locked. Each arm has an upper arm, a distinct slimmer FOREARM and a large blocky FIST, with clear elbow and wrist joints. Upright thorax, head with compound eyes, abdomen angled back, folded wing blades. Chipped white armour over black steel, rivets, industrial manga machinery. No bent or raised arms, no boxing stance, no extra legs, no colour, no text, no pedestal.",
+    "id": "01a0b1ba-6f61-7155-b160-dff77077daec",
+    "prompt": "Heavy beetle boxer robot, long thick arms. STRICT T-POSE. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS VERY LONG, stretched FULLY HORIZONTAL out to each side at shoulder height, reaching far past the body, elbows locked. Clear OPEN GAP under each armpit: arms completely SEPARATE from the torso, never merged. Each arm has a long upper arm, a long slimmer FOREARM and a blocky FIST, with clear elbow and wrist. Narrow thorax, head with compound eyes, SMALL wings folded flat. Chipped white armour over black steel. No bent arms, no big wings, no colour.",
     "status": "DOWNLOADED"
   }
 }

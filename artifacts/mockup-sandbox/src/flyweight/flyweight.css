@@ -878,15 +878,10 @@ html,body{background:#07070a}
    Shown honestly rather than clamped — you can lower a dial, not raise one. */
 .point-pool b.over{color:#1c1c1c;background:#e2e2dc;padding:1px 5px}
 
-/* ── Bench on the right ─────────────────────────────────────────────────────
-   The configuration glass moves to the right half and the fly takes the left.
-   The BAY camera target in moonLayout.ts is mirrored to match — move one
-   without the other and the panel sits on top of the model. */
-.bench{
-  grid-template-columns:1fr minmax(340px,30vw);
-  padding:26px 26px 26px 0;
-}
-.bench-panel{grid-column:2}
+/* The bench stays on the LEFT and the moon keeps the right half to itself.
+   It was briefly moved right, which meant mirroring the BAY camera to match;
+   the camera has since been re-framed for a left panel, so the override is
+   gone rather than left to fight it. */
 
 
 /* The fight is the point of the fight screen. The instrumentation had grown until

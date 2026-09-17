@@ -5,11 +5,11 @@ const key = (process.env.MESHY_API_KEY || await readFile('/private/tmp/flyweight
 if (!key || /[\r\n]/.test(key)) throw new Error('Save only the Meshy API key in the private input file.');
 const endpoint = 'https://api.meshy.ai/openapi/v2/text-to-3d';
 const names = ['drone', 'hornet', 'tank'];
-const common = 'STRICT T-POSE rigging reference. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS STRAIGHT OUT SIDEWAYS, horizontal, level with the shoulders, elbows locked. Each arm has an upper arm, a distinct slimmer FOREARM and a large blocky FIST, with clear elbow and wrist joints. Upright thorax, head with compound eyes, abdomen angled back, folded wing blades. Chipped white armour over black steel, rivets, industrial manga machinery. No bent or raised arms, no boxing stance, no extra legs, no colour, no text, no pedestal.';
+const common = 'STRICT T-POSE. Upright on TWO straight legs, knees locked, feet flat. BOTH ARMS VERY LONG, stretched FULLY HORIZONTAL out to each side at shoulder height, reaching far past the body, elbows locked. Clear OPEN GAP under each armpit: arms completely SEPARATE from the torso, never merged. Each arm has a long upper arm, a long slimmer FOREARM and a blocky FIST, with clear elbow and wrist. Narrow thorax, head with compound eyes, SMALL wings folded flat. Chipped white armour over black steel. No bent arms, no big wings, no colour.';
 const prompts = {
- drone: 'Slim fruit-fly boxer robot, long limbs, big faceted eyes. ' + common,
- hornet: 'Lean hornet boxer robot, angular shoulders, pointed abdomen. ' + common,
- tank: 'Heavy beetle boxer robot, broad plated torso, big fists. ' + common,
+ drone: 'Slim fruit-fly boxer robot, long thin arms. ' + common,
+ hornet: 'Lean hornet boxer robot, long arms. ' + common,
+ tank: 'Heavy beetle boxer robot, long thick arms. ' + common,
 };
 await mkdir(root + 'public/models', { recursive: true });
 const recordPath = root + 'scripts/meshy-tasks.json';
