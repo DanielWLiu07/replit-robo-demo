@@ -1,116 +1,126 @@
-# FLYWEIGHT
+<h1 align="center">FLYWEIGHT</h1>
+<p align="center"><b>Small brain. Big fight.</b></p>
+<p align="center">Robot flies box each other on a moon, and their brains are real fruit fly circuits.</p>
 
-**Small brain. Big fight.**
-
-Build a robot. Wire its brain from real *Drosophila* circuits. Send it into an arena to
-fight someone else's. Watch both brains spike while they do it.
-
-No joystick. No scripted moves. Just neurons.
+<p align="center">
+  <img src="docs/images/landing.jpg" alt="FLYWEIGHT — a bipedal robot fly on a lunar surface under a black sky" width="100%">
+</p>
 
 ---
 
-## What this actually is
+You never touch the controls.
 
-Every bot is driven by a spiking neural network assembled from six circuits found in the
-fruit fly brain. You pick which circuits to equip and how strongly to wire them; the fly
-does the rest. A bot that equips the Giant Fiber escape reflex flinches away from charges.
-One that equips the courtship pursuit circuit chases. Neither behaviour is scripted —
-both fall out of the neurons.
+You build a robot fly, wire its nervous system out of circuits taken from the *Drosophila*
+connectome, deploy up to five of them onto a lunar ring, and find out whether your instincts
+were any good. It flinches because its Giant Fiber fired. It chases because its
+courtship-pursuit circuit did. Nothing is scripted.
 
-| Module | Real circuit | What it does in a fight |
-|---|---|---|
-| `LPLC2 → DNp01` | looming detection into the Giant Fiber escape reflex | dodges — one spike, no deliberation |
-| `LC10a` | small-target visual pursuit (courtship tracking) | chases |
-| `LC11` | small-object detection | acquires a target |
-| `DNa02` | descending steering neuron | turns |
-| `MDN` | moonwalker descending neuron | reverses |
-| `P1` | arousal / aggression state | amplifies everything else |
+<p align="center">
+  <img src="docs/images/roster.jpg" alt="Roster select: six fighters, stat bars derived from the wiring, and a deploy-count stepper" width="100%">
+  <br><sub>Every stat on the card is computed from the brain you wired — they are the same numbers that drive the fight.</sub>
+</p>
 
 ## The neurons are real
 
 Cell populations are counted from the [FlyWire](https://flywire.ai) 783 public release
-(Schlegel et al., *Nature* 2024) — 139,249 annotated neurons:
+(Schlegel et al., *Nature* 2024) — 139,249 annotated neurons.
 
-```
-LC10a   234 cells   acetylcholine   visual projection
-LPLC2   210 cells   acetylcholine   visual projection
-LC11    127 cells   acetylcholine   visual projection
-MDN       4 cells   acetylcholine   descending
-DNa02     2 cells   acetylcholine   descending
-DNp01     2 cells   GLUTAMATE       descending    ← the Giant Fiber
-```
+| Module | Circuit | Cells | Transmitter | In a fight |
+|---|---|--:|---|---|
+| `LPLC2 → DNp01` | looming into the Giant Fiber escape reflex | **2** | glutamate | runs at range, blocks up close |
+| `LC10a` | small-target visual pursuit (courtship tracking) | 234 | acetylcholine | chases, and throws the punch |
+| `LC11` | small-object detection | 127 | acetylcholine | acquires a target |
+| `DNa02` | descending steering neuron | 2 | acetylcholine | turns |
+| `MDN` | moonwalker descending neuron | 4 | acetylcholine | backs off, holds spacing |
+| `P1` | arousal state | ~60 | acetylcholine | amplifies everything |
 
-Hundreds of visual neurons converge onto **two** descending cells, and the Giant Fiber is
-the only glutamatergic one in the set. That shape is in the simulation: population size
-sets signal noise (variance falls as `1/√N`), so the 2-cell Giant Fiber is visibly twitchy
-in the membrane trace while 234-cell pursuit is smooth.
+The shape of that table is the point. Hundreds of visual neurons converge onto **two**
+descending cells, and the Giant Fiber is the only glutamatergic one in the set.
 
-Synaptic weights between modules are **not** from the connectome — those are your loadout.
+That asymmetry is in the simulation: population size sets signal noise at `1/√N`, so the
+two-cell Giant Fiber is visibly twitchy while 234-cell pursuit is smooth. It is also in the
+3D brain view, which draws **one line per real cell** — when escape fires you see two
+threads flash; when pursuit fires, hundreds shimmer.
+
+Synaptic weights between modules are **not** from the connectome. Those are your loadout.
 That is the game.
+
+<p align="center">
+  <img src="docs/images/fight.jpg" alt="Two bipedal robot flies boxing, with both connectomes firing live below" width="100%">
+  <br><sub>Both brains are live. Populations light as they spike, with arousal, Giant Fiber fatigue and stamina beside them.</sub>
+</p>
+
+## They box
+
+Damage comes from swung fists, never from ramming. Bodies shove; only a fist wounds.
+
+- A punch is an **angular impulse** on a real arm body — momentum carries it against a spring back to guard
+- A strike only lands above **3.2 m/s at the fist**
+- **LC10a fires the punch.** A brain without pursuit equipped lands zero strikes and deals zero damage. It can chase, dodge and steer perfectly and never hurt anyone
+- Committing costs **16 recovery ticks** where you cannot block
+- The Giant Fiber guard blocks **78%** — but you cannot punch while blocking
+- The arena closes in after 25 seconds, so there is nowhere to run by the end
+
+The Giant Fiber does two jobs at two distances: escape when the threat is far, guard when it
+is close. Same reflex, same habituation — so a fly that panics too often loses both.
 
 ## The brains can be evolved
 
 Spikes are not differentiable, so there is no gradient to descend. Evolution is the standard
-tool for training spiking networks, and it is what shaped the originals.
+tool for spiking networks, and it is what shaped the originals.
 
-The simulator is fully deterministic, which is what makes this work: a `(brain, opponent,
-seed)` triple always produces the same match, so fitness is an exact reproducible number
-rather than a noisy sample.
+The simulator is deterministic, which is what makes it work: a `(brain, opponent, seed)`
+triple always produces the same match, so fitness is an **exact reproducible number** rather
+than a noisy sample.
 
 ```
 24 genomes · 14 generations · 28 seconds
-best fitness   13.2  →  30.82
-population mean -0.33 →  13.94     (the whole population improves, not just the elite)
+best fitness    13.2 → 30.82
+population mean -0.33 → 13.94
 
 champion vs all four hand-designed archetypes, on seeds it never trained on:
   20W  0L  0D
 ```
 
-The evolved champion is the boss. It also found an exploit — it converged on
-`refractoryTicks: 0`, because a neuron that never goes deaf can steer every tick. That is a
-finding about the parameter bounds, not a bug in the search.
+The evolved champion is the boss. It also converged on a zero refractory period, which sent
+me to measure the parameter space and find that four fifths of that slider was dead space —
+a finding about my bounds, not a bug in the search.
 
 ## Architecture
 
-```
-Brain Lab  →  Zod schema gate  →  simulation core  →  WebSocket  →  3D arena
-                     ↓                   ↑                            spike raster
-                 rejected           FlyWire cell                      membrane traces
-              (invalid loadouts       populations
-            cannot reach the sim)
-```
+<p align="center">
+  <img src="docs/images/architecture.png" alt="FLYWEIGHT architecture" width="82%">
+</p>
 
-- **Simulation core** — pure TypeScript, zero I/O. 60 Hz fixed timestep, seeded RNG,
-  leaky integrate-and-fire neurons. Runs identically on the server and in the browser.
-- **Persistence** — a match is stored as `seed + two brain snapshots`. No frames are kept;
-  replay re-runs the simulation. Brain rows are append-only and versioned, so editing a bot
-  cannot rewrite the history of matches it already fought.
-- **Stack** — pnpm workspaces, Node 24, Express 5, Postgres + Drizzle, Clerk, React,
-  Three.js, Vite.
+A match is persisted as **a seed plus two brain snapshots**. No frames are stored — replay
+re-runs the simulation. Brain rows are append-only and versioned, so editing a bot cannot
+rewrite the history of fights it already had.
 
 ## Things that had to be got right
 
-**Graded steering, not bang-bang.** The first version fired full-magnitude turns regardless
-of bearing error, and the bots settled into a stable 90° orbit — circling each other forever
+**Graded steering, not bang-bang.** The first version fired full-magnitude turns regardless of
+bearing error, and the bots settled into a stable 90° orbit, circling each other forever
 instead of closing. Real DNa02 is graded: firing rate encodes turn magnitude.
 
 **A neuromuscular junction.** Spike impulses fed straight into a double integrator can only
 oscillate. Real motor neurons low-pass spike trains into graded muscle tension, and that
-filter is also what makes the controller stable. The physiologically correct fix was the
-engineering fix.
+filter is also what makes the controller stable. The physiological fix was the engineering fix.
 
-**Habituation.** Escape was an unbeatable strategy — a dodging bot never fought and nobody
-could catch it, so every draw was a zero-hit stalemate. The Giant Fiber habituates to
-repeated looming in the real fly, and adding that took draws from 15 to 0 and average match
-length from 57s to 31s. It habituates to *weak* repeated looming but never to a real charge,
-which is exactly what habituation is for.
+**Habituation.** Escape was briefly an unbeatable strategy — a dodging bot never fought and
+nobody could catch it, so every draw was a zero-hit stalemate. Real Giant Fibers habituate to
+repeated looming, and adding that took draws from 15 to 0 and average match length from 57s
+to 31s. It habituates to *weak* repeated looming but never to a genuine charge, which is
+exactly what habituation is for.
+
+**A block has to be held.** The first guard flashed only on the tick the reflex fired. It
+peaked at 0.39 and blocked zero of 85 strikes.
 
 ## Running it
 
 ```bash
 pnpm install
 
-# API  (routes are under /api; health is /api/healthz)
+# API — routes under /api, health at /api/healthz
 cd artifacts/api-server && PORT=5000 pnpm dev
 
 # Web
@@ -120,9 +130,22 @@ cd artifacts/mockup-sandbox && PORT=5173 BASE_PATH=/ pnpm dev
 Requires `DATABASE_URL`. Clerk keys are optional for local play.
 
 ```bash
-cd lib/sim && node --test src/sim.test.ts    # 14 tests
+cd lib/sim && node --test src/sim.test.ts
 ```
+
+Tests cover determinism, schema validity, habituation, squad battles and evolution
+reproducibility.
+
+## Stack
+
+pnpm workspaces · Node 24 · TypeScript · Express 5 · Postgres + Drizzle · Clerk ·
+React · Three.js · Vite
 
 ---
 
-Built on [Replit](https://replit.com).
+<p align="center"><sub>
+Cell populations and transmitter identity from FlyWire; circuits modelled from the
+literature; synaptic weights are the player's loadout. Not a simulation of the whole
+connectome.
+</sub></p>
+<p align="center"><sub>Built on <a href="https://replit.com">Replit</a>.</sub></p>
