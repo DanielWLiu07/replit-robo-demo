@@ -49,7 +49,21 @@ const GUARD_RISE = 0.30;
 const GUARD_HOLD = 14;          // ticks the arms stay up after the reflex fires        // how fast the arms come up
 const GUARD_BLOCK = 0.78;       // damage removed by a full guard      // ticks between throws, so it reads as a flurry
 const ARM_REST = 0.35;          // radians, arms held slightly forward
-const ARM_SPRING = 5.5;         // pulls arms back toward guard
+const ARM_SPRING = 3.4;         // pulls arms back toward guard
+
+// ── ragdoll ─────────────────────────────────────────────────────────────────
+// Not a physics engine: a handful of springs integrated at the same fixed timestep
+// as everything else, so a match stays bit-identical for a given seed — which
+// replay, the evolution fitness function and six tests all depend on.
+const LEAN_FROM_ACCEL = 0.16;   // how hard your own acceleration pitches the torso
+const LEAN_SPRING = 4.2;        // pulls you back upright
+const LEAN_DAMP = 0.86;
+const WHIFF_LEAN = 1.05;        // a committed swing that hits nothing pitches you forward
+const HIT_LEAN = 1.9;           // taking one rocks you back
+const TILT_DAMP = 0.88;
+const KNOCKDOWN_LEAN = 0.82;    // past this angle you are going over
+const KNOCKDOWN_TICKS = 52;     // time on the floor before you get up
+const GETUP_LEAN = 0.5;         // you come up part-way bent, not snapping upright
 const STRIKE_MIN_TIP_SPEED = 3.2;   // m/s at the fist
 const STRIKE_DAMAGE = 2.9;      // per m/s of tip speed over the threshold
 const STRIKE_REACH = BOT_RADIUS + ARM_LENGTH;
@@ -135,6 +149,7 @@ interface Body {
   gait: number; struck: boolean;
   punchCd: number; punchSide: 0 | 1;
   guard: number; recovery: number; blocked: boolean; guardHold: number;
+  lean: number; leanV: number; tilt: number; tiltV: number; down: number; swungAt: number;
   /** true on the tick this bot ate a counter — for the HUD, like `blocked` */
   countered: boolean;
   /** 0..1 gas tank; punching spends it, guarding and range refill it */
@@ -200,6 +215,7 @@ function toState(b: Body, spiked: NeuronModule[]): ArenaBotState {
     spiked,
     potentials: b.brain.potentials() as Record<NeuronModule, number>,
     guard: +b.guard.toFixed(3), recovery: b.recovery, blocked: b.blocked,
+    lean: +b.lean.toFixed(3), tilt: +b.tilt.toFixed(3), down: b.down,
     countered: b.countered, stamina: +b.stamina.toFixed(3),
     arousal: +b.brain.arousalLevel.toFixed(3),
     gfFatigue: +b.brain.fatigueLevel.toFixed(3),
@@ -235,6 +251,7 @@ export function* runMatch(
       driveFwd: 0, driveTurn: 0,
       armL: ARM_REST, armR: -ARM_REST, armLv: 0, armRv: 0, gait: rng(), struck: false,
       punchCd: 0, punchSide: 0, guard: 0, recovery: 0, blocked: false, guardHold: 0,
+      lean: 0, leanV: 0, tilt: 0, tiltV: 0, down: 0, swungAt: -99,
       countered: false, stamina: 1, gassed: false, comboLeft: 0,
       circleDir: rng() < 0.5 ? -1 : 1, circleTimer: CIRCLE_MIN + Math.floor(rng() * CIRCLE_SPAN),
       hull: CHASSIS_STATS[spec.chassis].hull,
@@ -335,7 +352,28 @@ export function* runMatch(
 
       body.vx += (Math.cos(body.heading) * wantSpeed + lx * strafe - body.vx) * VEL_LAG;
       body.vy += (Math.sin(body.heading) * wantSpeed + ly * strafe - body.vy) * VEL_LAG;
+      const prevVx = body.vx, prevVy = body.vy;
       body.omega += (wantOmega - body.omega) * OMEGA_LAG;
+
+      // Lean is a spring driven by the acceleration you just asked for. Change
+      // direction hard and your own weight pitches you over.
+      const ax = body.vx - prevVx, ay = body.vy - prevVy;
+      const fwdX = Math.cos(body.heading), fwdY = Math.sin(body.heading);
+      body.leanV += (ax * fwdX + ay * fwdY) * LEAN_FROM_ACCEL * 60;
+      body.leanV += -LEAN_SPRING * body.lean * DT;
+      body.leanV *= LEAN_DAMP;
+      body.lean += body.leanV * DT;
+      body.tiltV += -LEAN_SPRING * body.tilt * DT;
+      body.tiltV *= TILT_DAMP;
+      body.tilt += body.tiltV * DT;
+
+      // Empty stamina and the legs stop holding you up.
+      if (body.stamina <= 0.02) body.lean += 0.012;
+
+      if (Math.abs(body.lean) > KNOCKDOWN_LEAN || Math.abs(body.tilt) > KNOCKDOWN_LEAN) {
+        body.down = KNOCKDOWN_TICKS;
+        body.lean = Math.sign(body.lean) * KNOCKDOWN_LEAN;
+      }
 
       // Arms. A punch is an EVENT, not an oscillation: when the brain is driving
       // forward and a target is inside reach, dump a single large impulse into the
@@ -344,6 +382,16 @@ export function* runMatch(
       // torque reversed before the arm could build any tip speed at all.
       if (body.punchCd > 0) body.punchCd--;
       if (body.recovery > 0) body.recovery--;
+
+      // On the floor: no thinking, no guard, no punches. You just get up, and you
+      // come up part-way bent rather than snapping vertical.
+      if (body.down > 0) {
+        body.down--;
+        body.guard = 0; body.guardHold = 0;
+        body.vx *= 0.82; body.vy *= 0.82; body.omega *= 0.7;
+        if (body.down === 0) { body.lean = GETUP_LEAN; body.leanV = 0; body.tilt *= 0.3; }
+        return;
+      }
 
       // Stamina regen. Holding a guard or standing off the pocket is how you breathe;
       // a bot that never stops throwing never refills.
@@ -457,6 +505,10 @@ export function* runMatch(
           if (def.guard > 0.45) def.blocked = true;
           if (counter) def.countered = true;
           def.hull -= dmg; def.damageThisTick += dmg; def.struck = true;
+          // rock the defender: back along the swing, and sideways off-centre
+          const rock = (1 - def.guard * 0.75) * HIT_LEAN * Math.min(1.6, tipSpeed / STRIKE_MIN_TIP_SPEED);
+          def.leanV -= rock;
+          def.tiltV += (((att.x * 7 + att.y * 13) % 2) - 0.5) * rock * 0.8;
           // knockback along the swing
           const push = tipSpeed * 0.22 * (1 - def.guard * 0.8);
           def.vx += Math.cos(wa) * push;
@@ -466,6 +518,15 @@ export function* runMatch(
           // a landed punch dumps its momentum
           if (side) att.armRv *= 0.25; else att.armLv *= 0.25;
         }
+      }
+    }
+
+    // A swing that connected will have set struck on its target. If a bot committed
+    // this tick and nothing registered, its own momentum takes it forward — the whiff
+    // punish is physical rather than a rule.
+    for (const b of bodies) {
+      if (b.alive && b.swungAt === tick && !hits.some((h) => h.attacker === b.spec.id)) {
+        b.leanV += WHIFF_LEAN;
       }
     }
 

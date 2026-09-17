@@ -106,6 +106,13 @@ export const ArenaBotState = z.object({
   recovery: z.number(),
   /** true on the tick a strike was blocked, for a parry effect. */
   blocked: z.boolean(),
+  /** forward/back torso lean in radians. Responds to acceleration and to being hit —
+   *  a swing you commit to and miss nearly puts you on your face. */
+  lean: z.number(),
+  /** lateral tilt in radians, from knockback and from legs buckling. */
+  tilt: z.number(),
+  /** ticks left on the floor. 0 = standing. Cannot punch or block while down. */
+  down: z.number(),
   /** true on the tick this bot was hit while still inside its own punch recovery —
    *  a counter, which lands for bonus damage. Worth its own flag so the UI can
    *  punctuate it differently from an ordinary hit. */
@@ -437,3 +444,167 @@ export const TrainerMessage = z.discriminatedUnion("type", [
   z.object({ type: z.literal("failed"), message: z.string() }),
 ]);
 export type TrainerMessage = z.infer<typeof TrainerMessage>;
+
+// ── Verification ─────────────────────────────────────────────────────────────
+// The whole architecture rests on one claim: a seed reproduces a fight exactly.
+// Replay is free, cheating is hard and a match costs one row *only* if that is
+// true. So it is checkable from the product, not just from a terminal.
+
+export const VerifyVerdict = z.enum([
+  /** Two independent replays agreed with each other and with the persisted row. */
+  "REPRODUCED",
+  /** Replays agreed, but the sim has moved on since. Expected, not a defect. */
+  "STALE_SIM",
+  /** Replays agreed and the sim has NOT moved — the row and the sim disagree. */
+  "DIVERGED",
+  /** The two replays disagreed with each other. The sim itself is not deterministic. */
+  "NONDETERMINISTIC",
+]);
+export type VerifyVerdict = z.infer<typeof VerifyVerdict>;
+
+export const VerifyMatchResponse = z.object({
+  matchId: z.string(),
+  /** the badge: true only for REPRODUCED. */
+  reproduced: z.boolean(),
+  verdict: VerifyVerdict,
+  /** SHA-256 over every frame of the replay, truncated — for eyeballing, not for security. */
+  digest: z.string(),
+  /** the second, independent replay. Differs from `digest` only if the sim is broken. */
+  digestRepeat: z.string(),
+  seed: z.string(),
+  squadSize: z.number().int(),
+  storedTicks: z.number().int(),
+  replayTicks: z.number().int(),
+  storedWinnerBotId: z.string().nullable(),
+  replayWinnerBotId: z.string().nullable(),
+  storedOutcome: MatchOutcome.nullable(),
+  replayOutcome: MatchOutcome,
+  simVersion: z.object({ fought: z.string(), current: z.string() }),
+  frames: z.number().int(),
+  /** wall-clock cost of both replays, server-side. */
+  ms: z.number().int(),
+  /** one sentence a UI can show verbatim. */
+  explanation: z.string(),
+});
+export type VerifyMatchResponse = z.infer<typeof VerifyMatchResponse>;
+
+/** What the forked verifier hands back to the API process. */
+export const VerifierResult = z.object({
+  digest: z.string(),
+  digestRepeat: z.string(),
+  frames: z.number().int(),
+  ticks: z.number().int(),
+  winnerBotId: z.string().nullable(),
+  outcome: MatchOutcome,
+  survivors: z.tuple([z.number().int(), z.number().int()]).nullable(),
+});
+export type VerifierResult = z.infer<typeof VerifierResult>;
+
+// ── Ladder: rounds against generated opponents ───────────────────────────────
+// Take your tuned fly and fight successive rounds against flies that get harder.
+// Losing ends the run; the round you reached is the score.
+//
+// A run is `(runSeed, round)` -> opponent, deterministically, so a run is
+// reproducible and shareable exactly like a match. Each round is also persisted
+// as a real match row, which means a ladder fight is watchable on the existing
+// /ws/match/:id socket and checkable with /api/matches/:id/verify — the ladder
+// adds no transport of its own.
+
+/** Safety rail. Nobody is beating this, and it bounds the table. */
+export const LADDER_MAX_ROUND = 40;
+
+export const LadderStatus = z.enum(["ACTIVE", "ENDED"]);
+export type LadderStatus = z.infer<typeof LadderStatus>;
+
+/**
+ * How round N was built. Persisted per round so the difficulty curve is
+ * inspectable rather than folklore — you can see exactly what beat you.
+ */
+export const LadderDifficulty = z.object({
+  /**
+   * Candidates generated and scored against *your* bot, best one kept.
+   * This is the real difficulty knob: a higher round is a deeper search, so
+   * late opponents are tuned to beat you specifically rather than just random.
+   */
+  candidatesSearched: z.number().int().min(1),
+  /** fraction of BRAIN_WEIGHT_BUDGET the opponent is allowed to spend. */
+  budgetFraction: z.number().min(0).max(1),
+  /** fitness the chosen candidate scored against your bot while being picked. */
+  bestScore: z.number(),
+});
+export type LadderDifficulty = z.infer<typeof LadderDifficulty>;
+
+export const LadderRound = z.object({
+  round: z.number().int().min(1),
+  /** a real match row: watch it on /ws/match/:id, check it with /verify. */
+  matchId: z.string(),
+  /** the generated fly, snapshotted. Authoritative even if generation changes later. */
+  opponent: BotSpec,
+  won: z.boolean(),
+  outcome: MatchOutcome,
+  ticks: z.number().int(),
+  difficulty: LadderDifficulty,
+  createdAt: z.string(),
+});
+export type LadderRound = z.infer<typeof LadderRound>;
+
+export const LadderRun = z.object({
+  id: z.string(),
+  seed: z.string(),
+  status: LadderStatus,
+  /**
+   * Your bot as it was when the run started, pinned. Retuning mid-run does not
+   * retroactively change the rounds you already cleared — same rule as matches.
+   */
+  bot: BotSpec,
+  botId: z.string(),
+  /** furthest round cleared. This is the score. */
+  round: z.number().int().min(0),
+  simVersion: z.string(),
+  createdAt: z.string(),
+  endedAt: z.string().nullable(),
+  rounds: z.array(LadderRound),
+});
+export type LadderRun = z.infer<typeof LadderRun>;
+
+export const StartLadderRequest = z.object({ botId: z.string() });
+export type StartLadderRequest = z.infer<typeof StartLadderRequest>;
+
+export const NextRoundResponse = z.object({
+  run: LadderRun,
+  /** the round just fought. `run.status` is ENDED when `won` is false. */
+  round: LadderRound,
+});
+export type NextRoundResponse = z.infer<typeof NextRoundResponse>;
+
+export const ListLadderRunsResponse = z.object({ runs: z.array(LadderRun) });
+export type ListLadderRunsResponse = z.infer<typeof ListLadderRunsResponse>;
+
+export const LadderLeaderboardRow = z.object({
+  runId: z.string(),
+  botName: z.string(),
+  chassis: Chassis,
+  /** furthest round cleared */
+  round: z.number().int(),
+  status: LadderStatus,
+  simVersion: z.string(),
+  createdAt: z.string(),
+});
+export type LadderLeaderboardRow = z.infer<typeof LadderLeaderboardRow>;
+
+export const LadderLeaderboardResponse = z.object({
+  rows: z.array(LadderLeaderboardRow),
+});
+export type LadderLeaderboardResponse = z.infer<typeof LadderLeaderboardResponse>;
+
+/** What the forked ladder worker hands back: the opponent it built, and the fight. */
+export const LadderRoundResult = z.object({
+  opponent: BotSpec,
+  difficulty: LadderDifficulty,
+  winnerBotId: z.string().nullable(),
+  outcome: MatchOutcome,
+  ticks: z.number().int(),
+  survivors: z.tuple([z.number().int(), z.number().int()]).nullable(),
+  hits: z.array(z.object({ tick: z.number().int(), attacker: z.string(), damage: z.number() })),
+});
+export type LadderRoundResult = z.infer<typeof LadderRoundResult>;
