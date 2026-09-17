@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import botsRouter from "./bots";
 import healthRouter from "./health";
+import ladderRouter from "./ladder";
 import leaderboardRouter from "./leaderboard";
 import matchesRouter from "./matches";
 import trainRouter from "./train";
@@ -14,5 +15,6 @@ router.use(botsRouter);
 router.use(matchesRouter);
 router.use(leaderboardRouter);
 router.use(trainRouter);
+router.use(ladderRouter);
 
 export default router;

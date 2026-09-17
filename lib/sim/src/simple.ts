@@ -14,7 +14,7 @@ import { BRAIN_WEIGHT_BUDGET, type BrainSpec, type ModuleSlot, type NeuronModule
  */
 
 /** Sensible operating range, measured rather than guessed — see docs/PLAN.md. */
-const WEIGHT_MIN = 0.4, WEIGHT_MAX = 3.2;
+export const WEIGHT_MIN = 0.4, WEIGHT_MAX = 3.2;
 const THRESHOLD_HI = 1.15;   // timid: needs a lot of evidence
 const THRESHOLD_LO = 0.45;   // twitchy: fires on a hint
 

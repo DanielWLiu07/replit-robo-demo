@@ -1,4 +1,5 @@
 import type { ArenaBotState, Chassis } from "@workspace/contract";
+import { KNOCKDOWN_TICKS } from "./arena.js";
 import { CHASSIS_STATS } from "@workspace/contract";
 
 /**
@@ -98,29 +99,36 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
                  a: foot, b: [foot[0] + 0.12 * s, foot[1], footZ], radius: 0.045 * s });
   }
 
-  // arms: driven straight off the punch angles the sim integrates, blended with the
-  // two other things the arms are doing. Guard, recovery and the swing all share the
-  // same two limbs: a held guard tucks the fists up and in, the recovery window after
-  // a swing drops them, and neither survives the other, so a bot cannot block out of
-  // a punch it is still recovering from. At guard 0 with no recovery this is exactly
-  // the bare swing.
+  // arms: the sim runs each arm as an angular body swinging about the vertical axis.
+  // `armL`/`armR` are that swing angle — they rest at ±ARM_REST and a punch adds a
+  // large angular impulse — and `armLv`/`armRv` are the rate, which is what the strike
+  // test actually reads. So the angle steers the arm and the SPEED extends it: a fist
+  // at rest stays tucked into a guard, a committed swing snaps out to full reach.
+  //
+  // Taking reach from cos(angle) instead, as this did, never went negative over the
+  // real range (−0.94 to 0.63 rad), so both arms sat permanently extended and a punch
+  // became a 40% stretch with no sweep — which is why the boxing did not read.
   const guard = state.guard, open = state.recovery > 0 ? 1 : 0;
   const tuck = guard * (1 - open);
   for (const side of [-1, 1] as const) {
     const ang = side < 0 ? state.armL : state.armR;
+    const rate = Math.abs(side < 0 ? state.armLv : state.armRv);
     const sho: [number, number, number] = [chest[0], chest[1], side * halfSho];
-    // swing rotates the arm forward (−x is forward); elbow trails the shoulder
     const reach = upperArm + foreArm;
+    // forward is −x and the swing rotates about y, so the fist rides (−cos, ·, sin)
+    const thrown = Math.min(1, rate / 8);       // 8 rad/s reads as committed
+    const extend = (0.42 + 0.58 * thrown) * (1 - tuck * 0.18);
     const fist: [number, number, number] = [
-      sho[0] - Math.cos(ang) * reach * (0.92 - tuck * 0.42),
-      sho[1] - Math.sin(Math.abs(ang)) * 0.12 * s - 0.1 * s + tuck * 0.26 * s - open * 0.3 * s,
-      side * (halfSho + 0.04 * s - tuck * 0.05 * s),
+      sho[0] - Math.cos(ang) * reach * extend,
+      sho[1] - 0.06 * s - (1 - thrown) * 0.1 * s + tuck * 0.2 * s - open * 0.26 * s,
+      sho[2] + Math.sin(ang) * reach * extend,
     ];
     const elbow = solveKnee(sho, fist, upperArm, foreArm, [0, -1, 0]);
     bones.push({ name: side < 0 ? "upperArmL" : "upperArmR", a: sho,   b: elbow, radius: 0.06 * s });
     bones.push({ name: side < 0 ? "foreArmL"  : "foreArmR",  a: elbow, b: fist,  radius: 0.05 * s });
-    bones.push({ name: side < 0 ? "fistL" : "fistR",
-                 a: fist, b: [fist[0] - 0.07 * s, fist[1], fist[2]], radius: 0.075 * s });
+    bones.push({ name: side < 0 ? "fistL" : "fistR", a: fist,
+                 b: [fist[0] - Math.cos(ang) * 0.07 * s, fist[1], fist[2] + Math.sin(ang) * 0.07 * s],
+                 radius: 0.075 * s });
   }
 
   // wing spars, folded back — they read as a fly without needing to flap
@@ -129,6 +137,47 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
     bones.push({ name: side < 0 ? "wingL" : "wingR",
                  a: root, b: [root[0] + 0.42 * s, root[1] + 0.12 * s, side * 0.3 * s], radius: 0.028 * s });
   }
+
+
+  // ── RAGDOLL ────────────────────────────────────────────────────────────────
+  // The simulation has been running a ragdoll the whole time: `lean` is the torso
+  // pitching over the feet, `tilt` is roll, and `down` counts the ticks left on the
+  // floor after a knockdown. None of it reached the rig — the pose above derives its
+  // own lean from speed and ignored the three fields the arena streams every frame,
+  // so a bot that had been knocked flat still walked around bolt upright.
+  //
+  // A body tipping over rotates about the FEET, not about its middle, so this is a
+  // rigid rotation of the whole pose about the ground pivot. That is also what keeps
+  // it honest: the head describes the arc it would really travel, and the body drops
+  // as it goes over instead of sinking straight down through the surface.
+  const downT = state.down > 0 ? state.down / KNOCKDOWN_TICKS : 0;
+  // Over about ten ticks, lie there, then come back up over the last dozen. The sim
+  // freezes `lean` at the tipping angle while you are down, so the rest of the fall
+  // is rendered here rather than integrated there.
+  const fall = state.down > 0 ? Math.min(1, (1 - downT) * 5, downT * 4) : 0;
+  const FLOOR_PITCH = 1.45;   // radians — flat out, head a little off the deck
+  const sign = state.lean >= 0 ? 1 : -1;
+  const pitch = lean + state.lean + fall * (sign * FLOOR_PITCH - state.lean);
+  const roll = state.tilt * (1 - fall * 0.5);
+
+  if (pitch !== 0 || roll !== 0) {
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const cr = Math.cos(roll),  sr = Math.sin(roll);
+    const turn = (v: [number, number, number]): [number, number, number] => {
+      // pitch about +z (forward is −x, so a positive angle tips the body forward)
+      const x = v[0] * cp - v[1] * sp;
+      const y = v[0] * sp + v[1] * cp;
+      // then roll about the forward axis
+      return [x, y * cr - v[2] * sr, y * sr + v[2] * cr];
+    };
+    for (const b of bones) { b.a = turn(b.a); b.b = turn(b.b); }
+  }
+
+  // Nothing may end up under the floor. Lifting the whole pose keeps the limbs
+  // rigid — clamping each joint on its own would stretch the body instead.
+  let floor = Infinity;
+  for (const b of bones) floor = Math.min(floor, b.a[1] - b.radius, b.b[1] - b.radius);
+  if (floor < 0) for (const b of bones) { b.a[1] -= floor; b.b[1] -= floor; }
 
   return {
     bones,

@@ -478,3 +478,376 @@ html,body{background:#07070a}
  text-shadow:0 1px 2px #05050a, 0 0 7px rgba(5,5,10,.85), 0 0 18px rgba(5,5,10,.6);
 }
 .route-home .landing-aside strong{color:#ffffff}
+
+/* ═══ ONE WORLD ════════════════════════════════════════════════════════════
+   No navbar, header or footer anywhere: the moon is the page and the panels
+   float over it. The stage is never veiled now — it IS the scene, not a
+   backdrop behind a page.                                                   */
+.topbar,.flyweight footer,.ticker{display:none}
+.route-select .world-stage,.route-lab .world-stage,.route-fight .world-stage{opacity:1}
+.flyweight main{padding-top:0}
+
+/* THE BAY: configuration glass on the LEFT, the plinth keeps the right half */
+.route-select .select-section,.route-lab .lab-section{
+ width:min(52vw,760px);margin:0;padding:28px 0 40px 4vw;
+}
+.route-select .select-grid{grid-template-columns:1fr}
+.route-select .roster-cards{grid-template-columns:repeat(3,1fr)}
+.route-select .vs-bar{grid-template-columns:1fr auto 1fr}
+.route-lab .lab-grid{grid-template-columns:1fr}
+.route-lab .lab-specimen{display:none}          /* the plinth is the specimen now */
+.route-lab .module-library{grid-template-columns:1fr 1fr}
+
+/* THE RING: the HUD brackets the arena, nothing sits in the middle */
+.route-fight .fight-section{padding-left:3vw;padding-right:3vw}
+/* the tagline carries a scrim pill (added for the light theme, still useful over
+   a bright moon) — invert it to dark glass instead of leaving a white slab */
+.route-home .landing-entry p{
+ background:rgba(10,10,14,.55);
+ border:1px solid rgba(255,255,255,.15);
+ backdrop-filter:blur(8px);
+}
+/* one dial per circuit: the row is a single slider, not a two-up grid */
+.slot-controls.one-dial{grid-template-columns:1fr;gap:6px}
+.slot-controls.one-dial .dial-note{color:var(--dim);font-size:7px;letter-spacing:.1em}
+
+/* ── liquid glass ────────────────────────────────────────────────────────────
+   Apple's glass is not a dark panel. It is a thin translucent layer that blurs
+   AND saturates what is behind it, lifted by a hairline top highlight and a soft
+   drop shadow. It only reads when something is actually behind it — here that is
+   the moon, which .world-stage already fixes behind the whole app. Flat black
+   kills the effect entirely, so these all stay genuinely translucent. */
+.roster-card,
+.vs-plate,
+.dossier,
+.chassis-panel,
+.scope,
+.module-card,
+.glass {
+  background: rgba(18, 19, 22, 0.42);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),   /* the top edge catching light */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 40px rgba(0, 0, 0, 0.45);
+  color: #f2f3f5;
+}
+
+/* hover lifts the glass rather than filling it in */
+.roster-card:hover,
+.roster-card.highlighted,
+.module-card:hover:not(:disabled) {
+  background: rgba(30, 32, 37, 0.52);
+  border-color: rgba(255, 255, 255, 0.26);
+  transform: translateY(-2px);
+}
+
+/* selection reads as a brighter rim, not a solid block */
+.roster-card.taken-p1,
+.roster-card.taken-p2 {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 12px 44px rgba(0, 0, 0, 0.5);
+}
+
+/* the boss card is the one place that goes near-solid, so it sits apart */
+.roster-card.boss {
+  background: rgba(8, 8, 10, 0.72);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.roster-card small, .roster-card em,
+.vs-plate small, .dossier small { color: rgba(242, 243, 245, 0.62); }
+.roster-card .silhouette, .roster-card.boss .silhouette { color: #f2f3f5; }
+.section-label, .mono { color: rgba(242, 243, 245, 0.66); }
+.flyweight h2, .vs-plate strong, .dossier strong { color: #f7f8fa; }
+
+/* the stage behind the glass has to be dark or none of this reads */
+.world-stage { background: #07080b; }
+.flyweight { --paper: #07080b; --ink: #f2f3f5; --line: rgba(255,255,255,.14); color: var(--ink); }
+.topbar { background: rgba(10, 11, 14, 0.5); backdrop-filter: blur(20px) saturate(160%);
+          border-bottom: 1px solid rgba(255,255,255,.1); }
+
+/* The boss card was inheriting the light selection fill and coming out nearly
+   white. It should be the darkest thing on the screen, not the brightest. */
+.roster-card.boss,
+.roster-card.boss.taken-p1,
+.roster-card.boss.taken-p2 {
+  background: rgba(6, 6, 9, 0.78);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f2f3f5;
+}
+.roster-card.boss small, .roster-card.boss em { color: rgba(242,243,245,.6); }
+
+/* copy that sat at mid-grey on the old light theme is unreadable on glass */
+.roster-intro, .section-heading > p, .vs-plate .mono,
+.roster-card em, .lab-message { color: rgba(242,243,245,.72); }
+.flyweight h1, .flyweight h2 { color: #f7f8fa; }
+
+/* Line ~349 sets the boss fill via `.route-select .roster-card.boss` (0,3,0),
+   which outranks a bare `.roster-card.boss` (0,2,0) no matter how late it is
+   appended. Match that specificity or the card stays near-white. */
+.route-select .roster-card.boss,
+.route-select .roster-card.boss.taken-p1,
+.route-select .roster-card.boss.taken-p2 {
+  background: rgba(6, 6, 9, 0.78);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f2f3f5;
+}
+.route-select .roster-card.boss .silhouette { color: #f2f3f5; }
+.route-select .roster-card.boss small,
+.route-select .roster-card.boss em { color: rgba(242, 243, 245, 0.6); }
+
+/* ── Fight screen: one screen, no scrolling ─────────────────────────────────
+   The fight is the thing being watched, so the instrumentation around it has to
+   fit the viewport rather than push it off the bottom. The arena window takes
+   whatever height is left after the HUD, the brains and the controls, instead
+   of being a fixed 46vh that forces the page to scroll.
+   Appended at the end of the file on purpose: these are overrides, and CSS
+   later wins, so nothing above needs editing. */
+.route-fight .fight-section{
+  height:calc(100svh - 92px);
+  min-height:0;
+  overflow:hidden;
+}
+/* The arena window eats the slack, so the stats below it sit on the floor of
+   the screen rather than floating with dead space underneath. */
+.route-fight .fight-viewport{
+  flex:1 1 auto;
+  height:auto;
+  min-height:140px;
+}
+.route-fight .fight-controls{margin-top:0}
+.route-fight .fight-brains{margin-top:auto;margin-bottom:0}
+.route-fight .fight-brain .brainview{margin-bottom:0}
+.route-fight .fight-section{padding-bottom:10px}
+
+/* The character chip: who this fly is, next to its brain. */
+.fight-brain-head{
+  display:flex;align-items:center;gap:9px;
+  margin-bottom:8px;font-size:9px;letter-spacing:.08em;
+}
+.fight-brain-head strong{font-size:11px;font-weight:600;letter-spacing:.02em}
+.fight-brain-head .char-glyph{
+  display:grid;place-items:center;
+  width:18px;height:18px;flex:0 0 18px;
+  border:1px solid var(--rule,#dcdcd6);
+  background:#1c1c1c;color:#f4f4f4;
+  font-size:9px;font-style:normal;line-height:1;
+}
+.fight-brain-head .char-type{color:#6a6a66}
+.fight-brain-head .char-cells{margin-left:auto;color:#8d8d8d}
+.fight-brain.brain-1 .fight-brain-head{flex-direction:row-reverse}
+.fight-brain.brain-1 .fight-brain-head .char-cells{margin-left:0;margin-right:auto}
+
+/* ── Roster select: a way out, and the display face on the heading ──────────
+   The select screen had no way back to the landing — the only exits were the
+   topbar nav and the browser. */
+.back-link{color:#676767;margin-right:auto}
+.back-link:hover{color:#111111}
+.section-label .back-link + span{margin-right:auto}
+
+/* "Choose a nervous system." is the page's headline, so it gets the display
+   face the hero and the result card already use, rather than the body sans. */
+.route-select .section-heading h2{
+  font-family:'Barlow Condensed',Impact,sans-serif;
+  font-weight:700;
+  font-size:clamp(40px,5vw,66px);
+  letter-spacing:-.02em;
+  line-height:.95;
+}
+
+/* KatieRoze on the roster heading.
+   Its own family, subset to exactly this string: the display cut the 3D title
+   uses has no h, m or period, and a glyph outside a subset silently falls back
+   to the next font — which then gets inverted by the filter below and vanishes.
+   That is what "C oose a nervous syste" was.
+   It is also a COLOUR font: canvas and CSS both paint its embedded watercolour
+   and ignore `color`, so the palette is forced with a filter instead. */
+@font-face{
+ font-family:'KatieRozeUI';
+ src:url('/fonts/katieroze-ui.woff2') format('woff2');
+ font-display:swap;
+}
+.route-select .section-heading h2{
+ font-family:'KatieRozeUI','Barlow Condensed',Impact,sans-serif;
+ font-weight:400;
+ letter-spacing:0;
+ line-height:1.15;
+ /* A colour font ignores `color`, and -webkit-text-stroke with it too, so the
+    outline is built from drop-shadows: those act on the rendered ALPHA, which
+    invert/grayscale leave untouched. Eight offsets make a ring rather than the
+    four-way cross a smaller set gives on diagonals. */
+ filter:grayscale(1) invert(1) brightness(1.12)
+  drop-shadow(2px 0 0 #050508) drop-shadow(-2px 0 0 #050508)
+  drop-shadow(0 2px 0 #050508) drop-shadow(0 -2px 0 #050508)
+  drop-shadow(1.4px 1.4px 0 #050508) drop-shadow(-1.4px 1.4px 0 #050508)
+  drop-shadow(1.4px -1.4px 0 #050508) drop-shadow(-1.4px -1.4px 0 #050508);
+}
+
+/* the back link sat at --muted over a bright moon and disappeared */
+.route-select .back-link,.back-link{
+ color:#f1f1ed;
+ background:rgba(10,10,14,.6);
+ border:1px solid rgba(255,255,255,.16);
+ backdrop-filter:blur(8px);
+ padding:6px 12px;
+ display:inline-flex;
+ align-items:center;
+ gap:8px;
+}
+.back-link:hover{background:rgba(255,255,255,.14);border-color:#e8e8e4}
+
+/* ── THE BENCH ──────────────────────────────────────────────────────────────
+   One glass column on the LEFT half. The right half is deliberately empty: the
+   moon behind the app is showing the body being tuned, and covering it with a
+   second card would hide the only thing that reacts to these dials.            */
+.bench {
+  min-height: 100vh;
+  padding: 26px 0 26px 26px;
+  display: grid;
+  grid-template-columns: minmax(340px, 30vw) 1fr;
+  align-items: start;
+  pointer-events: none;            /* let the moon take drags in the empty half */
+}
+.bench-panel {
+  pointer-events: auto;
+  padding: 16px 18px 18px;
+  max-height: calc(100vh - 52px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.18) transparent;
+}
+.bench-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.bench-top .mono { font-size: 9px; letter-spacing: .18em; color: rgba(242,243,245,.5); }
+.back {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.16);
+  color: #f2f3f5;
+  font: 9px/1 'IBM Plex Mono', monospace;
+  letter-spacing: .14em;
+  padding: 7px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.back:hover { background: rgba(255,255,255,.14); }
+
+.bench-id input {
+  width: 100%;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 9px;
+  color: #f7f8fa;
+  font: 20px 'Barlow Condensed', sans-serif;
+  letter-spacing: .04em;
+  padding: 8px 10px;
+}
+.bench-id input:focus { outline: none; border-color: rgba(255,255,255,.4); }
+.class-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0 18px; }
+.class-row button {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  color: rgba(242,243,245,.7);
+  font: 9px/1 'IBM Plex Mono', monospace;
+  letter-spacing: .12em;
+  padding: 9px 0;
+  cursor: pointer;
+}
+.class-row button.on { background: rgba(255,255,255,.92); border-color: #fff; color: #0a0a0d; }
+
+.bench-group { margin-bottom: 18px; }
+.bench-group h3 {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font: 9px/1 'IBM Plex Mono', monospace;
+  letter-spacing: .18em;
+  color: rgba(242,243,245,.55);
+  margin: 0 0 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.bench-group h3 small { font-size: 8px; letter-spacing: .1em; color: rgba(242,243,245,.34); }
+
+/* label / value / slider, so every dial reads as one line */
+.dial { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-bottom: 11px; }
+.dial-name { font: 9px/1.4 'IBM Plex Mono', monospace; letter-spacing: .12em; color: rgba(242,243,245,.72); }
+.dial-read { font: 12px/1.2 'Barlow Condensed', sans-serif; color: #f7f8fa; text-align: right; }
+.dial-read em { font-style: normal; font-size: 8px; color: rgba(242,243,245,.45); margin-left: 3px; }
+.dial input[type="range"], .with-sweep .sweep { grid-column: 1 / -1; }
+.dial input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 3px; margin: 4px 0 0;
+  background: rgba(255,255,255,.16);
+  border-radius: 2px; cursor: pointer;
+}
+.dial input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: #f7f8fa; border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,.5);
+}
+.dial input[type="range"]::-moz-range-thumb {
+  width: 13px; height: 13px; border-radius: 50%; border: none; background: #f7f8fa;
+}
+
+/* the measured refractory sweep sits behind its own slider */
+.sweep { width: 100%; height: 26px; margin-top: 4px; overflow: visible; }
+.sweep polyline { fill: none; stroke: rgba(255,255,255,.34); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.sweep-now { stroke: #f7f8fa; stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+.derived-row {
+  display: grid; grid-template-columns: 1fr auto 44px;
+  align-items: baseline; gap: 8px; padding: 4px 0;
+}
+.derived-label { font: 9px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; color: rgba(242,243,245,.62); }
+.derived-value { font: 15px/1 'Barlow Condensed', sans-serif; color: #f7f8fa; text-align: right; }
+.derived-value em { font-style: normal; font-size: 8px; color: rgba(242,243,245,.42); margin-left: 3px; }
+.derived-delta { font: 9px/1 'IBM Plex Mono', monospace; text-align: right; }
+.derived-delta.up { color: #7fe0a6; }
+.derived-delta.down { color: #e8899a; }
+.derived-delta.flat { color: rgba(242,243,245,.28); }
+
+.bench-note {
+  font: 10px/1.5 -apple-system, system-ui, sans-serif;
+  color: rgba(242,243,245,.5);
+  margin: 10px 0 0;
+}
+
+.bench-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.bench-actions.go { margin-top: 10px; }
+.bench-actions .button {
+  width: 100%;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 9px;
+  color: #f2f3f5;
+  font: 10px/1 'IBM Plex Mono', monospace;
+  letter-spacing: .14em;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.bench-actions .button:hover:not(:disabled) { background: rgba(255,255,255,.14); }
+.bench-actions .button.primary { background: #f7f8fa; border-color: #f7f8fa; color: #0a0a0d; }
+.bench-actions .button:disabled { opacity: .4; cursor: default; }
+
+.bench-progress { margin-top: 8px; }
+.bench-progress i { display: block; height: 2px; background: #f7f8fa; transition: width .1s linear; }
+.bench-progress small {
+  display: block; margin-top: 5px;
+  font: 8px/1 'IBM Plex Mono', monospace; letter-spacing: .1em;
+  color: rgba(242,243,245,.45);
+}
+
+@media (max-width: 900px) {
+  .bench { grid-template-columns: 1fr; padding: 16px; }
+  .bench-panel { max-height: none; }
+}

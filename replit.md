@@ -11,6 +11,7 @@ two of them fight in an arena while their neurons spike on screen.
 - `pnpm run build` — typecheck + build all packages
 - Seed the house roster: `pnpm --filter @workspace/api-server exec tsx src/cli/seed.ts` (idempotent)
 - Prove replay works: `pnpm --filter @workspace/api-server exec tsx src/cli/verify-determinism.ts`
+- Measure the ladder curve: `pnpm --filter @workspace/api-server exec tsx src/cli/ladder-curve.ts`
 - Required Secrets: `DATABASE_URL`, and `CLERK_SECRET_KEY` / `CLERK_PUBLISHABLE_KEY` for sign-in
 
 **Locally** `pnpm run <script>` fails — the root `preinstall` guard reads
@@ -42,6 +43,10 @@ health is `/api/healthz`.
 | Data access | `artifacts/api-server/src/services/` |
 | Match socket | `artifacts/api-server/src/ws/matchSocket.ts` |
 | Forked trainer (evolution) | `artifacts/api-server/src/train/worker.ts` |
+| Forked verifier (determinism) | `artifacts/api-server/src/verify/worker.ts` |
+| Forked ladder round | `artifacts/api-server/src/ladder/worker.ts` |
+| Ladder difficulty curve (+ why) | `artifacts/api-server/src/ladder/difficulty.ts` |
+| Fork plumbing | `artifacts/api-server/src/lib/forkJob.ts` |
 | Sim boundary (the only import of `@workspace/sim`) | `artifacts/api-server/src/lib/matchRunner.ts` |
 | API reference for client work | `docs/API-backend.md` |
 
@@ -71,7 +76,24 @@ health is `/api/healthz`.
 - **Two-headed identity.** Clerk when a session exists, an httpOnly guest cookie
   otherwise, and ownership accepts either. The demo path has no login wall; signing in
   later is an UPDATE stamping `owner_user_id` onto the guest's rows.
-- **Training runs in a forked process.** Neuroevolution is CPU-bound and synchronous
+- **Campaign clear time is measured in simulated ticks, not wall clock.** Wall clock
+  ranks how fast someone clicks and is trivially faked; ticks measure how decisively the
+  fly won, are server-computed, and replay to the same number forever.
+- **A ladder round is an ordinary match.** Generated opponents become real bot rows and
+  real match rows, so a round replays on the existing socket, passes the existing verifier
+  and is readable at `/api/bots/:id`. The ladder added no transport of its own. Generated
+  bots are flagged out of the bot list and the Elo board.
+- **Ladder difficulty is selection pressure, not crippled opponents.** Starving early
+  opponents of synaptic weight makes them ineffectual rather than easy — neither side can
+  finish and half of round 1 hits the 90-second cap. Instead every opponent gets a working
+  brain and the ladder picks from a scored field: middling early, the one that beats you
+  hardest late. `src/cli/ladder-curve.ts` measures the curve; re-run it after tuning.
+- **The determinism claim is checkable from the product.**
+  `POST /api/matches/:id/verify` re-fights a stored match twice, hashes every frame and
+  compares both runs to each other and to the row. It separates "the sim moved on"
+  (`STALE_SIM`) from "determinism is broken" (`DIVERGED` / `NONDETERMINISTIC`), because
+  conflating those is how a replay quietly becomes a lie.
+- **CPU-bound work runs in forked processes.** Neuroevolution is CPU-bound and synchronous
   (~30s); on the request thread it would freeze every 60 Hz match socket and fail health
   checks. `POST /api/train` returns 202 and the `training_runs` row is the job. The fork
   path resolves for both tsx and the esbuild bundle, and the child inherits `execArgv` so

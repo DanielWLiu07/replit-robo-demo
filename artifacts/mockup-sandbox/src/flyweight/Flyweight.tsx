@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { BotSpec } from "@workspace/contract";
 import type { Chassis } from "@workspace/contract";
 import { ARENA_SIZE } from "@workspace/sim";
-import { Arena } from "./Arena";
 import { BrainLab } from "./BrainLab";
 import { Fight } from "./Fight";
 import { Landing } from "./Landing";
 import { MoonStage } from "./MoonStage";
+import type { StationName } from "./moonLayout";
 import { RosterSelect } from "./RosterSelect";
 import { DEFAULT_BOTS } from "./modules";
 import { ROSTER } from "./roster";
@@ -62,38 +62,23 @@ export default function Flyweight() {
     go("/fight");
   };
 
-  const stage =
-    route === "/fight" ? (
-      <Arena frame={match.frame} arenaSize={ARENA_SIZE} chassis={[p1.chassis, p2.chassis]} />
-    ) : route === "/select" ? (
-      <Arena frame={null} arenaSize={ARENA_SIZE} chassis={[p1.chassis, p2.chassis]} />
-    ) : route === "/lab" ? (
-      <Arena frame={null} showcase chassis={[labChassis, labChassis]} labChassis={labChassis} />
-    ) : (
-      <MoonStage chassis={p1.chassis} />
-    );
+  // Hash routes survive as invisible deep links: they pick a camera station on
+  // the one moon, they never swap a page. #/fight still flies to the ring.
+  const station: StationName =
+    route === "/fight" ? "RING" : route === "/" ? "ARRIVAL" : "BAY";
 
   return (
     <div className={`flyweight ${route === "/" ? "route-home" : `route${route.replace("/", "-")}`}`}>
-      <div className="world-stage">{stage}</div>
-
-      <header className="topbar">
-        <a className="wordmark" href="#/">
-          F/W<span>FLYWEIGHT</span>
-        </a>
-        <nav aria-label="Main navigation">
-          <a className={route === "/select" ? "current" : ""} href="#/select">
-            Roster
-          </a>
-          <a className={route === "/fight" ? "current" : ""} href="#/fight">
-            Arena
-          </a>
-          <a className={route === "/lab" ? "current" : ""} href="#/lab">
-            Brain lab
-          </a>
-        </nav>
-        <span className="edition mono">EXPERIMENT 001 / DROSOPHILA</span>
-      </header>
+      <div className="world-stage">
+        <MoonStage
+          // On the bench the moon shows the build being tuned, not the saved one —
+          // otherwise picking a class changes nothing you can see.
+          chassis={route === "/lab" ? labChassis : p1.chassis}
+          station={station}
+          frame={match.frame}
+          fighters={bots}
+        />
+      </div>
 
       <main>
         {route === "/" && <Landing />}
@@ -124,6 +109,13 @@ export default function Flyweight() {
             bot={build}
             onChassisChange={setLabChassis}
             onLaunch={(bot) => {
+              // straight into a fight: the tuned brain becomes player one and the
+              // round counter ticks, which is what makes useMatch start a new match
+              setBuild(bot);
+              setP1(bot);
+              startFight();
+            }}
+            onRoster={(bot) => {
               setBuild(bot);
               setP1(bot);
               go("/select");
@@ -132,15 +124,6 @@ export default function Flyweight() {
         )}
       </main>
 
-      {route !== "/fight" && (
-        <footer>
-          <a className="wordmark" href="#/">
-            F/W<span>FLYWEIGHT</span>
-          </a>
-          <span className="mono">BUILT WITH CURIOSITY. SETTLED IN THE ARENA.</span>
-          <a href="#/select">CHOOSE A FIGHTER ↗</a>
-        </footer>
-      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { CHASSIS_STATS, MATCH_MAX_TICKS, SUDDEN_DEATH_TICK, TICK_HZ } from "@workspace/contract";
 import type { ArenaBotState, BotSpec, NeuronModule } from "@workspace/contract";
+import { profileBot } from "@workspace/sim";
 import { BrainView } from "./BrainView";
-import { NeuralScope } from "./NeuralScope";
 import type { MatchState } from "./useMatch";
 
 /**
@@ -18,6 +18,26 @@ const teamSpikes = (units: ArenaBotState[]): NeuronModule[] => {
 /** Mean across the squad, so the meters do not jump between individuals. */
 const teamMean = (units: ArenaBotState[], pick: (u: ArenaBotState) => number) =>
   units.length ? units.reduce((s, u) => s + pick(u), 0) / units.length : 0;
+
+/**
+ * The character type, off the same `profileBot` the API serves on every bot —
+ * one implementation, so the card on the roster and the chip in the fight can
+ * never disagree about what a fly is.
+ */
+const CHARACTER = {
+  aggression: { label: "BRAWLER", glyph: "▲" },
+  evasion: { label: "EVADER", glyph: "◆" },
+  tracking: { label: "HUNTER", glyph: "●" },
+} as const;
+
+function character(bot: BotSpec) {
+  const p = profileBot(bot);
+  const top = (["aggression", "evasion", "tracking"] as const).reduce((a, b) =>
+    p[b] > p[a] ? b : a,
+  );
+  const { label, glyph } = CHARACTER[top];
+  return { glyph, label: p.reflex > 62 ? `TWITCH ${label}` : label, profile: p };
+}
 
 const clock = (ticks: number) => {
   const seconds = Math.max(0, (MATCH_MAX_TICKS - ticks) / TICK_HZ);
@@ -83,7 +103,7 @@ export function Fight({
   onRematch: () => void;
   onRoster: () => void;
 }) {
-  const { frame, history, result, status, paused, speed, setSpeed, togglePause } = match;
+  const { frame, result, paused, speed, setSpeed, togglePause } = match;
   const tick = frame?.tick ?? 0;
   const suddenDeath = tick >= SUDDEN_DEATH_TICK;
   const split = frame?.teamSplit ?? squad;
@@ -104,14 +124,6 @@ export function Fight({
           )}
         </div>
         <SquadHud bot={bots[1]} units={teamB} squad={squad} slot={1} />
-      </div>
-
-      <div className="fight-readout mono">
-        <span className="live-label">
-          <i /> {status}
-        </span>
-        <span>ARENA {((frame?.arenaHalf ?? 7) * 2).toFixed(1)} m</span>
-        <span>TICK {String(tick).padStart(5, "0")}</span>
       </div>
 
       {result && (
@@ -165,8 +177,17 @@ export function Fight({
           // any unit with its arms up, or any unit caught in recovery
           const guarding = units.some((u) => u.guard > 0.45);
           const openNow = units.some((u) => u.recovery > 0);
+          const who = character(bot);
           return (
             <div className={`fight-brain brain-${slot}`} key={slot}>
+              <div className="fight-brain-head mono">
+                <i className="char-glyph" aria-hidden="true">
+                  {who.glyph}
+                </i>
+                <strong>{bot.name}</strong>
+                <span className="char-type">{who.label}</span>
+                <span className="char-cells">{who.profile.neuronCount} cells</span>
+              </div>
               <BrainView equipped={equipped} spiked={teamSpikes(units)} height={148} />
               <div className="brain-meters mono">
                 <div className="meter">
@@ -193,11 +214,6 @@ export function Fight({
             </div>
           );
         })}
-      </div>
-
-      <div className="fight-scopes">
-        <NeuralScope history={history} bot={bots[0]} index={0} />
-        <NeuralScope history={history} bot={bots[1]} index={1} />
       </div>
     </section>
   );

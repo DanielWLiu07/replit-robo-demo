@@ -5,3 +5,4 @@ export * from "./brains";
 export * from "./matches";
 export * from "./leaderboard";
 export * from "./training";
+export * from "./ladder";

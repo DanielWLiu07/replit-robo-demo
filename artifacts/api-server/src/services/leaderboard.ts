@@ -78,6 +78,8 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
     })
     .from(leaderboardTable)
     .innerJoin(botsTable, eq(botsTable.id, leaderboardTable.botId))
+    // Ladder opponents are generated, disposable and not competing for Elo.
+    .where(eq(botsTable.isGenerated, false))
     .orderBy(desc(leaderboardTable.elo), desc(leaderboardTable.wins))
     .limit(limit);
   return rows.map((r) => LeaderboardRow.parse(r));

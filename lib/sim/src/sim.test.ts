@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runMatch, Brain, LifNeuron, makeRng, arenaHalfAt, arenaHalfFor, ARENA_SIZE, evolve, fitness, randomBrain, simpleBrain, toSlot, toIntensity, budgetUsed } from "./index.js";
+import { runMatch, Brain, LifNeuron, makeRng, arenaHalfAt, arenaHalfFor, ARENA_SIZE, evolve, fitness, randomBrain, simpleBrain, toSlot, toIntensity, budgetUsed,
+  bodyMechanics, bodyRatios, poseBot, KNOCKDOWN_TICKS } from "./index.js";
 import {
   BrainSpec, BotSpec as BotSpecSchema, MatchFrame as MatchFrameSchema,
   SUDDEN_DEATH_TICK, MATCH_MAX_TICKS, type BotSpec, type BrainSpec as TBrainSpec,
@@ -350,4 +351,73 @@ test("the one-dial builder can never produce a brain the schema rejects", () => 
     const t = i / 10;
     assert.ok(Math.abs(toIntensity(toSlot("LC10A", t)) - t) < 0.02, `dial ${t} did not round-trip`);
   }
+});
+
+test("a body's mechanics follow from its measurements, and stock builds change nothing", () => {
+  // The whole point of deriving physics as a ratio against the chassis baseline is
+  // that an untuned bot is bit-identical to one from before the bench existed. If
+  // this drifts, every balance number in the repo quietly stops meaning anything.
+  for (const c of ["DRONE", "HORNET", "TANK"] as const) {
+    const r = bodyRatios(c);
+    for (const [k, v] of Object.entries(r))
+      assert.ok(Math.abs(v - 1) < 1e-12, `${c}.${k} is ${v}, must be exactly 1 when untuned`);
+  }
+
+  // Reach fights power: rotational inertia goes with L², so a longer arm is slower
+  // at the fist. This is the trade the bench is built around — if it ever inverts,
+  // long arms become free and there is no decision left to make.
+  const short = bodyMechanics({ mass: 80, reach: 0.45, torque: 120, stance: 0.4 });
+  const long  = bodyMechanics({ mass: 80, reach: 0.70, torque: 120, stance: 0.4 });
+  assert.ok(long.reach > short.reach, "a longer arm must reach further");
+  assert.ok(long.tipSpeed < short.tipSpeed, "a longer arm must be slower at the fist");
+  assert.ok(long.impactEnergy < short.impactEnergy, "a longer arm must hit softer");
+
+  // Mass fights acceleration (square-cube law) and stance fights turning.
+  const light = bodyMechanics({ mass: 55, reach: 0.55, torque: 120, stance: 0.4 });
+  const heavy = bodyMechanics({ mass: 115, reach: 0.55, torque: 120, stance: 0.4 });
+  assert.ok(heavy.accel < light.accel, "a heavier body must accelerate worse");
+  const narrow = bodyMechanics({ mass: 80, reach: 0.55, torque: 120, stance: 0.26 });
+  const wide   = bodyMechanics({ mass: 80, reach: 0.55, torque: 120, stance: 0.62 });
+  assert.ok(wide.knockdownAngle > narrow.knockdownAngle, "a wider stance must be harder to tip");
+  assert.ok(wide.turn < narrow.turn, "a wider stance must turn slower");
+});
+
+test("no pose ever puts a bone through the floor, knocked down or upright", () => {
+  // The floor plant used to measure the feet alone, which is correct until somebody
+  // is lying down — then the feet are the HIGHEST part of the bot and the lift went
+  // negative, burying the body in the surface. Sweep the whole ragdoll range.
+  const base = {
+    botId: "t", x: 0, y: 0, heading: 0, vx: 0, vy: 0, hull: 100, spiked: [],
+    potentials: {} as never, guard: 0, recovery: 0, blocked: false,
+    countered: false, stamina: 1, arousal: 1, gfFatigue: 0,
+    armL: 0.35, armR: -0.35, armLv: 0, armRv: 0, gait: 0,
+  } as unknown as Parameters<typeof poseBot>[0];
+
+  let sawFlat = false;
+  for (const down of [0, 1, 8, 26, 45, KNOCKDOWN_TICKS]) {
+    for (const lean of [-0.8, -0.3, 0, 0.3, 0.8]) {
+      for (const tilt of [-0.6, 0, 0.6]) {
+        for (const gait of [0, 0.25, 0.5, 0.75]) {
+          const pose = poseBot({ ...base, down, lean, tilt, gait }, "HORNET");
+          for (const b of pose.bones) {
+            assert.ok(b.a[1] - b.radius >= -1e-6,
+              `bone ${b.name} start is ${b.a[1] - b.radius} below the floor (down=${down} lean=${lean})`);
+            assert.ok(b.b[1] - b.radius >= -1e-6,
+              `bone ${b.name} end is ${b.b[1] - b.radius} below the floor (down=${down} lean=${lean})`);
+          }
+          // and a bot in the middle of a knockdown must actually be DOWN: the head
+          // drops below standing height rather than the body staying bolt upright.
+          if (down === 26) {
+            const head = pose.bones.find((b) => b.name === "head")!;
+            const up = poseBot({ ...base, down: 0, lean: 0, tilt: 0, gait }, "HORNET")
+              .bones.find((b) => b.name === "head")!;
+            assert.ok(head.b[1] < up.b[1] * 0.75,
+              `knocked down but the head is at ${head.b[1]} vs ${up.b[1]} standing`);
+            sawFlat = true;
+          }
+        }
+      }
+    }
+  }
+  assert.ok(sawFlat, "the knockdown case never ran");
 });

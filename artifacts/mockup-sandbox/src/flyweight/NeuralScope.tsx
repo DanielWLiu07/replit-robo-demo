@@ -13,21 +13,21 @@ export function NeuralScope({ history, bot, index }: { history: MatchFrame[]; bo
    const left = 78, width = Math.max(1, w - left - 12), last = history.at(-1)?.tick ?? 0;
    const start = last - 360;
    ctx.font = '9px "IBM Plex Mono", monospace';
-   for (let j = 0; j <= 6; j++) { const x = left + width * j / 6; ctx.strokeStyle = '#deded8'; ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, 199); ctx.stroke(); }
+   for (let j = 0; j <= 6; j++) { const x = left + width * j / 6; ctx.strokeStyle = '#26272e'; ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, 199); ctx.stroke(); }
    bot.brain.slots.forEach((slot, row) => {
     const y = 20 + row * 22;
-    ctx.fillStyle = '#545450'; ctx.fillText(MODULES[slot.module].circuit.replace('LPLC2 → DNp01', 'LPLC2 / GF'), 0, y + 3);
-    ctx.strokeStyle = '#111'; ctx.lineWidth = 1.25;
+    ctx.fillStyle = '#8e8f98'; ctx.fillText(MODULES[slot.module].circuit.replace('LPLC2 → DNp01', 'LPLC2 / GF'), 0, y + 3);
+    ctx.strokeStyle = '#e8e8e4'; ctx.lineWidth = 1.25;
     ctx.beginPath();
     for (const f of history) if (f.tick >= start && (f.bots[index ? f.teamSplit : 0]?.spiked ?? []).includes(slot.module)) { const x = left + (f.tick - start) / 360 * width; ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5); }
     ctx.stroke();
    });
    const slot = bot.brain.slots.find(s => s.module === 'LPLC2_DNP01') ?? bot.brain.slots[0];
-   ctx.fillStyle = '#545450'; ctx.fillText('Vm / ' + (slot ? MODULES[slot.module].circuit : '—'), 0, 145);
-   ctx.setLineDash([3, 4]); ctx.strokeStyle = '#aaa'; ctx.beginPath(); ctx.moveTo(left, 148); ctx.lineTo(w - 12, 148); ctx.stroke(); ctx.setLineDash([]);
-   ctx.strokeStyle = '#151515'; ctx.lineWidth = 1.2; ctx.beginPath(); let begun = false;
+   ctx.fillStyle = '#8e8f98'; ctx.fillText('Vm / ' + (slot ? MODULES[slot.module].circuit : '—'), 0, 145);
+   ctx.setLineDash([3, 4]); ctx.strokeStyle = '#4a4b54'; ctx.beginPath(); ctx.moveTo(left, 148); ctx.lineTo(w - 12, 148); ctx.stroke(); ctx.setLineDash([]);
+   ctx.strokeStyle = '#e8e8e4'; ctx.lineWidth = 1.2; ctx.beginPath(); let begun = false;
    if (slot) for (const f of history) { if (f.tick < start) continue; const potential = f.bots[index ? f.teamSplit : 0]?.potentials[slot.module] ?? 0; const x = left + (f.tick - start) / 360 * width; const y = 195 - Math.min(1.25, potential / slot.threshold) * 47; if (!begun) {ctx.moveTo(x,y);begun=true;} else ctx.lineTo(x,y); }
-   ctx.stroke(); ctx.fillStyle = '#777'; ctx.fillText('−6 s', left, 215); ctx.fillText('NOW', w - 32, 215); ctx.fillText('θ', w - 10, 151);
+   ctx.stroke(); ctx.fillStyle = '#65666f'; ctx.fillText('−6 s', left, 215); ctx.fillText('NOW', w - 32, 215); ctx.fillText('θ', w - 10, 151);
   };
   draw(); const observer = new ResizeObserver(draw); observer.observe(node); return () => observer.disconnect();
  }, [history, bot, index]);

@@ -15,14 +15,17 @@ async function buildAll() {
   await rm(distDir, { recursive: true, force: true });
 
   await esbuild({
-    // Two entry points: the server, and the trainer it forks. The trainer is a
+    // The server plus every worker it forks. Workers are separate processes
+    // (their work is CPU-bound), so each needs its own file. The trainer is a
     // separate process (evolution is CPU-bound), so it needs its own file —
-    // `src/services/training.ts` resolves it as `./train/worker.mjs` next to
-    // the bundle. esbuild roots the output at the common ancestor (`src/`), so
-    // this lands at `dist/train/worker.mjs`.
+    // `src/lib/forkJob.ts` resolves them as `./<name>/worker.mjs` next to the
+    // bundle. esbuild roots the output at the common ancestor (`src/`), so
+    // these land at `dist/train/worker.mjs` and `dist/verify/worker.mjs`.
     entryPoints: [
       path.resolve(artifactDir, "src/index.ts"),
       path.resolve(artifactDir, "src/train/worker.ts"),
+      path.resolve(artifactDir, "src/verify/worker.ts"),
+      path.resolve(artifactDir, "src/ladder/worker.ts"),
     ],
     platform: "node",
     bundle: true,

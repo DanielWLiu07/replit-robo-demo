@@ -98,6 +98,12 @@ export const STATIONS: Record<StationName, Station> = {
   ARRIVAL: { position: [0, 9, 10], target: [0, 1.6, 0] },
   // the plinth is the fly; aim left of it so it sits on the RIGHT of frame and
   // the configuration glass has the left half to itself
-  BAY: { position: [0.2, 3.4, 9.4], target: [1.1, 1.35, 3.2] },
+  // Measured: at the old pose the fly projected to 954px tall in a 937px frame
+  // and its head sat 219px above the top edge. Pulled back ~1.45x along the same
+  // sight line, and the aim raised so the figure sits in frame rather than high.
+  // Then measured again: in frame, but hard against the panel with the right
+  // third empty. Sliding camera AND target the same amount keeps the sight line
+  // and moves the figure across the frame; raising the aim drops it to centre.
+  BAY: { position: [-2.8, 4.35, 12.2], target: [-1.5, 2.55, 3.2] },
   RING: { position: [-19, 3.4, 2.6], target: [-19, -2.2, -6] },
 };

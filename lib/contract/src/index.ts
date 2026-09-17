@@ -60,11 +60,50 @@ export const CHASSIS_STATS: Record<Chassis, { hull: number; accel: number; turn:
   TANK:   { hull: 150, accel: 0.7,  turn: 0.65 },
 };
 
+
+/**
+ * The physical build — four measurements of an actual body.
+ *
+ * These are not stat bars with invented consequences. Every number downstream is
+ * derived from these by mechanics that hold in the real world (see `bodyMechanics`
+ * in the sim), which is what makes tuning them interesting: you cannot raise one
+ * without paying for it somewhere the physics decides, not somewhere we chose.
+ *
+ * The sharpest of those trades: a longer arm reaches further but, for the same
+ * shoulder torque, moves SLOWER at the fist — rotational inertia goes with L², so
+ * tip speed goes with 1/L. Reach and power are genuinely opposed.
+ */
+export const BodySpec = z.object({
+  /** total mass, kg */
+  mass: z.number().min(48).max(124),
+  /** shoulder to fist, metres */
+  reach: z.number().min(0.40).max(0.76),
+  /** peak shoulder torque driving a swing, N·m */
+  torque: z.number().min(55).max(200),
+  /** distance between the feet, metres — the base you balance over */
+  stance: z.number().min(0.24).max(0.64),
+});
+export type BodySpec = z.infer<typeof BodySpec>;
+
+/**
+ * The build each chassis arrives with. A bot that never visits the bench uses
+ * exactly these, and the arena applies body physics as a RATIO against them — so
+ * an untuned bot computes 1.0 everywhere and fights identically to before the
+ * bench existed. That is what keeps the existing balance runs meaningful.
+ */
+export const BODY_BY_CHASSIS: Record<Chassis, BodySpec> = {
+  DRONE:  { mass: 62,  reach: 0.50, torque: 96,  stance: 0.32 },
+  HORNET: { mass: 80,  reach: 0.55, torque: 120, stance: 0.40 },
+  TANK:   { mass: 106, reach: 0.62, torque: 165, stance: 0.52 },
+};
+
 export const BotSpec = z.object({
   id: z.string(),
   name: z.string().min(1).max(24),
   chassis: Chassis,
   brain: BrainSpec,
+  /** Absent means "stock for this chassis" — see BODY_BY_CHASSIS. */
+  body: BodySpec.optional(),
 });
 export type BotSpec = z.infer<typeof BotSpec>;
 
@@ -292,6 +331,11 @@ export const Bot = z.object({
   /** whether the caller may edit or delete this bot. */
   mine: z.boolean(),
   createdAt: z.string(),
+  /**
+   * Derived character card — stat bars, playstyle, neuron count. Optional only
+   * so older callers keep parsing; the server always sends it.
+   */
+  profile: z.lazy(() => BotProfile).optional(),
 });
 export type Bot = z.infer<typeof Bot>;
 
@@ -513,7 +557,14 @@ export type VerifierResult = z.infer<typeof VerifierResult>;
 /** Safety rail. Nobody is beating this, and it bounds the table. */
 export const LADDER_MAX_ROUND = 40;
 
-export const LadderStatus = z.enum(["ACTIVE", "ENDED"]);
+/**
+ * Clear the campaign by winning this many rounds. Measured against the roster,
+ * the expected furthest round is about 3 and a strong fly reaches 10, so this
+ * is a real finish line rather than a formality.
+ */
+export const LADDER_CLEAR_ROUND = 10;
+
+export const LadderStatus = z.enum(["ACTIVE", "ENDED", "CLEARED"]);
 export type LadderStatus = z.infer<typeof LadderStatus>;
 
 /**
@@ -558,8 +609,17 @@ export const LadderRun = z.object({
    */
   bot: BotSpec,
   botId: z.string(),
-  /** furthest round cleared. This is the score. */
+  /** furthest round cleared. */
   round: z.number().int().min(0),
+  /**
+   * Clear time, in simulated ticks summed across every round fought.
+   *
+   * Deliberately not wall clock: wall clock measures how fast you click and
+   * punishes a slow connection, and it is trivially faked. Ticks measure how
+   * decisively your fly actually won, are computed server-side, and replay to
+   * the same number forever.
+   */
+  clearTicks: z.number().int().min(0),
   simVersion: z.string(),
   createdAt: z.string(),
   endedAt: z.string().nullable(),
@@ -587,6 +647,10 @@ export const LadderLeaderboardRow = z.object({
   /** furthest round cleared */
   round: z.number().int(),
   status: LadderStatus,
+  /** true once the whole campaign is beaten — these rank above unfinished runs. */
+  cleared: z.boolean(),
+  /** total simulated ticks across the run; the ranking key for cleared runs. */
+  clearTicks: z.number().int(),
   simVersion: z.string(),
   createdAt: z.string(),
 });
@@ -608,3 +672,37 @@ export const LadderRoundResult = z.object({
   hits: z.array(z.object({ tick: z.number().int(), attacker: z.string(), damage: z.number() })),
 });
 export type LadderRoundResult = z.infer<typeof LadderRoundResult>;
+
+// ── Bot profile: the character-select card ───────────────────────────────────
+// A fighting game shows you stat bars before you pick. Here they are derived,
+// not authored: what a fly will actually *do* falls out of which circuits are
+// equipped and how hard they are wired. Computed by `profileBot` in
+// @workspace/sim and served alongside every bot, so the client renders one
+// rather than re-deriving it and drifting from what the sim believes.
+
+export const ProfileModule = z.object({
+  module: NeuronModule,
+  weight: z.number(),
+  /** real FlyWire cell count for this population. */
+  cells: z.number().int(),
+  transmitter: z.string(),
+});
+export type ProfileModule = z.infer<typeof ProfileModule>;
+
+export const BotProfile = z.object({
+  /** behavioural bars, 0..100, read off the loadout. */
+  aggression: z.number(),
+  evasion: z.number(),
+  tracking: z.number(),
+  reflex: z.number(),
+  /** chassis-derived, also 0..100 so every bar shares a scale. */
+  hull: z.number(),
+  speed: z.number(),
+  agility: z.number(),
+  /** one-line read on how it fights — the "character type". */
+  playstyle: z.string(),
+  /** total cells across every equipped population: the brain-size stat. */
+  neuronCount: z.number().int(),
+  modules: z.array(ProfileModule),
+});
+export type BotProfile = z.infer<typeof BotProfile>;

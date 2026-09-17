@@ -19,7 +19,7 @@
 import * as THREE from 'three';
 import { poseBot, rigHeight } from '@workspace/sim';
 import type { ArenaBotState, Chassis } from '@workspace/contract';
-import { normalise, fitSkeleton, computeSkinWeights, type RestBone, type V3 } from './autoRig';
+import { normalise, fitSkeleton, computeSkinWeights, facesPositiveZ, type RestBone, type V3 } from './autoRig';
 
 /** poseBot builds its pose with forward on −x; the arena puts forward on −z. */
 const toArena = (v: readonly number[]): V3 => [-v[2], v[1], v[0]];
@@ -55,6 +55,12 @@ export function bindChassis(source: THREE.Mesh): ChassisBind {
   source.updateMatrixWorld(true);
   const geometry = source.geometry.clone();
   geometry.applyMatrix4(source.matrixWorld);
+
+  // Turn the model to face the way the arena drives it. applyMatrix4 carries the
+  // normals round with the positions, which a hand-rolled coordinate flip would not.
+  if (facesPositiveZ(geometry.getAttribute('position').array as ArrayLike<number>)) {
+    geometry.applyMatrix4(new THREE.Matrix4().makeRotationY(Math.PI));
+  }
 
   const { positions } = normalise(geometry.getAttribute('position').array as ArrayLike<number>);
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -118,12 +124,16 @@ export function poseSkinnedBot(rig: SkinnedBot, state: ArenaBotState, chassis: C
     ax[i] = ax[p] + _off.x; ay[i] = ay[p] + _off.y; az[i] = az[p] + _off.z;
   }
 
-  // plant the lower foot: the gait lifts one foot and leaves the other down, so
-  // holding the lowest point on the floor gives the stride its bob for free
+  // Plant the body on the floor: the gait lifts one foot and leaves the other down,
+  // so holding the lowest point at the surface gives the stride its bob for free.
+  //
+  // This used to measure the FEET only, which is right up to the moment somebody
+  // gets knocked over. On the floor the feet are the HIGHEST part of a bot, so the
+  // lift went negative and drove the whole body down through the surface — the one
+  // pose where the plant mattered most was the one it inverted. Measuring every
+  // bone costs a few dozen comparisons and is correct in both.
   let lowest = Infinity;
-  for (const name of ['footL', 'footR']) {
-    const i = index.get(name);
-    if (i === undefined) continue;
+  for (let i = 0; i < rest.length; i++) {
     _off.set(rest[i].b[0] - rest[i].a[0], rest[i].b[1] - rest[i].a[1], rest[i].b[2] - rest[i].a[2])
         .applyQuaternion(quats[i]);
     lowest = Math.min(lowest, ay[i], ay[i] + _off.y);

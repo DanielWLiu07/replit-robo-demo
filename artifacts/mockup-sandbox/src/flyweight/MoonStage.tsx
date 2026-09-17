@@ -91,6 +91,55 @@ const PROP_FRAG = `precision highp float;uniform sampler2D hatchTex,paperTex;uni
       vec3 paper=vec3(0.93)*mix(vec3(1.0),texture2D(paperTex,gl_FragCoord.xy/620.0).rgb,0.14);
       gl_FragColor=vec4(mix(vec3(0.05),paper,clamp(m2,0.0,1.0)),1.0);}`;
 
+
+/**
+ * Screen-space ink outline.
+ *
+ * A normal-inflate hull needs a CLOSED mesh: you render its back faces and see
+ * only the silhouette. The rigged chassis is not closed — it is separate plates —
+ * so back faces show all over the body and read as black wedges that move with
+ * the limbs. A depth Sobel has no such requirement: it finds the edge in the
+ * DEPTH BUFFER, so it outlines whatever is actually on screen, manifold or not,
+ * and it costs one full-screen pass instead of a second skinned body per figure.
+ */
+const OUTLINE_FRAG = `
+precision highp float;
+uniform sampler2D tDiffuse;
+uniform sampler2D tDepth;
+uniform vec2 uTexel;
+uniform float uNear, uFar, uStrength, uWidth;
+varying vec2 vUv;
+
+// depth buffer is non-linear; differencing it raw makes the edge width vary
+// with distance, so linearise before the gradient
+float linearDepth(vec2 uv) {
+  float z = texture2D(tDepth, uv).x * 2.0 - 1.0;
+  return (2.0 * uNear * uFar) / (uFar + uNear - z * (uFar - uNear));
+}
+
+void main() {
+  vec4 base = texture2D(tDiffuse, vUv);
+  float c  = linearDepth(vUv);
+  vec2 o = uTexel * uWidth;
+  float l  = linearDepth(vUv - vec2(o.x, 0.0));
+  float r  = linearDepth(vUv + vec2(o.x, 0.0));
+  float d  = linearDepth(vUv - vec2(0.0, o.y));
+  float u  = linearDepth(vUv + vec2(0.0, o.y));
+  // the diagonals too, or a thick edge breaks up on slanted silhouettes
+  float dl = linearDepth(vUv - o);
+  float dr = linearDepth(vUv + vec2(o.x, -o.y));
+  float ul = linearDepth(vUv + vec2(-o.x, o.y));
+  float ur = linearDepth(vUv + o);
+  // scale the gradient by depth so a far edge is not thinner than a near one
+  float g = (abs(c - l) + abs(c - r) + abs(c - d) + abs(c - u)
+           + 0.7 * (abs(c - dl) + abs(c - dr) + abs(c - ul) + abs(c - ur))) / max(c, 0.001);
+  float edge = smoothstep(0.010, 0.040, g) * uStrength;
+  vec3 ink = vec3(0.03, 0.03, 0.04);
+  gl_FragColor = vec4(mix(base.rgb, ink, edge), max(base.a, edge));
+}`;
+
+const OUTLINE_VERT = `varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`;
+
 export function MoonStage({
   chassis = "DRONE" as Chassis,
   station = "ARRIVAL" as StationName,
@@ -103,6 +152,14 @@ export function MoonStage({
   fighters?: [BotSpec, BotSpec];
 }) {
   const host = useRef<HTMLDivElement>(null);
+  // The chassis is a live value like the frame: picking a different class must swap
+  // the BODY, not tear down and rebuild the moon, the shaders and the wordmark. It
+  // used to sit in the scene effect's dependency list, which rebuilt everything and
+  // read on screen as the page reloading under you.
+  const chassisRef = useRef(chassis);
+  chassisRef.current = chassis;
+  const swapChassis = useRef<((c: Chassis) => void) | null>(null);
+  const loadedChassis = useRef<Chassis | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [editor, setEditor] = useState<MoonEditor | null>(null);
   // live values the frame loop reads; changing them must not rebuild the scene
@@ -163,6 +220,34 @@ export function MoonStage({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+
+    const depthTexture = new THREE.DepthTexture(1, 1);
+    depthTexture.type = THREE.UnsignedIntType;
+    const target = new THREE.WebGLRenderTarget(1, 1, {
+      depthTexture,
+      depthBuffer: true,
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+    });
+    const outlineMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: target.texture },
+        tDepth: { value: depthTexture },
+        uTexel: { value: new THREE.Vector2(1, 1) },
+        uNear: { value: camera.near },
+        uFar: { value: camera.far },
+        uStrength: { value: 1.0 },
+        uWidth: { value: 2.4 },
+      },
+      vertexShader: OUTLINE_VERT,
+      fragmentShader: OUTLINE_FRAG,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const postScene = new THREE.Scene();
+    const postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), outlineMaterial));
     const L1 = new THREE.Vector3(0.5, 0.85, 0.7).normalize();
 
     const base = import.meta.env.BASE_URL;
@@ -213,6 +298,7 @@ export function MoonStage({
     // The title lives in the scene by default so it sits ON the moon in
     // perspective; ?title2d swaps it for the flat HTML heading instead.
     const use3dTitle = !new URLSearchParams(location.search).has("title2d");
+    const inflatedGeometries: THREE.BufferGeometry[] = [];
     const inkTextures: THREE.CanvasTexture[] = [];
     const inkMaterials: THREE.MeshBasicMaterial[] = [];
     let enterMesh: THREE.Mesh | null = null;
@@ -344,20 +430,6 @@ export function MoonStage({
     scene.add(flyRoot);
     // bindChassis re-centres to unit height with the feet on y=0, so the display
     // scale lives here and the layout's `fly` transform stays what it was.
-    const plinth = new THREE.Group();
-    plinth.position.set(2.6, 0, 3.4);
-    scene.add(plinth);
-    for (let i = 0; i < 3; i++) {
-      const r = 1.15 + i * 0.26;
-      const disc = new THREE.Mesh(
-        new THREE.RingGeometry(r, r + 0.03, 80),
-        new THREE.MeshBasicMaterial({ color: 0x0a0a0c, side: THREE.DoubleSide }),
-      );
-      disc.rotation.x = -Math.PI / 2;
-      disc.position.y = 0.015 + i * 0.001;
-      plinth.add(disc);
-    }
-
     const flyFit = new THREE.Group();
     // bindChassis normalises to UNIT HEIGHT, where the old path fitted the max
     // dimension (wings included). 4.6 stacked with the layout's 1.573 and made it
@@ -366,22 +438,43 @@ export function MoonStage({
     flyRoot.add(flyFit);
 
     let flyRig: SkinnedBot | null = null;
-    let flyHull: SkinnedBot | null = null;
-    new GLTFLoader().load(`${base}models/${chassis.toLowerCase()}.glb`, (gltf) => {
-      if (disposed) { return; }
+    /**
+     * Load one chassis and stand it up, replacing whatever body is there.
+     *
+     * Separated from the scene build so a class change costs a GLB fetch and a rebind
+     * instead of a full teardown. `loadedChassis` doubles as the guard against a slow
+     * fetch landing after a newer pick has already won the race.
+     */
+    const loadChassis = (name: Chassis) => {
+      loadedChassis.current = name;
+      new GLTFLoader().load(`${base}models/${name.toLowerCase()}.glb`, (gltf) => {
+      if (disposed || loadedChassis.current !== name) { return; }
       let source: THREE.Mesh | undefined;
       gltf.scene.traverse((o) => { if (!source && o instanceof THREE.Mesh) source = o; });
       if (!source) return;
+      // retire the body that is standing there now, and its ring copies
+      if (flyRig) { flyFit.remove(flyRig.mesh); flyRig.mesh.geometry.dispose(); flyRig = null; }
+      for (const pool of ringRigs) {
+        for (const slot of pool) { ring.remove(slot.holder); slot.rig.mesh.geometry.dispose(); }
+        pool.length = 0;
+      }
       // One bind, two rigs: the inked body and the ink hull behind it. The hull has
       // to be skinned too — a static clone would stay rigid while the body deforms.
       const bind = bindChassis(source);
-      flyHull = buildSkinnedBot(bind, outlineMat, chassis);
-      flyHull.mesh.scale.multiplyScalar(1.018);
-      flyRig = buildSkinnedBot(bind, propMat, chassis);
-      flyFit.add(flyHull.mesh, flyRig.mesh);
-      buildSide(0, bind);
-      buildSide(1, bind);
-    }, undefined, () => {});
+      // NO ink hull on the rigged bodies. A normal-inflate outline assumes a
+      // CLOSED mesh: render its back faces and you see only the silhouette. This
+      // chassis is not closed — it is plates and separate parts — so back faces
+      // are visible all over the body and read as black wedges that change shape
+      // as the limbs swing. The hatch shader already carries the figure against
+      // the moon, so the outline is not paying for itself here.
+      flyRig = buildSkinnedBot(bind, propMat, name);
+      flyFit.add(flyRig.mesh);
+      buildSide(0, bind, name);
+      buildSide(1, bind, name);
+      }, undefined, () => {});
+    };
+    loadChassis(chassisRef.current);
+    swapChassis.current = loadChassis;
 
     /**
      * A synthetic ArenaBotState for the idle.
@@ -408,6 +501,42 @@ export function MoonStage({
       lean: 0, tilt: 0, down: 0,
     });
 
+    /**
+     * An ink hull that survives a bent joint.
+     *
+     * Scaling the hull object uniformly inflates it from the MESH ORIGIN, so the
+     * offset only points "outward" near the origin; at an elbow or a knee it
+     * points the wrong way and the body punches through in chunks. Displacing
+     * each vertex along its own normal BEFORE binding bakes the offset into bind
+     * space, so it is carried by the same skin weights as the body and stays
+     * outside it at every angle. No shader patch, so the plain BackSide material
+     * still works.
+     *
+     * Keep the amount BELOW the narrowest gap on the model. This fly has thin
+     * crevices — arm against torso, leg against leg — and an inflation wider than
+     * a crevice pushes the hull's back faces in front of the body and fills it
+     * with black. As the limbs swing those patches change shape, which reads as a
+     * second figure animating out of sync rather than as an outline.
+     */
+    const inflatedBind = (bind: ReturnType<typeof bindChassis>, amount: number) => {
+      const geometry = bind.geometry.clone();   // clone carries skinIndex/skinWeight
+      if (!geometry.attributes.normal) geometry.computeVertexNormals();
+      const pos = geometry.attributes.position as THREE.BufferAttribute;
+      const nor = geometry.attributes.normal as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) {
+        pos.setXYZ(
+          i,
+          pos.getX(i) + nor.getX(i) * amount,
+          pos.getY(i) + nor.getY(i) * amount,
+          pos.getZ(i) + nor.getZ(i) * amount,
+        );
+      }
+      pos.needsUpdate = true;
+      geometry.computeBoundingSphere();
+      inflatedGeometries.push(geometry);
+      return { geometry, rest: bind.rest };
+    };
+
     // ── THE RING ─────────────────────────────────────────────────────────
     // Built into this scene rather than stacked as a second canvas: Arena runs a
     // WebGPU renderer with node materials, so its scene cannot join this one —
@@ -416,31 +545,16 @@ export function MoonStage({
     const ring = new THREE.Group();
     ring.position.set(RING_CENTRE[0], RING_CENTRE[1], RING_CENTRE[2]);
     scene.add(ring);
-    const ringMarks = new THREE.Group();
-    ring.add(ringMarks);
-    for (let i = 0; i < 3; i++) {
-      const r = 3.5 + i * 0.55;
-      const mark = new THREE.Mesh(
-        new THREE.RingGeometry(r, r + 0.035, 96),
-        new THREE.MeshBasicMaterial({ color: 0x0a0a0c, side: THREE.DoubleSide }),
-      );
-      mark.rotation.x = -Math.PI / 2;
-      mark.position.y = 0.02 + i * 0.001;
-      ringMarks.add(mark);
-    }
-
-    const ringRigs: { rig: SkinnedBot; hull: SkinnedBot; holder: THREE.Group }[][] = [[], []];
-    const buildSide = (side: 0 | 1, bind: ReturnType<typeof bindChassis>) => {
+    const ringRigs: { rig: SkinnedBot; holder: THREE.Group }[][] = [[], []];
+    const buildSide = (side: 0 | 1, bind: ReturnType<typeof bindChassis>, name: Chassis) => {
       for (let i = 0; i < MAX_SQUAD; i++) {
         const holder = new THREE.Group();
         holder.visible = false;
         holder.scale.setScalar(1.55);
-        const hull = buildSkinnedBot(bind, outlineMat, chassis);
-        hull.mesh.scale.multiplyScalar(1.018);
-        const rig = buildSkinnedBot(bind, propMat, chassis);
-        holder.add(hull.mesh, rig.mesh);
+        const rig = buildSkinnedBot(bind, propMat, name);
+        holder.add(rig.mesh);
         ring.add(holder);
-        ringRigs[side]!.push({ rig, hull, holder });
+        ringRigs[side]!.push({ rig, holder });
       }
     };
 
@@ -451,6 +565,9 @@ export function MoonStage({
       // at its drawing-buffer size (2560 wide inside a 1920 window), and every
       // pointer-to-NDC conversion is then wrong by the DPR.
       renderer.setSize(width, h);
+      const dpr = renderer.getPixelRatio();
+      target.setSize(Math.max(1, Math.round(width * dpr)), Math.max(1, Math.round(h * dpr)));
+      outlineMaterial.uniforms.uTexel.value.set(1 / Math.max(1, width * dpr), 1 / Math.max(1, h * dpr));
       camera.aspect = width / h;
       camera.updateProjectionMatrix();
       shared.uHscale.value = 300.0 * DPR * RS;
@@ -597,7 +714,9 @@ export function MoonStage({
     // editing, a click belongs to selection and gesture confirmation.
     const enterRay = new THREE.Raycaster();
     const hitEnter = (e: PointerEvent | MouseEvent) => {
-      if (moonEditor || !enterMesh) return false;
+      // Raycaster.intersectObject does not check `visible`, so hiding ENTER is
+      // not enough on its own to stop it being clicked from the bay or the ring.
+      if (moonEditor || !enterMesh || stationRef.current !== "ARRIVAL") return false;
       const rect = renderer.domElement.getBoundingClientRect();
       if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return false;
       enterRay.setFromCamera(
@@ -649,6 +768,13 @@ export function MoonStage({
       // The fly holds its authored pose: a per-frame write to rotation.y would
       // overwrite an R gesture every frame and make the object un-editable.
       // The moon keeps the prototype's drift, but only when nothing is editing.
+      // The wordmark and ENTER are signage for the landing, not world dressing:
+      // from the bay and the ring they sit behind the glass panels and bleed
+      // through them. They exist only at ARRIVAL.
+      const atArrival = stationRef.current === "ARRIVAL";
+      titleGroup.visible = atArrival;
+      enterGroup.visible = atArrival;
+
       if (!reducedMotion && !moonEditor) moon.rotation.y += 0.0003;
 
       if (!reducedMotion && !moonEditor) {
@@ -681,23 +807,25 @@ export function MoonStage({
             // sim metres -> ring units, and the ring group already carries the
             // surface height, so the holder stays on y=0 inside it
             slot.holder.position.set(unit.x * 0.45, 0, unit.y * 0.45);
-            poseSkinnedBot(slot.rig, unit, chassis);
-            poseSkinnedBot(slot.hull, unit, chassis);
+            poseSkinnedBot(slot.rig, unit, chassisRef.current);
           }
         }
 
         // The fly's idle comes off its own rig, not a root bob: the mesh is
         // skinned, so the legs shift weight at the joints instead of the whole
         // body translating. Only the authored pose is held here.
-        if (flyRig) poseSkinnedBot(flyRig, idleState(t), chassis);
-        if (flyHull) poseSkinnedBot(flyHull, idleState(t), chassis);
+        if (flyRig) poseSkinnedBot(flyRig, idleState(t), chassisRef.current);
         // ENTER swells under the cursor; eased so it never snaps
         enterEase += ((enterHover ? 1 : 0) - enterEase) * 0.14;
         const k = 1 + enterEase * 0.16;
         enterGroup.scale.setScalar(enterBaseScale * k);
         enterGroup.position.y = enterBaseY + enterEase * 0.12;
       }
+      renderer.setRenderTarget(target);
+      renderer.clear();
       renderer.render(scene, camera);
+      renderer.setRenderTarget(null);
+      renderer.render(postScene, postCamera);
     };
     raf = requestAnimationFrame(frame);
 
@@ -711,6 +839,7 @@ export function MoonStage({
       intersection.disconnect();
       scene.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
       for (const g of starGeos) g.dispose();
+      for (const g of inflatedGeometries) g.dispose();
       svg.remove();
       (window as unknown as { fwEditor: MoonEditor | null }).fwEditor = null;
       moonEditor?.dispose();
@@ -720,9 +849,20 @@ export function MoonStage({
       for (const m of inkMaterials) m.dispose();
       moonMat.dispose(); propMat.dispose(); outlineMat.dispose();
       hatchTex.dispose(); paperTex.dispose();
+      target.dispose();
+      depthTexture.dispose();
+      outlineMaterial.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Swap the body when the class changes. Declared after the scene effect so on the
+  // first mount that one has already loaded this chassis and this is a no-op.
+  useEffect(() => {
+    if (loadedChassis.current === null || loadedChassis.current === chassis) return;
+    swapChassis.current?.(chassis);
   }, [chassis]);
 
   return (

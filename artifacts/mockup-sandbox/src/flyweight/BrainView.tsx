@@ -19,8 +19,8 @@ const FIBRE_TOTAL = totalFibres(GEOMETRY);
 /** samples per fibre along its bezier */
 const SEG = 7;
 
-const DIM = new THREE.Color(0x9c9c9c);
-const LIT = new THREE.Color(0x101010);
+const DIM = new THREE.Color(0x3a3b45);
+const LIT = new THREE.Color(0xf4f4ef);
 
 function fibrePositions(pop: (typeof GEOMETRY)[number]): Float32Array {
   const out = new Float32Array(pop.fibres.length * SEG * 2 * 3);
@@ -88,7 +88,7 @@ export function BrainView({
       new THREE.EdgesGeometry(
         new THREE.BoxGeometry(BRAIN_EXTENT.x * 1.55, BRAIN_EXTENT.y * 1.75, BRAIN_EXTENT.z * 1.8),
       ),
-      new THREE.LineBasicMaterial({ color: 0xdcdcdc, transparent: true, opacity: 0.7 }),
+      new THREE.LineBasicMaterial({ color: 0x2b2c34, transparent: true, opacity: 0.8 }),
     );
     root.add(shell);
 

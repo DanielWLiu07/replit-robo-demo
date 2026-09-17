@@ -78,6 +78,41 @@ export function normalise(src: ArrayLike<number>): Normalised {
   return { positions: out, scale };
 }
 
+/**
+ * Does this mesh face +Z, and so need turning around?
+ *
+ * The arena drives everything with forward on local −Z, but the generator emits these
+ * facing +Z — which is why an unturned fighter moonwalks and throws its punches out of
+ * its own back. Decide it from the feet: a biped's foot is strongly asymmetric about
+ * the ankle, with the toe reaching several times further than the heel, and that holds
+ * on all three chassis. The head is not usable for this — on these models the greatest
+ * protrusion at head height is the swept-back wing spar, which points the other way.
+ */
+export function facesPositiveZ(positions: ArrayLike<number>): boolean {
+  const n = positions.length / 3;
+  let minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const y = positions[i * 3 + 1];
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  const h = Math.max(1e-6, maxY - minY);
+  let ankleZ = 0, ankleN = 0;
+  for (let i = 0; i < n; i++) {
+    const yn = (positions[i * 3 + 1] - minY) / h;
+    if (yn >= 0.09 && yn < 0.15) { ankleZ += positions[i * 3 + 2]; ankleN++; }
+  }
+  if (!ankleN) return false;
+  ankleZ /= ankleN;
+  let toe = 0, heel = 0;
+  for (let i = 0; i < n; i++) {
+    if ((positions[i * 3 + 1] - minY) / h >= 0.05) continue;
+    const d = positions[i * 3 + 2] - ankleZ;
+    if (d > toe) toe = d;
+    if (-d > heel) heel = -d;
+  }
+  return toe > heel;
+}
+
 /** Centroid of the points in a horizontal band that fall on one side of x = 0. */
 function lobe(pos: Float32Array, lo: number, hi: number, side: number, minAbsX: number) {
   let sx = 0, sz = 0, count = 0;

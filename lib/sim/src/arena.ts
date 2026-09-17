@@ -2,6 +2,7 @@ import {
   CHASSIS_STATS, MATCH_MAX_TICKS, MAX_SQUAD, SUDDEN_DEATH_TICK, TICK_HZ,
   type ArenaBotState, type BotSpec, type MatchFrame, type MatchResult, type NeuronModule,
 } from "@workspace/contract";
+import { bodyRatios, type Ratios } from "./body.js";
 import { Brain, type Senses } from "./brain.js";
 import { makeRng } from "./rng.js";
 
@@ -62,7 +63,7 @@ const WHIFF_LEAN = 1.05;        // a committed swing that hits nothing pitches y
 const HIT_LEAN = 1.9;           // taking one rocks you back
 const TILT_DAMP = 0.88;
 const KNOCKDOWN_LEAN = 0.82;    // past this angle you are going over
-const KNOCKDOWN_TICKS = 52;     // time on the floor before you get up
+export const KNOCKDOWN_TICKS = 52;     // time on the floor before you get up
 const GETUP_LEAN = 0.5;         // you come up part-way bent, not snapping upright
 const STRIKE_MIN_TIP_SPEED = 3.2;   // m/s at the fist
 const STRIKE_DAMAGE = 2.9;      // per m/s of tip speed over the threshold
@@ -161,6 +162,14 @@ interface Body {
   /** which way this bot is currently circling, and for how many more ticks */
   circleDir: 1 | -1; circleTimer: number;
   hull: number;
+  /** every mechanic as a multiple of this chassis's stock build; all 1 when untuned */
+  phys: Ratios;
+  /** metres shoulder-to-fist, and the ranges that follow from it */
+  armLength: number;
+  strikeReach: number;
+  punchRange: number;
+  /** lean angle this body tips over at — wider stance, larger angle */
+  knockdownLean: number;
   prevAngularSize: number;
   damageThisTick: number;
   arenaHalf: number;
@@ -189,9 +198,9 @@ function senses(self: Body, foe: Body): Senses {
   // Without this the Giant Fiber only ever answers a charge, and once the bots hold
   // their range nobody charges: blocks collapsed to 5.7% of hits. Same channel, same
   // cell, because the fly does not have a separate detector for punches.
-  const foeTip = Math.max(Math.abs(foe.armLv), Math.abs(foe.armRv)) * ARM_LENGTH;
-  const incoming = distance < PUNCH_RANGE * 1.2 && foeTip > STRIKE_MIN_TIP_SPEED * 0.55
-    ? foeTip * 0.22 * (1 - 0.5 * distance / (PUNCH_RANGE * 1.2))
+  const foeTip = Math.max(Math.abs(foe.armLv), Math.abs(foe.armRv)) * foe.armLength;
+  const incoming = distance < foe.punchRange * 1.2 && foeTip > STRIKE_MIN_TIP_SPEED * 0.55
+    ? foeTip * 0.22 * (1 - 0.5 * distance / (foe.punchRange * 1.2))
     : 0;
   const half = self.arenaHalf;
   const wallAhead = Math.min(
@@ -201,7 +210,7 @@ function senses(self: Body, foe: Body): Senses {
   return {
     distance, bearing, angularSize,
     expansionRate: (angularSize - self.prevAngularSize) * TICK_HZ + incoming,
-    hullFraction: self.hull / CHASSIS_STATS[self.spec.chassis].hull,
+    hullFraction: self.hull / (CHASSIS_STATS[self.spec.chassis].hull * self.phys.hull),
     wallAhead: Math.max(0, wallAhead),
   };
 }
@@ -254,7 +263,18 @@ export function* runMatch(
       lean: 0, leanV: 0, tilt: 0, tiltV: 0, down: 0, swungAt: -99,
       countered: false, stamina: 1, gassed: false, comboLeft: 0,
       circleDir: rng() < 0.5 ? -1 : 1, circleTimer: CIRCLE_MIN + Math.floor(rng() * CIRCLE_SPAN),
-      hull: CHASSIS_STATS[spec.chassis].hull,
+      hull: CHASSIS_STATS[spec.chassis].hull * bodyRatios(spec.chassis, spec.body).hull,
+      ...(() => {
+        // Derived once per bot, not per tick: the body does not change mid-fight.
+        const phys = bodyRatios(spec.chassis, spec.body);
+        const armLength = ARM_LENGTH * phys.reach;
+        const strikeReach = BOT_RADIUS + armLength;
+        return {
+          phys, armLength, strikeReach,
+          punchRange: strikeReach + 0.50,
+          knockdownLean: KNOCKDOWN_LEAN * phys.knockdownAngle,
+        };
+      })(),
       prevAngularSize: 0, damageThisTick: 0, arenaHalf: ARENA_SIZE / 2,
     };
   };
@@ -285,7 +305,10 @@ export function* runMatch(
       body.damageThisTick = 0;
       body.prevAngularSize = s.angularSize;
 
-      const stats = CHASSIS_STATS[body.spec.chassis];
+      const base = CHASSIS_STATS[body.spec.chassis];
+      // The chassis still sets the character; the body scales it. Square-cube law on
+      // accel, yaw inertia on turn — both exactly 1.0 for a bot that never got tuned.
+      const stats = { hull: base.hull, accel: base.accel * body.phys.accel, turn: base.turn * body.phys.turn };
 
       // The Giant Fiber means two different things at two distances. Far away it is an
       // escape: reverse hard and turn out. At punching range the same spike is a block,
@@ -293,7 +316,7 @@ export function* runMatch(
       // half is damped to a slip and only the hands (the guard, below) answer. Done to
       // the intent rather than in the brain because it is the *body* that knows how far
       // away the other one is; the cell fires the same either way.
-      const closeQuarters = s.distance < PUNCH_RANGE * 1.25;
+      const closeQuarters = s.distance < body.punchRange * 1.25;
       if (closeQuarters && spiked.includes("LPLC2_DNP01")) {
         intent.forward = Math.max(intent.forward, -0.4);
         intent.turn *= 0.4;
@@ -317,8 +340,10 @@ export function* runMatch(
       // reach. A standoff that moves with the bot's state is what gives the fight an
       // in-and-out rhythm instead of one fixed trading range — and a punch thrown at
       // someone who has just stepped back is the whiff the counter-punch exists for.
-      const standoff = body.gassed ? POCKET_FAR + 0.9
-        : body.guard > 0.45 ? POCKET_FAR + 0.3 : POCKET_FAR;
+      // The pocket is where YOUR fist already reaches, so it travels with your arm.
+      const pocketFar = POCKET_FAR + (body.armLength - ARM_LENGTH);
+      const standoff = body.gassed ? pocketFar + 0.9
+        : body.guard > 0.45 ? pocketFar + 0.3 : pocketFar;
       const inner = standoff - (POCKET_FAR - POCKET_NEAR);
       if (wantSpeed > 0 && foeDist < standoff) {
         const t = Math.max(0, (foeDist - inner) / (standoff - inner));
@@ -333,7 +358,7 @@ export function* runMatch(
       // Direction is held for a stretch and flips off a wall, so nobody grinds along
       // the boards, and a tired bot stops dancing.
       let lx = 0, ly = 0, strafe = 0;
-      if (foeDist < POCKET_FAR + 1.6) {
+      if (foeDist < pocketFar + 1.6) {
         if (--body.circleTimer <= 0) {
           body.circleDir = rng() < 0.5 ? -1 : 1;
           body.circleTimer = CIRCLE_MIN + Math.floor(rng() * CIRCLE_SPAN);
@@ -370,9 +395,9 @@ export function* runMatch(
       // Empty stamina and the legs stop holding you up.
       if (body.stamina <= 0.02) body.lean += 0.012;
 
-      if (Math.abs(body.lean) > KNOCKDOWN_LEAN || Math.abs(body.tilt) > KNOCKDOWN_LEAN) {
+      if (Math.abs(body.lean) > body.knockdownLean || Math.abs(body.tilt) > body.knockdownLean) {
         body.down = KNOCKDOWN_TICKS;
-        body.lean = Math.sign(body.lean) * KNOCKDOWN_LEAN;
+        body.lean = Math.sign(body.lean) * body.knockdownLean;
       }
 
       // Arms. A punch is an EVENT, not an oscillation: when the brain is driving
@@ -397,7 +422,7 @@ export function* runMatch(
       // a bot that never stops throwing never refills.
       body.stamina = Math.min(1, body.stamina + REGEN_BASE
         + (body.guard > 0.45 ? REGEN_GUARD : 0)
-        + (foeDist > POCKET_FAR ? REGEN_RANGE : 0));
+        + (foeDist > pocketFar ? REGEN_RANGE : 0));
       if (body.stamina <= 0.02) body.gassed = true;
       else if (body.gassed && body.stamina > GASSED_RESET) body.gassed = false;
 
@@ -427,7 +452,7 @@ export function* runMatch(
       // front of you; continuing one only needs the gap between punches to have elapsed.
       const aimed = Math.abs(s.bearing) < PUNCH_CONE;
       const canStart = body.recovery === 0 && body.guard < 0.35 && !body.gassed;
-      const wantsToHit = pursuitFired && !backingOff && foeDist < PUNCH_RANGE && aimed
+      const wantsToHit = pursuitFired && !backingOff && foeDist < body.punchRange && aimed
         && body.punchCd === 0 && (body.comboLeft > 0 || canStart);
       if (wantsToHit) {
         if (body.comboLeft === 0) {
@@ -438,7 +463,11 @@ export function* runMatch(
             1 + (body.stamina > 0.6 ? 1 : 0) + Math.floor(wound)));
         }
         const gas = GAS_FLOOR + (1 - GAS_FLOOR) * body.stamina;
-        const power = PUNCH_IMPULSE * gas * (0.75 + 0.25 * Math.min(1, body.brain.arousalLevel - 0.4));
+        // Tip speed is ω·L, so to land the mechanically correct v_tip on an arm of
+        // this length the angular impulse carries tipSpeed/reach. A long arm gets LESS
+        // angular velocity and still ends up slower at the fist — that is the trade.
+        const swing = PUNCH_IMPULSE * (body.phys.tipSpeed / body.phys.reach);
+        const power = swing * gas * (0.75 + 0.25 * Math.min(1, body.brain.arousalLevel - 0.4));
         if (body.punchSide === 0) body.armLv -= power; else body.armRv += power;
         body.punchSide = body.punchSide === 0 ? 1 : 0;
         body.stamina = Math.max(0, body.stamina - PUNCH_COST);
@@ -483,11 +512,11 @@ export function* runMatch(
       for (const side of [0, 1] as const) {
         const ang = side ? att.armR : att.armL;
         const av = Math.abs(side ? att.armRv : att.armLv);
-        const tipSpeed = av * ARM_LENGTH;
+        const tipSpeed = av * att.armLength;
         if (tipSpeed < STRIKE_MIN_TIP_SPEED) continue;
         const wa = att.heading + ang;
-        const fx = att.x + Math.cos(wa) * STRIKE_REACH;
-        const fy = att.y + Math.sin(wa) * STRIKE_REACH;
+        const fx = att.x + Math.cos(wa) * att.strikeReach;
+        const fy = att.y + Math.sin(wa) * att.strikeReach;
         for (const def of bodies) {
           if (def === att || !def.alive || def.team === att.team) continue;
           const lock = att.brain.lockLevel;
@@ -499,7 +528,11 @@ export function* runMatch(
           const flush = (0.72 + 0.28 * (1 - off / reach)) * (1 + LOCK_DAMAGE * lock);
           // Caught him mid-swing, hands down: that is a counter, and it pays extra.
           const counter = def.recovery > 0;
-          const raw = (tipSpeed - STRIKE_MIN_TIP_SPEED) * STRIKE_DAMAGE * flush / Math.sqrt(n)
+          // A hit is worth its kinetic energy, ½·m_arm·v². Tip speed is already in
+          // this expression, so only the arm-mass half is applied here — scaling by the
+          // whole energy ratio would count v twice.
+          const armMass = att.phys.impactEnergy / att.phys.tipSpeed ** 2;
+          const raw = (tipSpeed - STRIKE_MIN_TIP_SPEED) * STRIKE_DAMAGE * armMass * flush / Math.sqrt(n)
             * (counter ? COUNTER_BONUS : 1);
           const dmg = raw * (1 - def.guard * GUARD_BLOCK);
           if (def.guard > 0.45) def.blocked = true;
@@ -577,7 +610,7 @@ export function* runMatch(
   // timeout: most units standing wins, total hull fraction breaks the tie
   const frac = (team: 0 | 1) => {
     const t = bodies.filter((b) => b.team === team);
-    return t.reduce((s, b) => s + b.hull / CHASSIS_STATS[b.spec.chassis].hull, 0) / t.length;
+    return t.reduce((s, b) => s + b.hull / (CHASSIS_STATS[b.spec.chassis].hull * b.phys.hull), 0) / t.length;
   };
   const aLeft = aliveOn(0), bLeft = aliveOn(1);
   const fa = frac(0), fb = frac(1);

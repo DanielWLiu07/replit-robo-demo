@@ -24,6 +24,23 @@ fetch("/api/bots", { credentials: "include" })
 `mine: true` on a bot means *this caller* may edit or delete it. Roster bots are never
 editable (`isSeed: true`, `mine: false`).
 
+## Bot profile — the character card
+
+Every `Bot` ships a derived `profile`: seven 0–100 stat bars (aggression, evasion,
+tracking, reflex, hull, speed, agility), a one-line `playstyle` — the **character type** —
+plus `neuronCount` and the per-module cell counts and transmitters from FlyWire.
+
+```
+CHAMPION    HORNET  agg 23  eva  0  trk 54  rfx 86   296 cells
+            "Locks on fast and never loses the line"
+AROUSAL     HORNET  agg 97  eva  0  trk 74  rfx 57   423 cells
+            "Grinds forward and wears you down"
+```
+
+It is computed server-side by `profileBot` from `@workspace/sim`, not in the client: the
+sim owns what a loadout means, and a second implementation would drift the moment one of
+them changed. Render it, don't re-derive it.
+
 ## REST
 
 | Method | Path | Body | Returns |
@@ -40,7 +57,13 @@ editable (`isSeed: true`, `mine: false`).
 | GET | `/api/matches?botId=&limit=` | — | `ListMatchesResponse` |
 | POST | `/api/matches` | `StartMatchRequest` | `MatchWithEvents` (201) |
 | GET | `/api/matches/:id` | — | `MatchWithEvents` |
+| POST | `/api/matches/:id/verify` | — | `VerifyMatchResponse` |
 | GET | `/api/leaderboard?limit=` | — | `LeaderboardResponse` |
+| POST | `/api/ladder` | `StartLadderRequest` | `LadderRun` (201) |
+| POST | `/api/ladder/:id/next` | — | `NextRoundResponse` |
+| GET | `/api/ladder/:id` | — | `LadderRun` |
+| GET | `/api/ladder?limit=` | — | `ListLadderRunsResponse` (yours) |
+| GET | `/api/ladder/leaderboard?limit=` | — | `LadderLeaderboardResponse` |
 | POST | `/api/train` | `TrainRequest` | `TrainingRun` (**202**) |
 | GET | `/api/train?limit=` | — | `ListTrainingRunsResponse` (yours only) |
 | GET | `/api/train/:id` | — | `TrainingRun` |
@@ -64,6 +87,120 @@ highlight events. The socket below then *replays* it at 60 Hz.
 If you want the viewer to be surprised, don't render `winnerBotId` until the socket
 sends `match_end`. The server is not hiding it from you; it decided it already, which is
 what "server-authoritative" means here.
+
+## The ladder — `POST /api/ladder`
+
+Take your tuned fly and fight successive rounds against generated flies. Losing (or
+drawing) ends the run. Win **10 rounds** (`LADDER_CLEAR_ROUND`) and the run is `CLEARED`.
+Opponents come from `(runSeed, round)`, so a run is reproducible and shareable exactly
+like a match.
+
+**The board ranks cleared runs by clear time, fastest first.** Clear time is
+`clearTicks` — simulated ticks summed across every round fought — not wall clock. Wall
+clock measures how fast somebody clicks, punishes a slow connection and is trivially
+faked; ticks measure how decisively the fly actually won, are computed server-side, and
+replay to the same number forever. Runs that did not finish rank below every cleared run,
+ordered by how far they got. Runs still in progress are not on the board at all.
+
+```ts
+const run   = await post("/api/ladder", { botId });        // 201
+const { run: after, round } = await post(`/api/ladder/${run.id}/next`);
+round.won            // false -> after.status === "ENDED"
+round.matchId        // a REAL match: watch it, verify it
+round.opponent       // the generated fly, snapshotted
+round.difficulty     // { candidatesSearched, budgetFraction, bestScore }
+after.round          // furthest round cleared
+after.clearTicks     // clear time so far, in simulated ticks (÷60 for seconds)
+after.status         // ACTIVE | ENDED | CLEARED
+```
+
+**A ladder round is an ordinary match.** The generated fly becomes a real bot row with a
+real brain revision, and the fight becomes a real `matches` row — so a round streams on
+`/ws/match/:id`, passes `/api/matches/:id/verify`, and its brain is readable at
+`/api/bots/:id`. You can go and read what knocked you out. The ladder adds **no transport
+and no second replay path of its own.**
+
+Generated bots are flagged and excluded from `/api/bots` and the Elo `/api/leaderboard` —
+those are about bots somebody actually built. The ladder has its own board, by furthest
+round.
+
+Your fly is **pinned at run start**: retuning mid-run cannot retroactively change rounds
+you already cleared. A run is also locked to the sim version it started under; if the sim
+moves, `/next` returns `400` rather than mixing two simulations in one run.
+
+### Difficulty is selection pressure
+
+Each round generates a field of candidate brains, fights every one of them against *your
+actual bot*, and sends you one of them. Round 1 sends a middling candidate; by round 13 it
+sends the one that beat you hardest. The field widens as you climb (3 → 8), so "best of"
+means more.
+
+That is the cheap half of the same neuroevolution the trainer runs, and it degrades
+honestly: there is no stat inflation, the opponent is always a brain you could legally
+have built. Every generated loadout goes through `BrainSpec` — during development the gate
+caught the generator itself emitting an over-budget brain.
+
+The curve, measured (`src/cli/ladder-curve.ts`, 5 roster bots × 5 seeds per round):
+
+| round | tier | win rate |
+|---|---|---|
+| 1 | HORNET | 92% |
+| 2–3 | HORNET | 72%, 68% |
+| 4–5 | HORNET | 52%, 60% |
+| 6–11 | DRONE (evasive) | 44–64% |
+| 12+ | TANK (the wall) | 8–20% |
+
+Expected furthest round for a roster bot is ~2.6; a strong one reaches 10. Re-run the
+harness after touching `src/ladder/difficulty.ts` — the notes there record three
+plausible-sounding difficulty schemes that measurement killed.
+
+Opponent search is CPU-bound, so a round runs in a **forked process**: `/api/healthz`
+stayed at 18–23 ms through a round on the production bundle. Two rounds at a time (`429`
+beyond).
+
+## Verifying a match — `POST /api/matches/:id/verify`
+
+The whole architecture rests on one claim: **a seed reproduces a fight exactly.** Replay
+is free, a match costs one row and a forged result is impossible *only* because that is
+true. So it is checkable from the product, not asserted in a README.
+
+The endpoint re-fights the persisted match from `seed + snapshots + squadSize` **twice**,
+SHA-256s every frame of each run, and compares both to each other and to the stored row:
+
+```json
+{
+  "matchId": "mch_axq9jdngrvmy", "reproduced": true, "verdict": "REPRODUCED",
+  "digest": "2a8244cf8b6c4f48", "digestRepeat": "2a8244cf8b6c4f48",
+  "seed": "seed_tghcjvj6fc", "squadSize": 1,
+  "storedTicks": 1433, "replayTicks": 1433,
+  "storedWinnerBotId": "bot_sna…", "replayWinnerBotId": "bot_sna…",
+  "simVersion": { "fought": "3", "current": "3" },
+  "frames": 1434, "ms": 218,
+  "explanation": "Replayed twice from seed seed_tghcjvj6fc; both runs produced…"
+}
+```
+
+Four verdicts, and the distinction between them is the point:
+
+| `verdict` | Means | Badge |
+|---|---|---|
+| `REPRODUCED` | both runs agreed, and agreed with the stored row | ✅ |
+| `STALE_SIM` | runs agreed; the sim has moved on since the fight | ⚠️ different sim, not a defect |
+| `DIVERGED` | runs agreed, sim unchanged, row disagrees | ❌ determinism broken |
+| `NONDETERMINISTIC` | the two runs disagreed **with each other** | ❌ worse — the sim isn't deterministic |
+
+`reproduced` is true only for `REPRODUCED`. `explanation` is a full sentence meant to be
+rendered verbatim. Two runs rather than one because "deterministic" has to mean the sim
+agrees with *itself* before it can mean it agrees with the database.
+
+**Why it's a POST.** It does real work: a 5v5 double replay is ~10,200 frames and ~0.5s of
+CPU (measured 2.4s under an older sim). That runs in a **forked process** — inline it would
+freeze every live match socket at 60 Hz. Measured with a 5v5 verify in flight, `/api/healthz`
+stayed at 10–15 ms and a live socket held 59.3 Hz. Two concurrent verifications max (`429`
+beyond), and nothing is cached: a cached "verified" is a weaker claim than one you just
+watched happen.
+
+Nothing changed on the socket — `/ws/match/:id` still does playback exactly as before.
 
 ## Training — `POST /api/train`
 

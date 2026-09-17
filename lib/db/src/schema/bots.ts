@@ -36,6 +36,13 @@ export const botsTable = pgTable(
     chassis: text("chassis").$type<Chassis>().notNull(),
     /** built-in roster: always fightable, never editable. */
     isSeed: boolean("is_seed").notNull().default(false),
+    /**
+     * Spawned by the ladder rather than by a person. Real rows — so a ladder
+     * fight is an ordinary match with ordinary foreign keys and replays on the
+     * ordinary socket — but hidden from the bot list and the Elo board, which
+     * are about bots somebody actually built.
+     */
+    isGenerated: boolean("is_generated").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -47,6 +54,7 @@ export const botsTable = pgTable(
     index("bots_owner_user_idx").on(t.ownerUserId),
     index("bots_owner_guest_idx").on(t.ownerGuestId),
     index("bots_is_seed_idx").on(t.isSeed),
+    index("bots_is_generated_idx").on(t.isGenerated),
   ],
 );
 

@@ -29,13 +29,33 @@ export interface BotProfile {
 
 const clamp100 = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
 
+/**
+ * How much of one stat a single unit of synaptic weight buys, per circuit.
+ *
+ * `solveBrain` in optimize.ts INVERTS this table, so it has to be the only place
+ * these numbers live. A coefficient edited here and not there would hand the player
+ * a solver that quietly misses its own targets, and nothing would fail loudly.
+ *
+ * Each stat lists its circuits strongest-first, and the inverse depends on that
+ * ordering: buying a point from the higher-gain circuit is always cheaper, so the
+ * cheapest plan fills that one before spilling into the weaker one.
+ */
+export type StatName = "aggression" | "evasion" | "tracking";
+export const STAT_GAINS: Record<StatName, ReadonlyArray<readonly [NeuronModule, number]>> = {
+  aggression: [["LC10A", 26], ["P1", 18]],
+  evasion: [["LPLC2_DNP01", 28], ["MDN", 14]],
+  tracking: [["LC11", 24], ["DNA02", 20]],
+};
+
 export function profileBrain(brain: BrainSpec, chassis: BotSpec["chassis"]): BotProfile {
   const w = (m: NeuronModule) => brain.slots.find((s) => s.module === m)?.weight ?? 0;
   const thr = (m: NeuronModule) => brain.slots.find((s) => s.module === m)?.threshold ?? 5;
 
-  const aggression = clamp100((w("LC10A") * 26) + (w("P1") * 18));
-  const evasion    = clamp100((w("LPLC2_DNP01") * 28) + (w("MDN") * 14));
-  const tracking   = clamp100((w("LC11") * 24) + (w("DNA02") * 20));
+  const stat = (name: StatName) =>
+    clamp100(STAT_GAINS[name].reduce((sum, [m, gain]) => sum + w(m) * gain, 0));
+  const aggression = stat("aggression");
+  const evasion    = stat("evasion");
+  const tracking   = stat("tracking");
   // twitchiness: low thresholds and a short refractory period mean it acts sooner
   const eq = brain.slots.length || 1;
   const meanThr = brain.slots.reduce((a, s) => a + s.threshold, 0) / eq;

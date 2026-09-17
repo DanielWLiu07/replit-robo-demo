@@ -172,16 +172,14 @@ export function RosterSelect({
   return (
     <section className="select-section">
       <div className="section-label">
+        <a className="back-link" href="#/">
+          ← Back
+        </a>
         <span>01 / ROSTER SELECT</span>
         <span className="mono">ASSIGNING {slot ? "P2 / OPPONENT" : "P1 / YOU"}</span>
       </div>
       <div className="section-heading">
-        <h2>Choose a nervous system.</h2>
-        <p>
-          Five archetypes and your own build.
-          <br />
-          Pick P1, then pick who it has to survive.
-        </p>
+        <h2>Roster Select</h2>
       </div>
 
       <div className="vs-bar">

@@ -6,7 +6,7 @@ import { MAX_SQUAD } from '@workspace/contract';
 import type { Chassis, MatchFrame } from '@workspace/contract';
 import { Compositor } from './vendor/blender-to-threejs/comp/compositor';
 import { compGraph } from './vendor/blender-to-threejs/comp/builder';
-import { mangaGraph } from './vendor/blender-to-threejs/recipes/manga-comp';
+import { mangaGritGraph } from './mangaGrit';
 import { watercolorGraph } from './vendor/blender-to-threejs/recipes/watercolor-comp';
 import { impactRevealMask } from './impactReveal';
 import { mechanicalMaterial } from './manga';
@@ -29,17 +29,17 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
   const element=host.current;if(!element)return;
   let disposed=false,raf=0,visible=true;
   const renderer=new WebGPURenderer({antialias:true,alpha:true});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setClearColor(landing?0xeeeeea:0xf2f2ed,1);element.appendChild(renderer.domElement);
-  const scene=new THREE.Scene();scene.background=new THREE.Color(landing?0xeeeeea:0xf2f2f2);const camera=new THREE.PerspectiveCamera(36,1,.1,100);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setClearColor(landing?0xeeeeea:0x07070a,1);element.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();scene.background=new THREE.Color(landing?0xeeeeea:0x07070a);const camera=new THREE.PerspectiveCamera(36,1,.1,100);
   camera.position.set(0,showcase?5:15,showcase?10:15);camera.lookAt(0,0,0);
   const hatchTex=landing?loadHatchTextures(import.meta.env.BASE_URL):null;
   const hatchU=landing?makeHatchUniforms(Math.min(devicePixelRatio,1.75)):null;
   const inkMaterial=()=>hatchMaterial(hatchTex!,hatchU!);
-  const grid=new THREE.GridHelper(12,28,0xb0b0b0,0xd5d5d5);scene.add(grid);
-  const border=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(12,.35,12)),new THREE.LineBasicMaterial({color:0x282828}));border.position.y=.15;scene.add(border);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(12,12),new THREE.MeshBasicMaterial({color:0xe8e8e5}));floor.rotation.x=-Math.PI/2;floor.position.y=-.01;scene.add(floor);
+  const grid=new THREE.GridHelper(12,28,0x34353f,0x1e1f27);scene.add(grid);
+  const border=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(12,.35,12)),new THREE.LineBasicMaterial({color:0xc6c7cf}));border.position.y=.15;scene.add(border);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(12,12),new THREE.MeshBasicMaterial({color:0x0c0d12}));floor.rotation.x=-Math.PI/2;floor.position.y=-.01;scene.add(floor);
   const rings=new THREE.Group();
-  for(let i=0;i<3;i++){const r=new THREE.Mesh(new THREE.RingGeometry(2.2+i*.65,2.205+i*.65,100),new THREE.MeshBasicMaterial({color:0x9c9c9c,side:THREE.DoubleSide}));r.rotation.x=-Math.PI/2;r.position.y=-.12-i*.1;rings.add(r);}scene.add(rings);rings.visible=showcase;
+  for(let i=0;i<3;i++){const r=new THREE.Mesh(new THREE.RingGeometry(2.2+i*.65,2.205+i*.65,100),new THREE.MeshBasicMaterial({color:0x3c3d47,side:THREE.DoubleSide}));r.rotation.x=-Math.PI/2;r.position.y=-.12-i*.1;rings.add(r);}scene.add(rings);rings.visible=showcase;
   const makeBot=(dark:boolean)=>{
    const group=new THREE.Group(),assembly=new THREE.Group();assembly.name='assembly';group.add(assembly);
    const metal=landing?inkMaterial():mechanicalMaterial(dark);
@@ -74,7 +74,7 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
     limbs.add(pivot);
    };
    makeLeg('leg-L',-1);makeLeg('leg-R',1);
-   const ring=new THREE.Mesh(new THREE.RingGeometry(.88,.892,64),new THREE.MeshBasicMaterial({color:landing?0x333333:(dark?0x777777:0x111111),side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.01;group.add(ring);scene.add(group);return group;
+   const ring=new THREE.Mesh(new THREE.RingGeometry(.88,.892,64),new THREE.MeshBasicMaterial({color:landing?0x333333:(dark?0x6f707a:0xdedee6),side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.y=.01;group.add(ring);scene.add(group);return group;
   };
   // One mesh per deployable unit per side, pooled up front: a match may field
   // 1v1 or 5v5 and the renderer must not rebuild when the squad size changes.
@@ -85,7 +85,7 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
   for(const object of [grid,border,floor,...bots])battleRoot.add(object);
   const specimens: THREE.Group[]=[];
   if(immersive){for(let i=0;i<3;i++){const bot=makeBot(false);bot.scale.setScalar(3.2);bot.position.x=36;specimens.push(bot);} const hero=makeBot(false);hero.scale.setScalar(2.9);specimens.push(hero);}
-  const stageRail=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-5,-.2,0),new THREE.Vector3(42,-.2,0)]),new THREE.LineBasicMaterial({color:0xc8c8c8}));scene.add(stageRail);stageRail.visible=immersive;
+  const stageRail=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-5,-.2,0),new THREE.Vector3(42,-.2,0)]),new THREE.LineBasicMaterial({color:0x2c2d35}));scene.add(stageRail);stageRail.visible=immersive;
   const loader=new GLTFLoader();
   /** Fit a loaded chassis to the unit cell and re-skin it, then hand back copies. */
 
@@ -145,7 +145,7 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
    },undefined,()=>{});
   });
   const sparks=new THREE.Group();battleRoot.add(sparks);
-  const sparkMaterial=new THREE.LineBasicMaterial({color:0x111111,transparent:true});
+  const sparkMaterial=new THREE.LineBasicMaterial({color:0xf4f4ef,transparent:true});
   for(let i=0;i<18;i++){const a=i*Math.PI*2/18;sparks.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(Math.cos(a)*.2,.1,Math.sin(a)*.2),new THREE.Vector3(Math.cos(a)*(.5+i%3*.2),.1+i%4*.1,Math.sin(a)*(.5+i%3*.2))]),sparkMaterial));}
   // A moon gives the dark room a reason and a horizon. Shaded off the world
   // normal rather than flat white, so it reads as a sphere, not a disc.
@@ -174,7 +174,7 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
    const revealed=c.blend(impactRevealMask(c),ground,n);
    const l=c.luminance(revealed);return c.combine(l,l,l,1);
   };
-  const printed=landing?c.renderLayer():mangaGraph(c,{paper:[.89,.89,.89],ink:[.012,.012,.012],grain:.3,dotScale:4,hatchScale:3.4});
+  const printed=landing?c.renderLayer():mangaGritGraph(c,{paper:[.012,.012,.016],ink:[.93,.93,.9],grain:.55,dotScale:3.6,hatchScale:3.1});
   const compositor=new Compositor(renderer,scene,camera,printed,
    landing?{samples:4,renderScale:1,positionPass:'onChange'}:{samples:0,renderScale:.85});
   let fit=1,viewW=1,viewH=1;
@@ -187,10 +187,14 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
   if(immersive)window.addEventListener('pointermove',pointer,{passive:true});
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
   let current:MatchFrame|null=null,previous:MatchFrame|null=null,receivedAt=0,hitAt=-1000,revealStart=0;
+  // a new match flies the camera in from an establishing shot down to the ring
+  let entryAt=-1e9,lastTick=-1;
   const draw=(now:number)=>{
    if(disposed)return;raf=requestAnimationFrame(draw);if(!visible||document.hidden)return;
    const next=incoming.current;
-   if(next&&next!==current){previous=current&&next.tick>current.tick?current:next;current=next;receivedAt=now;if(next.hits.length||next.bots.some(b=>b.struck)){hitAt=now;const live=next.bots.filter(b=>b.hull>0),mid=live.length?live:next.bots;sparks.position.set(mid.reduce((t,b)=>t+b.x,0)/mid.length/arenaSize*12,.1,mid.reduce((t,b)=>t+b.y,0)/mid.length/arenaSize*12);}}
+   if(next&&next!==current){previous=current&&next.tick>current.tick?current:next;current=next;receivedAt=now;
+    // the tick counter restarting is what tells us a fresh match has begun
+    if(lastTick<0||next.tick<lastTick)entryAt=now;lastTick=next.tick;if(next.hits.length||next.bots.some(b=>b.struck)){hitAt=now;const live=next.bots.filter(b=>b.hull>0),mid=live.length?live:next.bots;sparks.position.set(mid.reduce((t,b)=>t+b.x,0)/mid.length/arenaSize*12,.1,mid.reduce((t,b)=>t+b.y,0)/mid.length/arenaSize*12);}}
    const alpha=current&&previous?Math.min(1,(now-receivedAt)/Math.max(16.67,(current.tick-previous.tick)*1000/60)):1;
    const impact=Math.max(0,1-(now-hitAt)/240);
    const split=current?.teamSplit??1;
@@ -256,7 +260,9 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
    if(showcase&&!reducedMotion){rings.rotation.y=now*.00004;if(immersive){const scroll=Math.min(1,window.scrollY/Math.max(1,window.innerHeight));camera.position.set(Math.sin(now*.00012)*.35,5+scroll*2,10-scroll);camera.lookAt(0,.1,0);}}
    sparks.visible=!showcase&&impact>0;sparks.scale.setScalar(1+(1-impact)*2);sparkMaterial.opacity=impact;
    if(!showcase&&!immersive){const zoom=current?Math.max(1,current.arenaHalf/(arenaSize/2)):1;
-    camera.position.set(reducedMotion?0:Math.sin(now*.12)*impact*.1,3.6*zoom,12.4*zoom);camera.lookAt(0,.75,0);
+    // fly in: high and wide for the first moment, settling into the fight framing
+    const t=Math.min(1,Math.max(0,(now-entryAt)/1500)),fly=reducedMotion?1:t*t*(3-2*t);
+    camera.position.set(reducedMotion?0:Math.sin(now*.12)*impact*.1,(11.5-7.9*fly)*zoom,(27-14.6*fly)*zoom);camera.lookAt(0,.75,0);
     // the HUD owns the top and the rasters own the bottom, so bias the
     // fight into the clear band between them instead of the dead centre
     camera.setViewOffset(viewW,viewH,0,viewH*.16,viewW,viewH);}

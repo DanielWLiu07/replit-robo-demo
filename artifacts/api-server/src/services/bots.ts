@@ -1,3 +1,4 @@
+import { profileBot } from "@workspace/sim";
 import {
   Bot as BotDto,
   type BotSpec,
@@ -47,6 +48,7 @@ export function toBotSpec(bot: BotRow, brain: BrainRow): BotSpec {
 }
 
 export function toBotDto(bot: BotRow, brain: BrainRow, identity: Identity) {
+  const spec = toBotSpec(bot, brain);
   return BotDto.parse({
     id: bot.id,
     name: bot.name,
@@ -57,6 +59,9 @@ export function toBotDto(bot: BotRow, brain: BrainRow, identity: Identity) {
     isSeed: bot.isSeed,
     mine: owns(identity, bot),
     createdAt: bot.createdAt.toISOString(),
+    // Derived here rather than in the client: the sim owns what a loadout means,
+    // and two implementations of that would disagree the moment one changes.
+    profile: profileBot(spec),
   });
 }
 
@@ -96,6 +101,9 @@ export async function listBots(
   const rows = await db
     .select()
     .from(botsTable)
+    // Ladder opponents are real rows so their matches have real foreign keys,
+    // but this list is about bots somebody actually built.
+    .where(eq(botsTable.isGenerated, false))
     .orderBy(desc(botsTable.isSeed), desc(botsTable.createdAt));
   const visible = opts.mineOnly ? rows.filter((b) => owns(identity, b)) : rows;
   const head = await headBrains(visible.map((b) => b.id));
@@ -206,7 +214,7 @@ export async function pickOpponent(excludeBotId: string): Promise<LoadedBot> {
   const [bot] = await db
     .select()
     .from(botsTable)
-    .where(ne(botsTable.id, excludeBotId))
+    .where(and(ne(botsTable.id, excludeBotId), eq(botsTable.isGenerated, false)))
     .orderBy(sql`random()`)
     .limit(1);
   if (!bot) throw notFound("No opponent available — the roster is empty");
