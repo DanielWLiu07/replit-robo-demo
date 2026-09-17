@@ -4,17 +4,11 @@ export function Landing() {
     <>
       <section className="landing-stage">
         <h1 className="landing-title" data-text="FLYWEIGHT">FLYWEIGHT</h1>
-        <span className="specimen-label mono">FIG. 01 — DROSOPHILA / MECHANICAL STUDY</span>
         <div className="landing-entry">
           <p className="mono">REAL FLY CIRCUITS. UNREASONABLY COMPETITIVE ROBOTS.</p>
           <a href="#/select" className="button primary">
             Enter the arena <span>↗</span>
           </a>
-        </div>
-        <div className="landing-aside mono">
-          <span>NO JOYSTICK.</span>
-          <span>NO SCRIPTED MOVES.</span>
-          <strong>JUST NEURONS.</strong>
         </div>
       </section>
 
