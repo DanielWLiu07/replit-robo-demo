@@ -58,8 +58,18 @@ export default function Flyweight() {
    * and a loss ends the run.
    */
   const [cleared, setCleared] = useState(0);
-  /** which fight the result has already been counted for, so it scores once */
-  const scored = useRef(-1);
+  /**
+   * The result object already counted.
+   *
+   * This keyed on the round number, which is wrong in a way that took a
+   * playtest to see: `round` increments when a fight STARTS, and at that moment
+   * `match.result` still holds the PREVIOUS fight's result. So every fight was
+   * scored one fight late against the next round's key — a win counted twice
+   * and the loss that should have ended the run was ignored until the fight
+   * after it. Identity is the honest key: a new fight produces a new object,
+   * and a stale one is the same object and skipped.
+   */
+  const scored = useRef<unknown>(null);
   const [runLost, setRunLost] = useState(false);
   const [squad, setSquad] = useState(1);
   const [labChassis, setLabChassis] = useState<Chassis>(build.chassis);
@@ -101,12 +111,12 @@ export default function Flyweight() {
    */
   useEffect(() => {
     const result = match.result;
-    if (!result || scored.current === round) return;
-    scored.current = round;
+    if (!result || scored.current === result) return;
+    scored.current = result;
     const won = result.winnerBotId === p1.id;
     if (won) setCleared((c) => Math.min(CAMPAIGN_LEVELS, c + 1));
     else setRunLost(true);
-  }, [match.result, round, p1.id]);
+  }, [match.result, p1.id]);
 
   /**
    * Keep the ring alive.
