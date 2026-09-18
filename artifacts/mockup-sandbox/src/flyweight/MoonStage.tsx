@@ -192,6 +192,8 @@ const _axis = new THREE.Vector3();
 const _mid = new THREE.Vector3();
 const _off = new THREE.Vector3();
 const _vtx = new THREE.Vector3();
+const _hitAt = new THREE.Vector3();
+const _kick = new THREE.Vector3();
 
 /** Display scale of the fly on the plinth, before the per-chassis correction. */
 const FLY_FIT = 2.9;
@@ -818,6 +820,39 @@ export function MoonStage({
     ring.quaternion.setFromUnitVectors(WORLD_UP, ringUp);
     scene.add(ring);
     const ringRigs: { rig: SkinnedBot; holder: THREE.Group }[][] = [[], []];
+
+    /**
+     * Impact.
+     *
+     * `frame.hits` has been streaming since the first day and nothing in the
+     * scene ever read it, so landing a punch looked exactly like missing one:
+     * the hull number moved and nothing else did. A hit now spends itself two
+     * ways — a ring thrown off at the point of contact and a kick to the camera
+     * — both scaled by the damage actually dealt, so a clean hit reads harder
+     * than a graze.
+     *
+     * Pooled and pre-allocated: hits arrive in bursts at 60 Hz, and allocating
+     * a mesh per punch would hand the collector work mid-fight.
+     */
+    const IMPACTS = 8;
+    const impactGeo = new THREE.RingGeometry(0.06, 0.1, 24);
+    const impactPool: { mesh: THREE.Mesh; life: number; power: number }[] = [];
+    for (let i = 0; i < IMPACTS; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xf6f6f1, transparent: true, opacity: 0,
+        side: THREE.DoubleSide, depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(impactGeo, mat);
+      mesh.visible = false;
+      mesh.renderOrder = 4;
+      ring.add(mesh);
+      impactPool.push({ mesh, life: 0, power: 1 });
+    }
+    let impactNext = 0;
+    /** camera kick, 0..1, decayed every frame */
+    let shake = 0;
+    /** the tick whose hits have already been spent */
+    let hitTick = -1;
     // what each side is WEARING (built and posed) vs what it has been ASKED to
     // wear (a fetch may still be in flight). Poses read the first, loads gate on
     // the second, so a class change mid-fetch cannot pose a rig at the wrong scale.
@@ -1151,6 +1186,15 @@ export function MoonStage({
         CAM_TGT.lerp(tgtWant, k);
         camera.position.copy(CAM_MOON);
       }
+      if (shake > 0) {
+        shake = Math.max(0, shake - dt * 3.1);
+        // Perpendicular to the view: a jolt, not a dolly that would change how
+        // far away the fight looks every time somebody lands one.
+        const kick = shake * shake * 0.16;
+        _kick.set(Math.sin(now * 0.09), Math.cos(now * 0.077), 0)
+             .applyQuaternion(camera.quaternion).multiplyScalar(kick);
+        camera.position.add(_kick);
+      }
       camera.lookAt(CAM_TGT);
       // The fly holds its authored pose: a per-frame write to rotation.y would
       // overwrite an R gesture every frame and make the object un-editable.
@@ -1235,7 +1279,35 @@ export function MoonStage({
             slot.holder.quaternion.copy(_tiltQ).multiply(_headQ);
 
             poseSkinnedBot(slot.rig, unit, ringChassis[side]!);
+            _hitAt.copy(slot.holder.position);
           }
+        }
+
+        // Spent once per tick: `frame` holds until the next arrives, so without
+        // the guard every re-render would re-fire the same punch.
+        if (f && f.tick !== hitTick) {
+          hitTick = f.tick;
+          if (f.hits.length) {
+            let damage = 0;
+            for (const h of f.hits) damage += h.damage;
+            shake = Math.min(1, shake + Math.min(0.85, damage * 0.26));
+            const im = impactPool[impactNext % IMPACTS]!;
+            impactNext++;
+            im.life = 1;
+            im.power = Math.min(1.6, 0.6 + damage * 0.5);
+            im.mesh.position.copy(_hitAt);
+            im.mesh.visible = true;
+          }
+        }
+        for (const im of impactPool) {
+          if (im.life <= 0) continue;
+          im.life = Math.max(0, im.life - dt * 3.4);
+          const age = 1 - im.life;
+          im.mesh.scale.setScalar((0.5 + age * 2.6) * im.power);
+          (im.mesh.material as THREE.MeshBasicMaterial).opacity = im.life * 0.85;
+          // face the camera, so the ring always reads as a flat flash
+          im.mesh.quaternion.copy(camera.quaternion);
+          if (im.life <= 0) im.mesh.visible = false;
         }
 
         // The fly's idle comes off its own rig, not a root bob: the mesh is
