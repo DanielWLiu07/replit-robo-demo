@@ -90,9 +90,14 @@ function RefractoryCurve({ value }: { value: number }) {
  * the top in five rounds. The player begins with none of it spent.
  */
 const INSTINCT_POOL_BASE = 140;
-const INSTINCT_POOL_PER_ROUND = 8;
-/** Measured: the largest pool spendable in EVERY distribution with nothing lost. */
-const INSTINCT_POOL_MAX = 180;
+const INSTINCT_POOL_PER_ROUND = 10;
+/**
+ * Measured: the largest pool spendable in EVERY distribution with nothing lost.
+ * `tsx lib/sim/src/__poolfit.ts` — 188, and unchanged by any weight budget from
+ * 8 to 16, because the stat-to-weight mapping saturates first. Paying out more
+ * than this hands the player points the solver then quietly scales away.
+ */
+const INSTINCT_POOL_MAX = 188;
 
 /**
  * Clearing campaign rounds buys more points. That is the progression: not a

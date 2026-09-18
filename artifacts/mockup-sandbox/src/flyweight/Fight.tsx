@@ -1,6 +1,8 @@
 import { CHASSIS_STATS, MATCH_MAX_TICKS, SUDDEN_DEATH_TICK, TICK_HZ } from "@workspace/contract";
 import type { ArenaBotState, BotSpec, NeuronModule } from "@workspace/contract";
 import { profileBot } from "@workspace/sim";
+import { instinctPool } from "./BrainLab";
+import { CAMPAIGN_LEVELS } from "./campaignLevels";
 import { BrainView } from "./BrainView";
 import type { MatchState } from "./useMatch";
 
@@ -95,6 +97,9 @@ export function Fight({
   squad,
   onRematch,
   onRoster,
+  cleared = 0,
+  onCampaign,
+  onLab,
 }: {
   bots: [BotSpec, BotSpec];
   match: MatchState;
@@ -102,10 +107,15 @@ export function Fight({
   squad: number;
   onRematch: () => void;
   onRoster: () => void;
+  /** campaign levels beaten, AFTER this fight has been scored */
+  cleared?: number;
+  onCampaign?: () => void;
+  onLab?: () => void;
 }) {
   const { frame, result, paused, speed, setSpeed, togglePause } = match;
   const tick = frame?.tick ?? 0;
   const suddenDeath = tick >= SUDDEN_DEATH_TICK;
+  const won = !!result && result.winnerBotId === bots[0].id;
   const split = frame?.teamSplit ?? squad;
   const teamA = frame ? frame.bots.slice(0, split) : [];
   const teamB = frame ? frame.bots.slice(split) : [];
@@ -134,8 +144,33 @@ export function Fight({
               ? `${bots.find((b) => b.id === result.winnerBotId)?.name ?? "BOT"} WINS`
               : "DRAW"}
           </h3>
+          {/*
+            A level is worth something, and the win screen is where you find out.
+            Clearing one buys both more points to place and more synaptic weight
+            to place them in, and neither is reachable without coming back
+            through the bench — so the win screen offers that route rather than
+            leaving the run to guess where its reward went.
+          */}
+          {won && cleared > 0 && cleared <= CAMPAIGN_LEVELS && (
+            <p className="result-reward mono">
+              LEVEL {cleared} CLEARED · {instinctPool(cleared)} POINTS
+              <small>
+                +{instinctPool(cleared) - instinctPool(cleared - 1)} to spend on the bench
+              </small>
+            </p>
+          )}
           <div className="result-actions">
-            <button className="button primary" onClick={onRematch}>
+            {won && onLab && cleared < CAMPAIGN_LEVELS && (
+              <button className="button primary" onClick={onLab}>
+                Spend points <span>→</span>
+              </button>
+            )}
+            {onCampaign && (
+              <button className="button" onClick={onCampaign}>
+                {won ? (cleared >= CAMPAIGN_LEVELS ? "Campaign cleared" : "Campaign") : "Run over"} <span>↗</span>
+              </button>
+            )}
+            <button className="button" onClick={onRematch}>
               Rematch <span>↗</span>
             </button>
             <button className="button" onClick={onRoster}>

@@ -2,6 +2,7 @@
 import { solveBrain, runMatch } from "@workspace/sim";
 import { weightBudgetFor, type BotSpec } from "@workspace/contract";
 import { CAMPAIGN } from "./campaignLevels";
+import { instinctPool } from "./BrainLab";
 
 const build = (name: string, t: {aggression:number;evasion:number;tracking:number}, rounds: number): BotSpec => ({
   id: name, name, chassis: "HORNET",
@@ -24,6 +25,18 @@ const vs = (me: BotSpec) => {
   return { cells, overall: Math.round((w / n) * 100) };
 };
 
+// What a real player can afford: the POOL is the constraint, not the ceiling.
+// Spend each round's actual pool on the same 45/15/40 shape.
+const poolRows: [string, BotSpec][] = [0,1,2,3,4,5].map((rd) => {
+  const pool = instinctPool(rd);
+  const bot = build("p", {
+    aggression: Math.round(pool * 0.45),
+    evasion: Math.round(pool * 0.15),
+    tracking: Math.round(pool * 0.40),
+  }, rd);
+  return [`rd${rd} pool ${pool} `, bot] as [string, BotSpec];
+});
+
 const rows: [string, BotSpec][] = [
   ["unspent      ", build("p", { aggression: 4, evasion: 4, tracking: 4 }, 0)],
   ["thin spread  ", build("p", { aggression: 25, evasion: 25, tracking: 25 }, 0)],
@@ -34,7 +47,7 @@ const rows: [string, BotSpec][] = [
   ["maxed rd5    ", build("p", { aggression: 100, evasion: 100, tracking: 100 }, 5)],
 ];
 console.log(`${"build".padEnd(14)}${CAMPAIGN.map(l => l.bot.name.slice(0,5).padStart(6)).join("")}  overall  weight`);
-for (const [label, bot] of rows) {
+for (const [label, bot] of [...rows, ...poolRows]) {
   const r = vs(bot);
   const wt = bot.brain.slots.reduce((a, x) => a + x.weight, 0);
   console.log(`${label}${r.cells.join("")}  ${String(r.overall+"%").padStart(6)}   ${wt.toFixed(1)}`);

@@ -32,21 +32,19 @@ export const BRAIN_MAX_SLOTS = 5;
 export const BRAIN_WEIGHT_BUDGET = 8;
 
 /**
- * The hard ceiling a brain may ever reach, once the campaign has paid for it.
+ * Granting extra weight per cleared level was tried and measured to buy nothing.
  *
- * BRAIN_WEIGHT_BUDGET is where you START, not where you stop. Clearing a level
- * buys one more unit of synaptic weight, which is why progression is felt:
- * distributing more points used to change only the SHAPE of a build, because
- * the solver scaled every target back down to the same fixed total. Measured,
- * a pool of 140 and a pool of 180 won the same fraction of their fights. The
- * schema enforces this ceiling; the bench enforces what you have actually
- * earned.
+ * The stat-to-weight mapping saturates well before the budget does: five slots
+ * capped at 4 weight each, priced per stat, means the largest pool a player can
+ * FULLY spend is 188 points — and `lib/sim/src/__poolfit.ts` finds that same 188
+ * at every budget from 8 to 16. Raising the ceiling therefore moved nothing
+ * except to let a brain past the schema gate without earning it, so the gate is
+ * back to the flat budget and progression is carried by the point pool alone.
+ *
+ * If progression needs to go further than 188 points buys, the axis has to be
+ * slot count or the per-slot cap, not this number.
  */
-export const BRAIN_WEIGHT_MAX = 13;
-
-/** Weight a player may spend after clearing `roundsCleared` campaign levels. */
-export const weightBudgetFor = (roundsCleared: number): number =>
-  Math.min(BRAIN_WEIGHT_MAX, BRAIN_WEIGHT_BUDGET + Math.max(0, roundsCleared));
+export const weightBudgetFor = (_roundsCleared: number): number => BRAIN_WEIGHT_BUDGET;
 
 export const BrainSpec = z
   .object({
@@ -57,8 +55,8 @@ export const BrainSpec = z
     refractoryTicks: z.number().int().min(0).max(30).default(4),
   })
   .refine(
-    (b) => b.slots.reduce((s, x) => s + x.weight, 0) <= BRAIN_WEIGHT_MAX,
-    { message: `total slot weight must not exceed ${BRAIN_WEIGHT_MAX}` },
+    (b) => b.slots.reduce((s, x) => s + x.weight, 0) <= BRAIN_WEIGHT_BUDGET,
+    { message: `total slot weight must not exceed ${BRAIN_WEIGHT_BUDGET}` },
   )
   .refine(
     (b) => new Set(b.slots.map((s) => s.module)).size === b.slots.length,

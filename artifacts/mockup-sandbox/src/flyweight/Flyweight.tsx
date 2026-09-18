@@ -203,6 +203,9 @@ export default function Flyweight() {
             squad={squad}
             onRematch={() => setRound((n) => n + 1)}
             onRoster={() => go("/select")}
+            cleared={cleared}
+            onCampaign={() => go("/campaign")}
+            onLab={() => go("/lab")}
           />
         )}
         {route === "/lab" && (

@@ -10,23 +10,25 @@
  */
 import { solveBrain } from "./optimize.js";
 
-const shortBy = (a: number, e: number, t: number) => {
-  const got = solveBrain({ aggression: a, evasion: e, tracking: t }, {}).achieved;
+const shortBy = (a: number, e: number, t: number, budget?: number) => {
+  const got = solveBrain({ aggression: a, evasion: e, tracking: t }, {}, budget).achieved;
   return (a + e + t) - (got.aggression + got.evasion + got.tracking);
 };
 
-for (const pool of [140, 150, 160, 170, 180, 190, 195, 200, 205, 211]) {
+// Re-swept with the EARNED budget: the old ceiling was measured against a fixed
+// 8, but clearing a level now buys weight, so what is spendable rises with it.
+for (const [pool, budget] of [[140,8],[164,9],[188,10],[212,11],[236,12],[260,13],[280,13]] as const) {
   let worstShort = 0, worst = "", checked = 0, bigShort = 0;
   // every way of spending EXACTLY the pool, in steps of 5
   for (let a = 0; a <= 100; a += 5) for (let e = 0; e <= 100; e += 5) {
     const t = pool - a - e;
     if (t < 0 || t > 100) continue;
     checked++;
-    const d = shortBy(a, e, t);
+    const d = shortBy(a, e, t, budget);
     if (d > 10) bigShort++;
     if (d > worstShort) { worstShort = d; worst = `${a}/${e}/${t}`; }
   }
-  console.log(`pool ${String(pool).padStart(3)}  ${String(checked).padStart(3)} ways to spend it` +
+  console.log(`pool ${String(pool).padStart(3)} budget ${budget}  ${String(checked).padStart(3)} ways to spend it` +
     `  |  worst shortfall ${String(worstShort).padStart(3)} pts (${worst || "none"})` +
     `  |  ${String(bigShort).padStart(3)} distributions lose >10 pts`);
 }

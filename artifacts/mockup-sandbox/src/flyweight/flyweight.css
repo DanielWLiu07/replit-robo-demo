@@ -1255,3 +1255,9 @@ html,body{background:#07070a}
   grid-column:2 / -1;font-style:normal;font-size:8px;
   color:rgba(242,243,245,.55);letter-spacing:.1em;
 }
+/* What a cleared level actually bought you. */
+.result-reward{
+  margin:0 0 14px;font-size:9px;letter-spacing:.14em;color:#f2f2ee;
+  display:grid;gap:3px;
+}
+.result-reward small{font-size:8px;color:rgba(242,243,245,.55);letter-spacing:.1em}
