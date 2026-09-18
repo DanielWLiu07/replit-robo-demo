@@ -168,7 +168,7 @@ const TIP_BAR_ARM = 0.55;
  * with eight seeded matches each: 15 is the first value where all four land inside
  * 24-50s AND every single match is decisive.
  */
-const STRIKE_DAMAGE = 9;
+const STRIKE_DAMAGE = 13;
 /**
  * How far a fist gets from the body CENTRE. The rig hangs the shoulder on the
  * midline, so this is the arm — adding a torso radius on top, as this did, put the
@@ -322,6 +322,8 @@ interface Body {
   punchRange: number;
   /** lean angle this body tips over at — wider stance, larger angle */
   knockdownLean: number;
+  /** m/s at the fist below which a swing is a nudge, scaled to this body */
+  tipBar: number;
   prevAngularSize: number;
   damageThisTick: number;
   arenaHalf: number;
@@ -351,7 +353,7 @@ function senses(self: Body, foe: Body): Senses {
   // their range nobody charges: blocks collapsed to 5.7% of hits. Same channel, same
   // cell, because the fly does not have a separate detector for punches.
   const foeTip = Math.max(Math.abs(foe.armLv), Math.abs(foe.armRv)) * foe.armLength;
-  const incoming = distance < foe.punchRange * 1.2 && foeTip > STRIKE_MIN_TIP_SPEED * (foe.armLength / TIP_BAR_ARM) * 0.55
+  const incoming = distance < foe.punchRange * 1.2 && foeTip > foe.tipBar * 0.55
     ? foeTip * 0.22 * (1 - 0.5 * distance / (foe.punchRange * 1.2))
     : 0;
   const half = self.arenaHalf;
@@ -451,10 +453,28 @@ export function* runMatch(
         // the arm the RIG draws for this chassis, so the hit is the hand on screen
         const armLength = armReach(spec.chassis) * phys.reach;
         const strikeReach = BOT_RADIUS + armLength;
+        /**
+         * The strike bar, as a fraction of what THIS body can actually produce.
+         *
+         * It used to be a fixed 3.2 m/s scaled UP with arm length, which punishes a
+         * long arm twice over: rotational inertia already makes a long arm slower
+         * (v_tip goes with 1/L), and then it had to clear a higher bar as well. The
+         * bench lets you build exactly that, and the result is a fighter that cannot
+         * damage anything — measured across the slider range, max-reach deals 2 a
+         * match, min-torque deals ZERO while still throwing three punches, and a
+         * heavy long-armed weak build deals zero and never swings at all.
+         *
+         * Relative to the body's own peak, every legal build can land when it fully
+         * commits, while the gait's idle arm motion — far slower than a thrown punch
+         * — still cannot register as a strike. The reach/power trade stays: a long
+         * arm hits SOFTER, which is the physics, it just no longer hits for nothing.
+         */
+        const peakTip = PUNCH_IMPULSE * (phys.tipSpeed / phys.reach) * armLength;
         return {
           phys, armLength, strikeReach,
           punchRange: strikeReach + 0.50,
           knockdownLean: KNOCKDOWN_LEAN * phys.knockdownAngle,
+          tipBar: Math.max(1.4, peakTip * 0.40),
         };
       })(),
       prevAngularSize: 0, damageThisTick: 0, arenaHalf: ARENA_SIZE / 2,
@@ -927,7 +947,7 @@ export function* runMatch(
         const ang = side ? att.armR : att.armL;
         const av = Math.abs(side ? att.armRv : att.armLv);
         const tipSpeed = av * att.armLength;
-        const tipBar = STRIKE_MIN_TIP_SPEED * (att.armLength / TIP_BAR_ARM);
+        const tipBar = att.tipBar;
         if (tipSpeed < tipBar) continue;
 
         /**
