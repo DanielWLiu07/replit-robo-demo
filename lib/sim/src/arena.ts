@@ -110,9 +110,13 @@ const MIN_RAM_SPEED = 0.8;      // below this a touch does nothing
 // bodies: motor output applies torque, momentum carries the swing, and a tip
 // that crosses an enemy torso while moving fast enough lands a strike. Damage
 // therefore comes from *hitting*, not from driving into someone.
-const ARM_LENGTH = 0.55;        // metres from shoulder to fist
+const ARM_LENGTH = 0.66;        // metres shoulder to fist — longer reach, more time in range
 const ARM_DAMP = 0.88;
-const PUNCH_IMPULSE = 13.5;     // rad/s added to an arm when a punch is thrown
+const PUNCH_IMPULSE = 17;       // rad/s into an arm on a swing — faster hands
+/** Ticks between unprompted swings when no pursuit circuit is driving them. */
+const INNATE_SWING_GAP = 64;
+/** Forward drive a bot supplies itself when not fleeing, before any circuit. */
+const INNATE_PRESS = 0.55;
 const PUNCH_COOLDOWN = 6;
 const PUNCH_RECOVERY = 16;      // ticks you are open after committing to a swing
 const GUARD_RISE = 0.30;
@@ -158,13 +162,13 @@ const TIP_BAR_ARM = 0.55;
 /**
  * Damage per m/s of tip speed over the bar.
  *
- * Retuned from 2.9 when the collision geometry came down to the drawn bodies. The
- * fist radius shrank with BOT_RADIUS, so glancing contact became far more common
- * and the median hit fell to about 3 damage against an 80-100 hull — fights stopped
- * ending in knockouts and ran to the 90 s cap on a hull tiebreak. Swept 4.5 / 5.5 /
- * 6.5 against 16 seeded matches: 47 s / 44 s / 39 s, all decisive.
+ * Retuned alongside the innate press and swing. Once every loadout could actually
+ * engage, fights resolved but ran long — 32 to 69 seconds against a 90 second cap,
+ * which is a lot of circling to watch. Swept 6.5 / 9 / 12 / 15 across four matchups
+ * with eight seeded matches each: 15 is the first value where all four land inside
+ * 24-50s AND every single match is decisive.
  */
-const STRIKE_DAMAGE = 6.5;
+const STRIKE_DAMAGE = 9;
 /**
  * How far a fist gets from the body CENTRE. The rig hangs the shoulder on the
  * midline, so this is the arm — adding a torso radius on top, as this did, put the
@@ -491,6 +495,21 @@ export function* runMatch(
         intent.turn *= 0.4;
       }
 
+      /**
+       * Innate press.
+       *
+       * LC10a was the ONLY thing that ever added positive forward drive, so a brain
+       * without it could do nothing but retreat. Measured: two escape builds drift
+       * apart and land 3 hits between them across a full 90 second match, even with
+       * the sudden-death walls shut — and closing the walls further barely moved it,
+       * because neither bot was ever trying to close.
+       *
+       * A fly that is not actively fleeing closes on what is in front of it. The
+       * pursuit circuit decides how HARD you press (it adds a full 1.0 on top of
+       * this), not whether you are capable of advancing at all.
+       */
+      if (!spiked.includes("LPLC2_DNP01")) intent.forward += INNATE_PRESS;
+
       const clamp = (v: number) => Math.max(-1.6, Math.min(1.6, v));
       body.driveFwd  += (clamp(intent.forward) - body.driveFwd)  * NMJ_SMOOTHING;
       body.driveTurn += (clamp(intent.turn)    - body.driveTurn) * NMJ_SMOOTHING;
@@ -681,7 +700,23 @@ export function* runMatch(
       // front of you; continuing one only needs the gap between punches to have elapsed.
       const aimed = Math.abs(s.bearing) < PUNCH_CONE;
       const canStart = body.recovery === 0 && body.guard < 0.35 && !body.gassed;
-      const wantsToHit = pursuitFired && !backingOff && foeDist < body.punchRange && aimed
+      /**
+       * A brain with no pursuit circuit could never throw a punch AT ALL.
+       *
+       * Measured across matchups: two escape-heavy builds land ZERO hits in a full
+       * 90 second match, every time, and pursuit-versus-escape lands 0.6 — both
+       * always scoreless draws. LC10a was an absolute veto on being able to attack
+       * rather than a driver of how often you commit, so a whole class of loadout
+       * was simply inert. Closing the sudden-death walls does not help: the bot
+       * still never swings.
+       *
+       * Every fly has descending motor pathways to its legs and body; LC10a is the
+       * one that decides to CHASE. So a bot with a target in front of it can still
+       * throw on its own, just far less often — pursuit builds punch about every
+       * 1.2s, this is closer to every 1.6s, so the circuit still earns its place.
+       */
+      const innate = tick - body.swungAt > INNATE_SWING_GAP;
+      const wantsToHit = (pursuitFired || innate) && !backingOff && foeDist < body.punchRange && aimed
         && body.punchCd === 0 && (body.comboLeft > 0 || canStart);
       if (wantsToHit) {
         if (body.comboLeft === 0) {
@@ -698,6 +733,9 @@ export function* runMatch(
         const swing = PUNCH_IMPULSE * (body.phys.tipSpeed / body.phys.reach);
         const power = swing * gas * (0.75 + 0.25 * Math.min(1, body.brain.arousalLevel - 0.4));
         if (body.punchSide === 0) body.armLv -= power; else body.armRv += power;
+        // stamp the swing: the innate-throw gate above measures from here, and it
+        // was never written, so `swungAt` sat at its -99 sentinel for the whole match
+        body.swungAt = tick;
         body.punchSide = body.punchSide === 0 ? 1 : 0;
         body.stamina = Math.max(0, body.stamina - PUNCH_COST);
         body.comboLeft--;

@@ -137,7 +137,11 @@ test("a punch that lands during recovery is a counter, and counters hurt more", 
   // `countered` flag is up this tick was a counter. Averaged over a whole match the
   // counter bonus has to show through the swing-speed spread, or it is not a bonus.
   let counterDmg = 0, counterN = 0, plainDmg = 0, plainN = 0;
-  for (const seed of ["c1", "c2", "c3", "c4"]) {
+  // Ten matches, not four. Counters run about 10% of hits against a 7.1% recovery
+  // window — the mechanic is intact and pays above chance — but a match now ends in
+  // fewer exchanges than when this was written, so four samples could turn up two
+  // counters and fail on sample size rather than on behaviour.
+  for (const seed of ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10"]) {
     const { frames } = play(seed);
     for (const f of frames) {
       if (!f.hits.length) continue;
@@ -148,7 +152,7 @@ test("a punch that lands during recovery is a counter, and counters hurt more", 
       }
     }
   }
-  assert.ok(counterN > 5, `only ${counterN} counters landed in four matches — baiting a whiff pays nothing`);
+  assert.ok(counterN > 5, `only ${counterN} counters landed in ten matches — baiting a whiff pays nothing`);
   assert.ok(plainN > 5, `only ${plainN} ordinary hits — everything is a counter, which means nothing is`);
   assert.ok(counterDmg / counterN > plainDmg / plainN,
     `counters (${(counterDmg / counterN).toFixed(2)}) did not outdamage clean hits (${(plainDmg / plainN).toFixed(2)})`);

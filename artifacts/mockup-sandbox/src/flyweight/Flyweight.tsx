@@ -10,6 +10,7 @@ import { MoonStage } from "./MoonStage";
 import type { StationName } from "./moonLayout";
 import { RosterSelect } from "./RosterSelect";
 import { DEFAULT_BOTS } from "./modules";
+import { Campaign } from "./Campaign";
 import { ROSTER } from "./roster";
 import { go, useRoute } from "./route";
 import { useMatch } from "./useMatch";
@@ -83,7 +84,10 @@ export default function Flyweight() {
   // Hash routes survive as invisible deep links: they pick a camera station on
   // the one moon, they never swap a page. #/fight still flies to the ring.
   const station: StationName =
-    route === "/fight" ? "RING" : route === "/" ? "ARRIVAL" : "BAY";
+    route === "/fight" ? "RING"
+      : route === "/" ? "ARRIVAL"
+      : route === "/campaign" ? "ARRIVAL"
+      : "BAY";
 
   return (
     <div className={`flyweight ${route === "/" ? "route-home" : `route${route.replace("/", "-")}`}`}>
@@ -110,6 +114,13 @@ export default function Flyweight() {
             squad={squad}
             setSquad={setSquad}
             onNext={() => go("/lab")}
+          />
+        )}
+        {route === "/campaign" && (
+          <Campaign
+            roundsCleared={round}
+            onFight={startFight}
+            onBench={() => go("/lab")}
           />
         )}
         {route === "/fight" && (

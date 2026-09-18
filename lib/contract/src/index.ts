@@ -571,11 +571,12 @@ export type VerifierResult = z.infer<typeof VerifierResult>;
 export const LADDER_MAX_ROUND = 40;
 
 /**
- * Clear the campaign by winning this many rounds. Measured against the roster,
- * the expected furthest round is about 3 and a strong fly reaches 10, so this
- * is a real finish line rather than a formality.
+ * Clear the campaign by winning this many rounds — five levels on the moon.
+ * Measured against the roster the expected furthest round is about 3, so five
+ * is a real finish line rather than a formality, and short enough that a
+ * stranger can see the end of it.
  */
-export const LADDER_CLEAR_ROUND = 10;
+export const LADDER_CLEAR_ROUND = 5;
 
 export const LadderStatus = z.enum(["ACTIVE", "ENDED", "CLEARED"]);
 export type LadderStatus = z.infer<typeof LadderStatus>;

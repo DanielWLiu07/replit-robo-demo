@@ -1177,3 +1177,64 @@ html,body{background:#07070a}
   border-color:#f2f2ee;
 }
 .bench-actions .button:disabled{opacity:.34}
+
+/* ── Campaign: five stations on the moon ────────────────────────────────────
+   The board sits over the world stage rather than replacing it, so the moon
+   behind every other screen becomes the map. Nodes are placed as percentages
+   of the stage and joined by a path that lights up behind you. */
+.campaign{
+  position:relative;
+  min-height:calc(100svh - 92px);
+  display:flex;flex-direction:column;
+  padding:22px 3% 24px;
+}
+.campaign-head{margin:6px 0 0}
+.campaign-head h2{
+  font-family:'KatieRozeUI','Barlow Condensed',Impact,sans-serif;
+  font-size:clamp(52px,7vw,104px);font-weight:400;line-height:1;margin:0;
+}
+.campaign-head p{margin:6px 0 0;color:rgba(242,243,245,.5);letter-spacing:.14em}
+
+.campaign-map{position:relative;flex:1 1 auto;min-height:340px;margin-top:10px}
+.campaign-path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.campaign-path line{
+  stroke:rgba(255,255,255,.16);stroke-width:.35;stroke-dasharray:1.6 1.6;
+  vector-effect:non-scaling-stroke;
+}
+.campaign-path line.walked{stroke:rgba(255,255,255,.62);stroke-dasharray:none}
+
+.campaign-node{
+  position:absolute;transform:translate(-50%,-50%);
+  display:grid;justify-items:center;gap:6px;
+  background:transparent;border:0;padding:6px;
+  color:rgba(242,243,245,.4);cursor:default;
+}
+.campaign-node .node-dot{
+  width:15px;height:15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.3);
+  background:var(--glass);backdrop-filter:blur(10px);
+  transition:transform .15s,background .15s,border-color .15s;
+}
+.campaign-node .node-round{font-size:11px;letter-spacing:.1em}
+.campaign-node .node-title{font-size:8px;letter-spacing:.14em;white-space:nowrap}
+
+/* behind you: lit and solid */
+.campaign-node.cleared{color:rgba(242,243,245,.75)}
+.campaign-node.cleared .node-dot{background:#f2f2ee;border-color:#f2f2ee}
+
+/* the one you can actually take */
+.campaign-node.live{color:#f7f8fa;cursor:pointer}
+.campaign-node.live .node-dot{
+  width:21px;height:21px;
+  border-color:#f2f2ee;
+  box-shadow:0 0 0 5px rgba(255,255,255,.08);
+  animation:fw-pulse 1.4s ease-in-out infinite;
+}
+.campaign-node.live:hover .node-dot{transform:scale(1.14);background:rgba(255,255,255,.22)}
+.campaign-node:disabled{pointer-events:none}
+
+.campaign .select-actions{justify-content:flex-start;margin-top:8px}
+@media(max-width:820px){
+  .campaign-node .node-title{display:none}
+  .campaign-map{min-height:260px}
+}

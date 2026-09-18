@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 /** Every screen is linkable: the hash is the whole router. */
-export const ROUTES = ["/", "/select", "/fight", "/lab"] as const;
+export const ROUTES = ["/", "/select", "/campaign", "/fight", "/lab"] as const;
 export type Route = (typeof ROUTES)[number];
 
 function read(): Route {
