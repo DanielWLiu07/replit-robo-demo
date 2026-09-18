@@ -5,6 +5,7 @@ import {
   CHASSIS_STATS,
   Chassis,
   type BodySpec,
+  weightBudgetFor,
 } from "@workspace/contract";
 import {
   REFRACTORY_WINS,
@@ -153,6 +154,16 @@ export function BrainLab({
    * for the others, which is the trade-off the loadout was always making anyway.
    */
   const INSTINCT_POOL = instinctPool(roundsCleared);
+  /**
+   * The weight the campaign has actually paid for.
+   *
+   * Points alone were decoration: the solver scaled every target back down to a
+   * fixed budget, so a 140-point build and a 180-point build came out the same
+   * total strength and won the same fraction of their fights — measured, the
+   * curve was flat within noise. Points decide the SHAPE, this decides how much
+   * there is to shape, and only the pair together make a cleared level felt.
+   */
+  const weightBudget = weightBudgetFor(roundsCleared);
   const instinctSpent = profile.aggression + profile.evasion + profile.tracking;
   const instinctLeft = Math.max(0, INSTINCT_POOL - instinctSpent);
 
@@ -162,7 +173,11 @@ export function BrainLab({
     const others = instinctSpent - profile[key];
     const capped = Math.max(0, Math.min(v, INSTINCT_POOL - others));
     const t = { aggression: profile.aggression, evasion: profile.evasion, tracking: profile.tracking, [key]: capped };
-    const sol = solveBrain(t, { leak: draft.brain.membraneLeak, refractory: draft.brain.refractoryTicks });
+    const sol = solveBrain(
+      t,
+      { leak: draft.brain.membraneLeak, refractory: draft.brain.refractoryTicks },
+      weightBudget,
+    );
     setDraft((d) => ({ ...d, brain: sol.brain }));
   };
   const setNerve = (patch: { leak?: number; refractory?: number }) =>
@@ -290,6 +305,7 @@ export function BrainLab({
               {instinctSpent}
               <small> / {INSTINCT_POOL}</small>
             </b>
+            <em className="pool-weight">{weightBudget.toFixed(0)} weight</em>
             {roundsCleared > 0 && (
               <em className="pool-earned">+{INSTINCT_POOL - INSTINCT_POOL_BASE} from {roundsCleared} round{roundsCleared === 1 ? "" : "s"}</em>
             )}

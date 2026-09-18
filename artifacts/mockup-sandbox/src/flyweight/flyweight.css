@@ -1251,3 +1251,7 @@ html,body{background:#07070a}
    the roster and bench already do for their own panels. */
 .route-campaign .world-stage{opacity:.5}
 .campaign-node .node-foe{font-size:8px;letter-spacing:.12em;color:rgba(242,243,245,.55)}
+.point-pool .pool-weight{
+  grid-column:2 / -1;font-style:normal;font-size:8px;
+  color:rgba(242,243,245,.55);letter-spacing:.1em;
+}

@@ -97,6 +97,8 @@ const totalWeight = (targets: StatTargets, scale: number) =>
 export function solveBrain(
   targets: StatTargets,
   opts: { leak?: number; refractory?: number } = {},
+  /** Weight the player may actually spend — grows as the campaign is cleared. */
+  budget: number = BRAIN_WEIGHT_BUDGET,
 ): Solution {
   // Scale every target by the SAME factor until the plan fits. Proportional
   // scaling preserves the balance between stats, which is the thing the player
@@ -107,12 +109,12 @@ export function solveBrain(
   // point), so a bisection lands on the boundary exactly. 40 steps is far past the
   // precision a 2dp weight can hold.
   let scale = 1;
-  if (totalWeight(targets, 1) > BRAIN_WEIGHT_BUDGET) {
+  if (totalWeight(targets, 1) > budget) {
     let lo = 0,
       hi = 1;
     for (let i = 0; i < 40; i++) {
       const mid = (lo + hi) / 2;
-      if (totalWeight(targets, mid) > BRAIN_WEIGHT_BUDGET) hi = mid;
+      if (totalWeight(targets, mid) > budget) hi = mid;
       else lo = mid;
     }
     scale = lo;

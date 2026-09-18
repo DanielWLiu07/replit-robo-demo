@@ -31,6 +31,23 @@ export const BRAIN_MAX_SLOTS = 5;
 /** Total weight a brain may spend. Forces real loadout tradeoffs. */
 export const BRAIN_WEIGHT_BUDGET = 8;
 
+/**
+ * The hard ceiling a brain may ever reach, once the campaign has paid for it.
+ *
+ * BRAIN_WEIGHT_BUDGET is where you START, not where you stop. Clearing a level
+ * buys one more unit of synaptic weight, which is why progression is felt:
+ * distributing more points used to change only the SHAPE of a build, because
+ * the solver scaled every target back down to the same fixed total. Measured,
+ * a pool of 140 and a pool of 180 won the same fraction of their fights. The
+ * schema enforces this ceiling; the bench enforces what you have actually
+ * earned.
+ */
+export const BRAIN_WEIGHT_MAX = 13;
+
+/** Weight a player may spend after clearing `roundsCleared` campaign levels. */
+export const weightBudgetFor = (roundsCleared: number): number =>
+  Math.min(BRAIN_WEIGHT_MAX, BRAIN_WEIGHT_BUDGET + Math.max(0, roundsCleared));
+
 export const BrainSpec = z
   .object({
     slots: z.array(ModuleSlot).min(1).max(BRAIN_MAX_SLOTS),
@@ -40,8 +57,8 @@ export const BrainSpec = z
     refractoryTicks: z.number().int().min(0).max(30).default(4),
   })
   .refine(
-    (b) => b.slots.reduce((s, x) => s + x.weight, 0) <= BRAIN_WEIGHT_BUDGET,
-    { message: `total slot weight must not exceed ${BRAIN_WEIGHT_BUDGET}` },
+    (b) => b.slots.reduce((s, x) => s + x.weight, 0) <= BRAIN_WEIGHT_MAX,
+    { message: `total slot weight must not exceed ${BRAIN_WEIGHT_MAX}` },
   )
   .refine(
     (b) => new Set(b.slots.map((s) => s.module)).size === b.slots.length,
