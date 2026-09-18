@@ -157,10 +157,24 @@ export function fistLocal(state: ArmState, chassis: Chassis, side: -1 | 1) {
 
   /**
    * How far through a swing this arm is: 0 at the guard, 1 fully committed.
-   * Read off the ANGLE, which integrates smoothly, not the rate, which steps the
-   * instant the impulse lands and teleported the fist ~0.3 m in one frame.
+   *
+   * Measured from the PUNCH AXIS — the angle at which the fist points straight
+   * forward — not from the distance travelled away from rest.
+   *
+   * Travelled-distance was the obvious reading and it was wrong. An arm at rest
+   * sits ARM_REST off the forward axis, so a clean jab (swinging to ang 0, fist
+   * pointing straight out) only covers 0.35 rad and scored 0.30 excursion: the
+   * arm reached 0.65 extension and never straightened. Full extension arrived
+   * only once the arm had swung right ACROSS the body, which is a hook. A jab
+   * could be forward or extended, never both — measured on the roster idle, the
+   * fist peaked at 0.299 m out on a 0.91 m body while dropping 0.10 m.
+   *
+   * Zero at rest, one when the arm points forward, and pinned at one beyond that
+   * — so a jab lands fully extended pointing where it is thrown, and the arena's
+   * deeper swing past the axis reads as a hook at the same full reach.
    */
-  const excursion = Math.min(1, Math.abs(ang - (side < 0 ? ARM_REST : -ARM_REST)) / 1.15);
+  const rest = side < 0 ? ARM_REST : -ARM_REST;
+  const excursion = Math.max(0, Math.min(1, (rest - ang) / rest));
   const thrown = excursion;
   const open = Math.max(excursion, Math.min(1, state.recovery / 12));
   const tuck = state.guard * (1 - open);

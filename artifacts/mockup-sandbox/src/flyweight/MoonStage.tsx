@@ -689,15 +689,22 @@ export function MoonStage({
         vx: 0, vy: 0, hull: 100,
         spiked: [], potentials: {},
         arousal: 1, gfFatigue: 0,
-        // 0.66 rad off rest, not the 1.15 fistLocal treats as full excursion.
-        // A full-excursion swing is a COMMITTED punch: `open` goes to 1, which
-        // untucks the guard and drops the fist 0.34 of a body height, and the
-        // fist travels 7.3 units on an 8.1-unit body — measured, and it reads as
-        // a wild hook, which is not what a fighter does while waiting. At 0.57
-        // excursion the arm still snaps out to 0.70 extension but the fist stays
-        // high and goes FORWARD: a jab.
-        armL: ARM_REST - throwL * 0.66,
-        armR: -ARM_REST + throwR * 0.66,
+        /**
+         * Throw exactly to the punch axis, no further.
+         *
+         * `fistLocal` now measures a swing from the angle at which the fist points
+         * STRAIGHT FORWARD, and pins extension at full once the arm reaches it. So
+         * throwing ARM_REST lands the jab fully extended and pointing where it was
+         * aimed, and the swing curve maps one-to-one onto the extension.
+         *
+         * Over-throwing past the axis (this was 0.66) spends the extra travel
+         * swinging the fist ACROSS the body while extension is already pinned at
+         * one — the arm hangs at full stretch through the retraction and then
+         * snaps, and the fist drifts further forward as it comes back. Measured:
+         * reach wandered 0.450 -> 0.473 m while the swing decayed from 1.0 to 0.54.
+         */
+        armL: ARM_REST - throwL * ARM_REST,
+        armR: -ARM_REST + throwR * ARM_REST,
         armLv: 0, armRv: 0,
         gait: rock * 0.055,
         struck: false,

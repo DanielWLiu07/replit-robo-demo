@@ -947,10 +947,14 @@ html,body{background:#07070a}
   align-items:center;
   justify-content:center;
   gap:12px;
-  border:1px solid rgba(255,255,255,.28);
-  background:rgba(10,10,14,.55);
+  border:1px solid var(--glass-line);
+  background:var(--glass);
   color:#f1f1ed;
-  backdrop-filter:blur(8px);
+  backdrop-filter:blur(18px);
+  /* The bench's back button is a pill and this is the same control, so it gets
+     the same shape. Panels stay at 14px, which keeps buttons and surfaces
+     reading as different kinds of thing rather than one squarish soup. */
+  border-radius:999px;
   transition:background .15s,border-color .15s,transform .15s;
 }
 .route-select .back-link:hover,
@@ -959,13 +963,18 @@ html,body{background:#07070a}
   border-color:#e8e8e4;
   transform:translateY(-2px);
 }
-/* the way on is the filled one */
+/* The way on is marked by a brighter EDGE, not by a solid fill. Filling it
+   white made it the one opaque object among glass panels, so it read as
+   belonging to a different design. */
 .route-select .select-actions .button.primary{
-  background:#f1f1ed;
-  color:#07070a;
-  border-color:#f1f1ed;
+  background:var(--glass);
+  color:#f7f8fa;
+  border-color:rgba(255,255,255,.42);
 }
-.route-select .select-actions .button.primary:hover{background:#ffffff}
+.route-select .select-actions .button.primary:hover{
+  background:rgba(255,255,255,.12);
+  border-color:#f2f2ee;
+}
 /* .fight-button's 64px gap was for a space-between layout this no longer uses */
 .route-select .fight-button{gap:12px}
 .brainview-loading{
@@ -1097,3 +1106,34 @@ html,body{background:#07070a}
   border:1px solid #f2f2ee;
 }
 .route-fight .sudden-death i{background:#111116}
+
+/* ── Next, made to match the rest of the screen ─────────────────────────────
+   It was off for three reasons, none of them the label. It was pinned right by
+   an inherited `justify-content:flex-end` while every other element on the
+   screen — Back, the title, the cards, the dossier — starts at the same left
+   edge, so it read as a stray chip. It was dark glass sitting over the bright
+   half of the moon, which is the one background that surface does not survive.
+   And it was styled identically to Back, so nothing said which one goes
+   forward. Now: same left edge, opaque enough to hold its own ground, and a
+   brighter edge plus a pushed-right arrow to mark it as the way on. */
+.route-select .select-actions{
+  justify-content:flex-start;
+  margin-top:26px;
+}
+.route-select .fight-button{
+  min-width:268px;
+  justify-content:space-between;
+  gap:28px;
+  padding:16px 22px;
+  background:var(--glass);
+  border:1px solid rgba(255,255,255,.42);
+  color:#f7f8fa;
+  backdrop-filter:blur(18px);
+}
+.route-select .fight-button:hover{
+  background:rgba(255,255,255,.12);
+  border-color:#f2f2ee;
+  transform:translateY(-2px);
+}
+/* Back stays the quieter of the two — it is an exit, not the action */
+.route-select .back-link{border-color:rgba(255,255,255,.22)}
