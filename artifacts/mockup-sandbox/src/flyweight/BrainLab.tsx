@@ -73,15 +73,32 @@ function RefractoryCurve({ value }: { value: number }) {
  * (around 166) start just inside it with a little left to spend, rather than
  * opening the lab already overdrawn.
  */
-const INSTINCT_POOL = 180;
+const INSTINCT_POOL_BASE = 180;
+const INSTINCT_POOL_PER_ROUND = 12;
+/** Stops short of 300, where all three dials could be maxed and the choice would stop mattering. */
+const INSTINCT_POOL_MAX = 276;
+
+/**
+ * Clearing campaign rounds buys more points. That is the progression: not a
+ * bigger number on an existing dial, but more of the same currency to place, so
+ * a deeper run widens what is reachable without ever removing the trade-off.
+ */
+export const instinctPool = (roundsCleared: number) =>
+  Math.min(
+    INSTINCT_POOL_MAX,
+    INSTINCT_POOL_BASE + INSTINCT_POOL_PER_ROUND * Math.max(0, roundsCleared),
+  );
 
 export function BrainLab({
   bot,
+  roundsCleared = 0,
   onLaunch,
   onRoster,
   onChassisChange,
 }: {
   bot: BotSpec;
+  /** campaign rounds beaten — each one buys more instinct points */
+  roundsCleared?: number;
   onChassisChange: (chassis: Chassis) => void;
   onLaunch: (bot: BotSpec) => void;
   onRoster: (bot: BotSpec) => void;
@@ -111,6 +128,7 @@ export function BrainLab({
    * can see, and the fix is to spend it in the open: raise one and you have less
    * for the others, which is the trade-off the loadout was always making anyway.
    */
+  const INSTINCT_POOL = instinctPool(roundsCleared);
   const instinctSpent = profile.aggression + profile.evasion + profile.tracking;
   const instinctLeft = Math.max(0, INSTINCT_POOL - instinctSpent);
 
@@ -248,6 +266,9 @@ export function BrainLab({
               {instinctSpent}
               <small> / {INSTINCT_POOL}</small>
             </b>
+            {roundsCleared > 0 && (
+              <em className="pool-earned">+{INSTINCT_POOL - INSTINCT_POOL_BASE} from {roundsCleared} round{roundsCleared === 1 ? "" : "s"}</em>
+            )}
           </div>
           {([
             ["PRESSURE", "aggression"],

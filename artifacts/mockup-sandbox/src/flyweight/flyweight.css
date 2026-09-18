@@ -1137,3 +1137,43 @@ html,body{background:#07070a}
 }
 /* Back stays the quieter of the two — it is an exit, not the action */
 .route-select .back-link{border-color:rgba(255,255,255,.22)}
+.point-pool .pool-earned{
+  grid-column:2 / -1;font-style:normal;font-size:8px;
+  color:rgba(242,243,245,.42);letter-spacing:.1em;
+}
+
+/* ── Bench buttons: same language as the rest ───────────────────────────────
+   OPTIMISE / RESET / NEXT · FIGHT / ← ROSTER were square-ish 9px boxes with a
+   solid white primary, which is the same mismatch the select screen had: one
+   opaque object among glass panels. They now use the glass token and the pill
+   shape every other button on the site uses, with the forward action marked by
+   a brighter edge rather than a fill. */
+.bench-actions .button,
+.bench-actions.go .button{
+  border-radius:999px;
+  background:var(--glass);
+  border:1px solid var(--glass-line);
+  backdrop-filter:blur(18px);
+  color:#f1f1ed;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;
+  letter-spacing:.14em;
+  padding:13px 18px;
+  transition:background .15s,border-color .15s,transform .15s;
+}
+.bench-actions .button:hover:not(:disabled){
+  background:rgba(255,255,255,.12);
+  border-color:rgba(255,255,255,.5);
+  transform:translateY(-1px);
+}
+/* the way on: a brighter edge, not a white slab */
+.bench-actions.go .button.primary{
+  background:var(--glass);
+  color:#f7f8fa;
+  border-color:rgba(255,255,255,.42);
+}
+.bench-actions.go .button.primary:hover:not(:disabled){
+  background:rgba(255,255,255,.12);
+  border-color:#f2f2ee;
+}
+.bench-actions .button:disabled{opacity:.34}

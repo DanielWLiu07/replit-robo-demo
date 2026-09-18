@@ -68,7 +68,10 @@ export default function Flyweight() {
    */
   useEffect(() => {
     if (route !== "/fight" || !match.result) return;
-    const t = setTimeout(() => setRound((n) => n + 1), 4200);
+    // 4.2s was most of a round's worth of dead air. A match now runs about 11s
+    // with roughly 2.4s of approach inside it, so a long pause on top meant the
+    // ring was idle a third of the time and it read as nothing happening.
+    const t = setTimeout(() => setRound((n) => n + 1), 2000);
     return () => clearTimeout(t);
   }, [route, match.result]);
 
@@ -122,6 +125,7 @@ export default function Flyweight() {
         {route === "/lab" && (
           <BrainLab
             bot={build}
+            roundsCleared={round}
             onChassisChange={setLabChassis}
             onLaunch={(bot) => {
               // straight into a fight: the tuned brain becomes player one and the

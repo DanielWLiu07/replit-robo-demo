@@ -386,7 +386,16 @@ export function* runMatch(
   const n = Math.max(1, Math.min(MAX_SQUAD, Math.floor(squadSize)));
 
   const mk = (spec: BotSpec, team: 0 | 1, angle: number, idx: number): Body => {
-    const r = arenaHalfFor(n) * 0.74 + rng() * 1.2;
+    /**
+     * Spawn radius. They start on opposite sides, so separation is twice this.
+     *
+     * Was 0.74 of the half-arena plus up to 1.2 m, which put them 3.8-6.2 m apart
+     * in a 5.2 m ring. At the pace the bots actually move that is a 2.7 s walk
+     * before the first punch lands — nearly a quarter of a 12 s round spent with
+     * nothing happening, and it reads as the fighters doing nothing to each other.
+     * Closer start, same ring: still an approach, just not a hike.
+     */
+    const r = arenaHalfFor(n) * 0.45 + rng() * 0.6;
     // fan the squad out along an arc so they do not spawn stacked
     const spread = n === 1 ? 0 : (idx / (n - 1) - 0.5) * 0.9;
     const a = angle + spread;
