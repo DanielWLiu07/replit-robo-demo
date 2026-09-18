@@ -81,3 +81,30 @@ export const DEFAULT_BOTS: [BotSpec, BotSpec] = [
   },
   { ...CHAMPION_BRAIN, name: "CHAMPION / BOSS" },
 ];
+
+/**
+ * The build a new player starts with: a chassis, and not one point spent.
+ *
+ * Every dial reads zero, the whole instinct pool is unspent, and the fly has a
+ * pursuit circuit installed at zero weight — present, wired, and driving nothing.
+ * It cannot fight in that state, and that is the point: the loadout is the game, so
+ * handing a stranger a pre-solved brain skips the only decision they get to make.
+ *
+ * Defined here as the literal `solveBrain({0,0,0})` produces, rather than by calling
+ * the solver, so a saved build and a fresh one are the same shape and the module
+ * stays free of a runtime dependency on the optimiser.
+ */
+export const UNSPENT_BUILD: BotSpec = {
+  id: "recruit",
+  name: "RECRUIT / 00",
+  chassis: "DRONE",
+  brain: {
+    slots: [{ module: "LC10A", weight: 0, threshold: 0.8 }],
+    membraneLeak: 0.2,
+    refractoryTicks: 4,
+  },
+};
+
+/** True when nothing has been spent yet — nothing to fight with. */
+export const isUnspent = (bot: BotSpec) =>
+  bot.brain.slots.reduce((a, s) => a + s.weight, 0) <= 0;

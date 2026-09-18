@@ -9,8 +9,9 @@ import { Landing } from "./Landing";
 import { MoonStage } from "./MoonStage";
 import type { StationName } from "./moonLayout";
 import { RosterSelect } from "./RosterSelect";
-import { DEFAULT_BOTS } from "./modules";
+import { isUnspent, UNSPENT_BUILD } from "./modules";
 import { Campaign } from "./Campaign";
+import { CAMPAIGN_LEVELS, levelFor } from "./campaignLevels";
 import { ROSTER } from "./roster";
 import { go, useRoute } from "./route";
 import { useMatch } from "./useMatch";
@@ -24,15 +25,22 @@ import "./flyweight.css";
  */
 const DEFAULT_OPPONENT = ROSTER.find((r) => r.bot.id === "hornet")!.bot;
 
-/** The saved Brain Lab build, if it still satisfies the contract. */
+/**
+ * The saved Brain Lab build, if it still satisfies the contract.
+ *
+ * With nothing saved this used to hand back GHOST — a fully solved brain with 166 of
+ * the pool already spent on the player's behalf. A new player therefore never made
+ * the build decision the lab exists for; they inherited someone else's and could
+ * only nudge it. Now they start with the pool untouched and distribute it.
+ */
 function loadBuild(): BotSpec {
   try {
     const parsed = BotSpec.safeParse(JSON.parse(localStorage.getItem("flyweight.bot") || "null"));
     if (parsed.success) return parsed.data;
   } catch {
-    /* fall through to the stock build */
+    /* fall through to an unspent build */
   }
-  return DEFAULT_BOTS[0];
+  return UNSPENT_BUILD;
 }
 
 export default function Flyweight() {
@@ -41,8 +49,34 @@ export default function Flyweight() {
   const [p1, setP1] = useState<BotSpec>(build);
   const [p2, setP2] = useState<BotSpec>(DEFAULT_OPPONENT);
   const [round, setRound] = useState(0);
+  /**
+   * Campaign progress, which is NOT the round counter.
+   *
+   * `round` ticks on every fight — it is what restarts the match — so using it
+   * as progress advanced the board whether you won or lost, and the campaign
+   * could be finished by losing five times. This counts fights actually won,
+   * and a loss ends the run.
+   */
+  const [cleared, setCleared] = useState(0);
+  /** which fight the result has already been counted for, so it scores once */
+  const scored = useRef(-1);
+  const [runLost, setRunLost] = useState(false);
   const [squad, setSquad] = useState(1);
   const [labChassis, setLabChassis] = useState<Chassis>(build.chassis);
+
+  /**
+   * The roster and the bench edit the SAME fighter.
+   *
+   * They used to edit two: the roster set `p1` while the bench read and wrote
+   * `build`, so picking a class on one screen was invisible on the next. Routing
+   * both through here keeps the saved build, the fighter that walks out, and the
+   * body on the moon in step.
+   */
+  const setPlayer = (bot: BotSpec) => {
+    setBuild(bot);
+    setP1(bot);
+    setLabChassis(bot.chassis);
+  };
 
   const bots: [BotSpec, BotSpec] = [p1, p2];
   const onBots = useRef((next: [BotSpec, BotSpec]) => {
@@ -57,6 +91,22 @@ export default function Flyweight() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [route]);
+
+  /**
+   * Score the campaign off the match result.
+   *
+   * Guarded by the round the result belongs to: `match.result` stays set for as
+   * long as the fight screen is open, so without this a re-render would count
+   * the same win repeatedly and walk the board to cleared on its own.
+   */
+  useEffect(() => {
+    const result = match.result;
+    if (!result || scored.current === round) return;
+    scored.current = round;
+    const won = result.winnerBotId === p1.id;
+    if (won) setCleared((c) => Math.min(CAMPAIGN_LEVELS, c + 1));
+    else setRunLost(true);
+  }, [match.result, round, p1.id]);
 
   /**
    * Keep the ring alive.
@@ -80,6 +130,26 @@ export default function Flyweight() {
     setRound((n) => n + 1);
     go("/fight");
   };
+
+  /** Start a campaign level: the opponent is whoever is waiting at that node. */
+  const startCampaignRound = (level: number) => {
+    setP2(levelFor(level).bot);
+    setRunLost(false);
+    startFight();
+  };
+
+  /**
+   * #/fight is a deep link, and an unspent fly cannot fight.
+   *
+   * Every route INTO the ring passes through the bench, which refuses to release a
+   * build with nothing spent — but the hash is typeable and survives a reload, so a
+   * stranger who bookmarked the fight would otherwise watch an inert fly stand there
+   * being hit and conclude the demo was broken. Send them to the bench instead,
+   * which is where that build has to go anyway.
+   */
+  useEffect(() => {
+    if (route === "/fight" && isUnspent(p1)) go("/lab");
+  }, [route, p1]);
 
   // Hash routes survive as invisible deep links: they pick a camera station on
   // the one moon, they never swap a page. #/fight still flies to the ring.
@@ -109,7 +179,7 @@ export default function Flyweight() {
             playerBuild={build}
             p1={p1}
             p2={p2}
-            setP1={setP1}
+            setP1={setPlayer}
             setP2={setP2}
             squad={squad}
             setSquad={setSquad}
@@ -118,8 +188,10 @@ export default function Flyweight() {
         )}
         {route === "/campaign" && (
           <Campaign
-            roundsCleared={round}
-            onFight={startFight}
+            roundsCleared={cleared}
+            runLost={runLost}
+            onRetry={() => { setCleared(0); setRunLost(false); }}
+            onFight={startCampaignRound}
             onBench={() => go("/lab")}
           />
         )}
@@ -136,18 +208,16 @@ export default function Flyweight() {
         {route === "/lab" && (
           <BrainLab
             bot={build}
-            roundsCleared={round}
+            roundsCleared={cleared}
             onChassisChange={setLabChassis}
             onLaunch={(bot) => {
               // straight into a fight: the tuned brain becomes player one and the
               // round counter ticks, which is what makes useMatch start a new match
-              setBuild(bot);
-              setP1(bot);
+              setPlayer(bot);
               startFight();
             }}
             onRoster={(bot) => {
-              setBuild(bot);
-              setP1(bot);
+              setPlayer(bot);
               go("/select");
             }}
           />

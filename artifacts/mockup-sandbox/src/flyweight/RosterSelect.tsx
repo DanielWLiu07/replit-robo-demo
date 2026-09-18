@@ -165,8 +165,17 @@ export function RosterSelect({
    * generates it from the round you are on — so this screen is only ever about
    * your own fighter, and clicking a card no longer silently flips you into
    * "now choose their bot" mode.
+   *
+   * A card hands over the BODY, not the brain. It used to hand over the whole spec,
+   * which quietly threw away everything the player had spent in the lab — and worse,
+   * the lab did not read it back: it edits the saved build, so a roster pick was
+   * discarded on the very next screen. Now the class is the choice this screen makes
+   * and the points stay the player's, which is the only reading under which the two
+   * screens are asking different questions. The card's own loadout is still what the
+   * stat panel previews, as the archetype that suits that frame.
    */
-  const choose = (entry: RosterEntry) => setP1(entry.bot);
+  const choose = (entry: RosterEntry) =>
+    setP1({ ...playerBuild, chassis: entry.bot.chassis });
 
   return (
     <section className="select-section">
@@ -182,7 +191,7 @@ export function RosterSelect({
       <div className="select-grid">
         <div className="roster-cards">
           {entries.map((entry, i) => {
-            const isP1 = entry.bot.id === p1.id;
+            const isP1 = entry.bot.chassis === p1.chassis;
             return (
               <button
                 key={entry.bot.id}

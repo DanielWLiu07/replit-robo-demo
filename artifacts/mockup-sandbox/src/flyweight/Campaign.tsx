@@ -1,4 +1,4 @@
-import { LADDER_CLEAR_ROUND } from "@workspace/contract";
+import { CAMPAIGN, CAMPAIGN_LEVELS } from "./campaignLevels";
 
 /**
  * The campaign, as stations on the moon.
@@ -23,19 +23,27 @@ const STATIONS: { x: number; y: number }[] = [
   { x: 86, y: 66 },
 ];
 
-const TITLES = ["FIRST CONTACT", "THE SWARM", "DEEP CRATER", "THE WALL", "CHAMPION"];
+/** Titles and opponents come from the campaign itself, so the board cannot
+ *  drift out of step with who is actually waiting at a node. */
+const TITLES = CAMPAIGN.map((l) => l.title);
+const FOES = CAMPAIGN.map((l) => l.bot);
 
 export function Campaign({
   roundsCleared,
+  runLost = false,
   onFight,
+  onRetry,
   onBench,
 }: {
   /** rounds already beaten */
   roundsCleared: number;
+  /** the last fight was lost, so the run is over */
+  runLost?: boolean;
   onFight: (round: number) => void;
+  onRetry: () => void;
   onBench: () => void;
 }) {
-  const levels = Math.min(LADDER_CLEAR_ROUND, STATIONS.length);
+  const levels = Math.min(CAMPAIGN_LEVELS, STATIONS.length);
   const next = Math.min(roundsCleared + 1, levels);
   const done = roundsCleared >= levels;
 
@@ -52,7 +60,9 @@ export function Campaign({
         <p className="mono">
           {done
             ? `CLEARED · ${levels} / ${levels}`
-            : `LEVEL ${next} OF ${levels} · ${roundsCleared} CLEARED`}
+            : runLost
+              ? `RUN OVER ON LEVEL ${next} · ${roundsCleared} CLEARED`
+              : `LEVEL ${next} OF ${levels} · ${roundsCleared} CLEARED`}
         </p>
       </div>
 
@@ -74,7 +84,7 @@ export function Campaign({
         {STATIONS.slice(0, levels).map((s, i) => {
           const round = i + 1;
           const cleared = round <= roundsCleared;
-          const live = round === next && !done;
+          const live = round === next && !done && !runLost;
           return (
             <button
               key={round}
@@ -85,20 +95,27 @@ export function Campaign({
               style={{ left: `${s.x}%`, top: `${s.y}%` }}
               disabled={!live}
               onClick={() => live && onFight(round)}
-              aria-label={`Level ${round}, ${TITLES[i]}, ${cleared ? "cleared" : live ? "next" : "locked"}`}
+              aria-label={`Level ${round}, ${TITLES[i]}, versus ${FOES[i]?.name}, ${cleared ? "cleared" : live ? "next" : "locked"}`}
             >
               <span className="node-dot" aria-hidden />
               <span className="node-round mono">{String(round).padStart(2, "0")}</span>
               <span className="node-title mono">{TITLES[i]}</span>
+              {live && <span className="node-foe mono">vs {FOES[i]?.name}</span>}
             </button>
           );
         })}
       </div>
 
       <div className="select-actions">
-        <button className="button primary fight-button" onClick={() => onFight(next)} disabled={done}>
-          {done ? "CAMPAIGN CLEARED" : `FIGHT LEVEL ${next}`} <span>→</span>
-        </button>
+        {runLost ? (
+          <button className="button primary fight-button" onClick={onRetry}>
+            RUN OVER · START AGAIN <span>↻</span>
+          </button>
+        ) : (
+          <button className="button primary fight-button" onClick={() => onFight(next)} disabled={done}>
+            {done ? "CAMPAIGN CLEARED" : `FIGHT LEVEL ${next} · ${FOES[next - 1]?.name}`} <span>→</span>
+          </button>
+        )}
         <button className="button" onClick={onBench}>
           ← BRAIN LAB
         </button>

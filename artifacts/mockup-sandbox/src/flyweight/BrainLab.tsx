@@ -15,7 +15,7 @@ import {
   tuneBody,
   type TuneStep,
 } from "@workspace/sim";
-import { CHAMPION_BRAIN } from "./modules";
+import { CHAMPION_BRAIN, isUnspent } from "./modules";
 import { go } from "./route";
 
 /** The four things you can actually change about a body, with their units. */
@@ -67,16 +67,31 @@ function RefractoryCurve({ value }: { value: number }) {
 /**
  * Points to spend across PRESSURE, EVASION and TRACKING.
  *
- * Deliberately well under 300, so the three dials cannot all be maxed and every
- * build is a shape rather than a level — two strong instincts, or three
- * middling ones, never three strong ones. Sized so the stock chassis builds
- * (around 166) start just inside it with a little left to spend, rather than
- * opening the lab already overdrawn.
+ * Still deliberately under 300, so the three dials cannot all be maxed and every
+ * build is a shape rather than a level. But the ceiling is now measured, not felt,
+ * because two harder limits sit under it:
+ *
+ *  - What the weight budget can BUY AT ALL. The three stats are not priced alike —
+ *    evasion buys at 28 points per unit of synaptic weight, aggression 26, tracking
+ *    24 — so BRAIN_WEIGHT_BUDGET tops out near 211 points, and only in one lopsided
+ *    distribution. The old 276 was unreachable: past ~211 the campaign was paying
+ *    out points that could not be placed anywhere on the fly.
+ *
+ *  - What can be spent IN ANY DISTRIBUTION without losing some. That is the number
+ *    that matters, because a pool the player cannot actually spend is the silent
+ *    renormalisation this whole system exists to abolish, wearing a progress bar.
+ *    Swept every way of spending each candidate pool (`tsx lib/sim/src/__poolmax.ts`):
+ *    at 180 every distribution is delivered exactly, at 190 the worst loses 2 points,
+ *    at 195 eight, and past 200 it comes apart.
+ *
+ * So 180 is the ceiling. The base starts LEVEL with the roster — which spends
+ * between 136 (TANK) and 166 (the old stock build) — and the campaign carries it to
+ * the top in five rounds. The player begins with none of it spent.
  */
-const INSTINCT_POOL_BASE = 180;
-const INSTINCT_POOL_PER_ROUND = 12;
-/** Stops short of 300, where all three dials could be maxed and the choice would stop mattering. */
-const INSTINCT_POOL_MAX = 276;
+const INSTINCT_POOL_BASE = 140;
+const INSTINCT_POOL_PER_ROUND = 8;
+/** Measured: the largest pool spendable in EVERY distribution with nothing lost. */
+const INSTINCT_POOL_MAX = 180;
 
 /**
  * Clearing campaign rounds buys more points. That is the progression: not a
@@ -113,6 +128,15 @@ export function BrainLab({
   const stock = useMemo(() => bodyMechanics(stockBuild), [stockBuild]);
   const profile = useMemo(() => profileBot(draft), [draft]);
   const valid = BotSpec.safeParse(draft);
+  /**
+   * A build with nothing spent is legal but inert: every weight is zero, so no
+   * circuit ever reaches threshold and the fly stands there being hit. The schema
+   * cannot object to it — a zero weight is a perfectly valid weight — so the lab has
+   * to, or a new player's first act is to walk an empty brain into the ring and lose
+   * without ever learning that the dials were the game.
+   */
+  const unspent = isUnspent(draft);
+  const ready = valid.success && !unspent;
 
   const setBody = (patch: Partial<BodySpec>) =>
     setDraft((d) => ({ ...d, body: { ...(d.body ?? BODY_BY_CHASSIS[d.chassis]), ...patch } }));
@@ -324,14 +348,20 @@ export function BrainLab({
         )}
 
         <div className="bench-actions go">
-          <button className="button primary" disabled={!valid.success}
-                  onClick={() => valid.success && commit(valid.data, onLaunch)}>
+          <button className="button primary" disabled={!ready}
+                  onClick={() => valid.success && ready && commit(valid.data, onLaunch)}>
             NEXT · FIGHT →
           </button>
-          <button className="button" disabled={!valid.success}
-                  onClick={() => valid.success && commit(valid.data, onRoster)}>
+          <button className="button" disabled={!ready}
+                  onClick={() => valid.success && ready && commit(valid.data, onRoster)}>
             ← ROSTER
           </button>
+          {unspent && (
+            <p className="bench-blocked" role="status">
+              Spend your instinct points before you fight — every dial is at zero, so
+              nothing in this fly would fire.
+            </p>
+          )}
         </div>
       </div>
     </section>

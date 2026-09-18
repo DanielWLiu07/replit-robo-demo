@@ -825,6 +825,15 @@ html,body{background:#07070a}
   margin: 10px 0 0;
 }
 
+/* Why the exits are disabled. Spans both columns of .bench-actions.go so it reads
+   as one line under the pair of buttons rather than squeezing into a cell. */
+.bench-blocked {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  font: 10px/1.5 -apple-system, system-ui, sans-serif;
+  color: rgba(255, 214, 138, .82);
+}
+
 .bench-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
 .bench-actions.go { margin-top: 10px; }
 .bench-actions .button {
@@ -1241,3 +1250,4 @@ html,body{background:#07070a}
 /* The moon is the map, but the nodes have to win: knock the stage back the way
    the roster and bench already do for their own panels. */
 .route-campaign .world-stage{opacity:.5}
+.campaign-node .node-foe{font-size:8px;letter-spacing:.12em;color:rgba(242,243,245,.55)}
