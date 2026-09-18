@@ -84,10 +84,10 @@ export default function Flyweight() {
   // Hash routes survive as invisible deep links: they pick a camera station on
   // the one moon, they never swap a page. #/fight still flies to the ring.
   const station: StationName =
-    route === "/fight" ? "RING"
-      : route === "/" ? "ARRIVAL"
-      : route === "/campaign" ? "ARRIVAL"
-      : "BAY";
+    // NOT ARRIVAL for the campaign: that station frames the landing, so the 3D
+    // wordmark and ENTER sit in shot and bury the board. BAY looks across the
+    // surface with none of that furniture in the way.
+    route === "/fight" ? "RING" : route === "/" ? "ARRIVAL" : "BAY";
 
   return (
     <div className={`flyweight ${route === "/" ? "route-home" : `route${route.replace("/", "-")}`}`}>

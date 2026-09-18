@@ -66,8 +66,8 @@ const DRIVE_GAIN = 5.0;         // ~20% spike duty -> ~full command
  * gait (the planted foot tracks correctly 98.9% of stance ticks) but the pace.
  * Swept 1.00 / 0.55 / 0.40 of the old values: 4.9 / 2.7 / 2.0 body-lengths per sec.
  */
-const MAX_SPEED = 1.68;         // m/s at full command, before chassis multiplier
-const MAX_OMEGA = 1.36;         // rad/s at full command
+const MAX_SPEED = 2.0;         // m/s at full command, before chassis multiplier
+const MAX_OMEGA = 1.7;          // rad/s at full command
 const VEL_LAG = 0.16;           // how fast actual velocity chases commanded
 /**
  * What the legs can actually put into the ground, m/s^2 at the stock body.
@@ -114,7 +114,7 @@ const ARM_LENGTH = 0.66;        // metres shoulder to fist — longer reach, mor
 const ARM_DAMP = 0.88;
 const PUNCH_IMPULSE = 17;       // rad/s into an arm on a swing — faster hands
 /** Ticks between unprompted swings when no pursuit circuit is driving them. */
-const INNATE_SWING_GAP = 64;
+const INNATE_SWING_GAP = 52;
 /** Forward drive a bot supplies itself when not fleeing, before any circuit. */
 const INNATE_PRESS = 0.55;
 const PUNCH_COOLDOWN = 6;
@@ -227,7 +227,7 @@ const BREAK_PUSH = 10.4;
 // Holding range is only half of it; standing still at range is not boxing either.
 // An uncommitted bot slides sideways around the pocket while its heading stays on
 // the target, so the fight circles instead of shuttling in and out on one axis.
-const STRAFE_SPEED = 0.72;      // m/s of lateral slide, before the chassis turn stat
+const STRAFE_SPEED = 0.85;       // m/s of lateral slide, before the chassis turn stat
 const CIRCLE_MIN = 45;          // ticks committed to one direction...
 const CIRCLE_SPAN = 120;        // ...plus up to this many more
 
@@ -266,7 +266,16 @@ const RESET_TICKS = 26;         // hands back up, feet moving, before the next f
 /** You do not throw at someone who is not in front of you. The geometric hit cone
  *  at pocket range is about 35 degrees, so swinging outside this is a guaranteed
  *  whiff — and whiffing was 80% of all punches before this gate existed. */
-const PUNCH_CONE = 0.50;        // radians of bearing error
+/**
+ * Radians of bearing error you may still throw through.
+ *
+ * 0.50 (29 deg) quietly excluded the slow chassis from fighting at all. A TANK
+ * chasing a DRONE cannot bring its turn rate to bear inside that arc, so it threw
+ * ONE punch in an 18 second match and its stamina never moved — it was not losing,
+ * it was standing there. 0.75 (43 deg) is still a punch you have lined up, and the
+ * same matchup now throws five.
+ */
+const PUNCH_CONE = 0.75;
 
 interface Body {
   spec: BotSpec;

@@ -1238,3 +1238,6 @@ html,body{background:#07070a}
   .campaign-node .node-title{display:none}
   .campaign-map{min-height:260px}
 }
+/* The moon is the map, but the nodes have to win: knock the stage back the way
+   the roster and bench already do for their own panels. */
+.route-campaign .world-stage{opacity:.5}

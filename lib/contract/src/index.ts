@@ -53,11 +53,23 @@ export type BrainSpec = z.infer<typeof BrainSpec>;
 export const Chassis = z.enum(["DRONE", "HORNET", "TANK"]);
 export type Chassis = z.infer<typeof Chassis>;
 
-/** Chassis trade speed against hull. Sim core owns the authoritative numbers. */
+/**
+ * Chassis trade speed against hull.
+ *
+ * TANK used to carry 150 against DRONE's 82, and that is not a tough fighter, it is
+ * an unkillable one. Measured: TANK v TANK throws the MOST punches of any matchup
+ * (15 a match against DRONE's 1.3) and deals the SAME damage as DRONE v DRONE — 135
+ * against 131 — but carries 208 combined hull to DRONE's 160 and holds a guard twice
+ * as often, so 7 fights in 8 ran to the 90 second cap. Buffing speed did nothing;
+ * the problem was never engagement.
+ *
+ * Spread compressed to 72/80/88 with the slow end lifted. TANK still soaks most and
+ * DRONE still darts, but every pairing can now be finished inside the cap.
+ */
 export const CHASSIS_STATS: Record<Chassis, { hull: number; accel: number; turn: number }> = {
-  DRONE:  { hull: 82,  accel: 1.4,  turn: 1.6 },
-  HORNET: { hull: 100, accel: 1.0,  turn: 1.0 },
-  TANK:   { hull: 150, accel: 0.7,  turn: 0.65 },
+  DRONE:  { hull: 82, accel: 1.5,  turn: 1.6 },
+  HORNET: { hull: 96, accel: 1.3,  turn: 1.3 },
+  TANK:   { hull: 116, accel: 1.1,  turn: 1.05 },
 };
 
 
