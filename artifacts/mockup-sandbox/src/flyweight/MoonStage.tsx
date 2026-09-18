@@ -1172,7 +1172,15 @@ export function MoonStage({
           // against a frame several times larger — subtracting a fraction of it from
           // a flat 0.5 aimed BELOW the feet once the shot tightened, which threw the
           // fighters up into the HUD.
-          tgtWant.copy(_mid).addScaledVector(ringUp, bodyH * 0.62);
+          // Aim just BELOW the feet, so the bodies ride ABOVE the centre line.
+          //
+          // This aimed 0.62 body-heights UP, at chest height, which does the
+          // opposite of what the comment above it intends: looking at their
+          // chests puts their chests in the middle of frame and drops everything
+          // else toward the bottom — and the bottom is where the brain panels
+          // are. Measured in screen space the fighters were sitting between
+          // normalised y -0.3 and -0.9, i.e. in the band the panels cover.
+          tgtWant.copy(_mid).addScaledVector(ringUp, -bodyH * 0.22);
         }
         // 1 - exp(-k*dt): same settle time whatever the framerate.
         //
@@ -1180,7 +1188,25 @@ export function MoonStage({
         // fighters SUBTRACTS their movement from the shot: they stay pinned to the
         // centre at a constant size and the fight looks static even while every limb
         // is swinging. Following slowly lets them actually travel across the frame.
-        const follow = stationRef.current === "RING" ? 0.55 : 2.1;
+        /**
+         * Lazy while the shot is good, quick when it is not.
+         *
+         * A flat 0.55 was chosen so the fighters travel across the frame instead
+         * of being pinned to the middle at a constant size — which is right, but
+         * it also meant the camera could not keep up when they broke apart, and
+         * measured in screen space they were leaving the BOTTOM of the frame
+         * (normalised y below -1, well under the brain panels). The same
+         * constant made arriving at a fight a ten-second drift across empty moon
+         * from wherever the previous station was.
+         *
+         * Scaling the follow by how far the camera still has to travel fixes
+         * both: it snaps into frame on arrival, chases when they split, and
+         * falls back to the original laziness once the shot is composed.
+         */
+        const gap = CAM_MOON.distanceTo(camWant);
+        const follow = stationRef.current === "RING"
+          ? 0.55 + Math.min(7.5, gap * gap * 1.6)
+          : 2.1;
         const k = 1 - Math.exp(-follow * Math.min(dt, 0.1));
         CAM_MOON.lerp(camWant, k);
         CAM_TGT.lerp(tgtWant, k);
