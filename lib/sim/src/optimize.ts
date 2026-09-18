@@ -7,6 +7,11 @@ import {
 import { STAT_GAINS, profileBrain, type StatName } from "./profile.js";
 import { WEIGHT_MAX, WEIGHT_MIN, toSlot } from "./simple.js";
 
+/** Threshold on the placeholder circuit of an unspent brain. Never reached: its
+ *  weight is zero, so nothing drives the cell. Sits mid-range so that the first
+ *  point the player spends moves it in the direction the dial implies. */
+const THRESHOLD_REST = 0.8;
+
 /**
  * Stat targets in, a legal brain out.
  *
@@ -121,11 +126,28 @@ export function solveBrain(
     const { plan, weight } = planStat(name, targets[name] * scale);
     spend[name] = weight;
     for (const p of plan) {
-      // Below WEIGHT_MIN a circuit cannot be expressed as an intensity at all.
-      // Rounding one up to the floor would spend budget the player did not ask
-      // for, so a circuit that small is simply not installed.
+      /**
+       * Below WEIGHT_MIN a circuit cannot be expressed as an intensity, so it used
+       * to be dropped outright — and dropping it deletes the points the player just
+       * spent on it. Measured across every way of spending the pool, the worst case
+       * loses 17: ask for 90/10/40 and the 10 of evasion buys LPLC2 at 0.357 weight,
+       * under the floor, so evasion comes back 0. The dial snaps to nothing and the
+       * points are neither on the fly nor back in the pool.
+       *
+       * The smallest amount of a stat that EXISTS is therefore WEIGHT_MIN * gain —
+       * 11 evasion, 10 aggression, 10 tracking. Asking for less than that is asking
+       * for something unbuildable, and the honest answer is the minimum, not zero:
+       * round up to the floor when the budget can still carry it. The pool charges
+       * what the brain ACHIEVES, not what was asked, so the extra is accounted for
+       * and the player sees the dial settle on the real number.
+       */
       if (p.weight < WEIGHT_MIN) {
-        dropped.push({ module: p.module, reason: "too-small" });
+        const spent = wanted.reduce((a, x) => a + x.weight, 0);
+        if (spent + WEIGHT_MIN > BRAIN_WEIGHT_BUDGET) {
+          dropped.push({ module: p.module, reason: "too-small" });
+          continue;
+        }
+        wanted.push({ module: p.module, weight: WEIGHT_MIN, value: WEIGHT_MIN * p.gain });
         continue;
       }
       wanted.push({ module: p.module, weight: p.weight, value: p.weight * p.gain });
@@ -144,10 +166,37 @@ export function solveBrain(
   const slots = wanted.map((x) =>
     toSlot(x.module, (x.weight - WEIGHT_MIN) / (WEIGHT_MAX - WEIGHT_MIN)),
   );
+
+  /**
+   * `toSlot` rounds each weight to 2dp, and rounding is not free: three slots each
+   * rounded UP can push the total past BRAIN_WEIGHT_BUDGET even though the plan the
+   * bisection found fits exactly. Measured over the ask space, 17 of 1331 asks came
+   * out at 8.01 and were REJECTED by the schema — and because the lab only disables
+   * its buttons on an invalid spec, the player saw a build they could not launch and
+   * no reason why. Shave the overflow off the largest slot, which is the one whose
+   * stat notices it least.
+   */
+  let total = slots.reduce((a, x) => a + x.weight, 0);
+  if (total > BRAIN_WEIGHT_BUDGET && slots.length) {
+    const big = slots.reduce((m, x) => (x.weight > m.weight ? x : m), slots[0]!);
+    big.weight = +Math.max(WEIGHT_MIN, big.weight - (total - BRAIN_WEIGHT_BUDGET)).toFixed(2);
+    total = slots.reduce((a, x) => a + x.weight, 0);
+  }
+
   const brain: BrainSpec = {
-    // A brain with no slots is not a legal brain. An empty ask still has to produce
-    // something that can walk into the arena, so it gets the minimum pursuit circuit.
-    slots: slots.length ? slots : [toSlot("LC10A", 0)],
+    /**
+     * A brain with no slots is not a legal brain — the schema demands at least one.
+     * An empty ask therefore has to produce SOMETHING, and it used to get
+     * `toSlot("LC10A", 0)`, whose intensity-zero still carries WEIGHT_MIN: 0.4 of
+     * pursuit, which profiles as 10 aggression. So "spend nothing" silently spent
+     * ten points, the dials could never be returned to zero, and a build that had
+     * not been configured at all still walked into the ring swinging.
+     *
+     * A zero-WEIGHT slot is legal (the schema floors weight at 0, not WEIGHT_MIN)
+     * and profiles as a true 0/0/0: a fly with the circuit present and no drive
+     * through it. That is what an undistributed build should be.
+     */
+    slots: slots.length ? slots : [{ module: "LC10A", weight: 0, threshold: THRESHOLD_REST }],
     membraneLeak: opts.leak ?? 0.2,
     refractoryTicks: opts.refractory ?? 4,
   };

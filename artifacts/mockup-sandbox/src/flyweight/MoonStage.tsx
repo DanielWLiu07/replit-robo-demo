@@ -240,6 +240,17 @@ export function MoonStage({
   const chassisRef = useRef(chassis);
   chassisRef.current = chassis;
   const swapChassis = useRef<((c: Chassis) => void) | null>(null);
+  // Each SIDE of the ring wears its own class, and that is not cosmetic. The ring
+  // used to be built once from the PLAYER's chassis and posed with it for both
+  // teams, so team B's body was drawn - and, far worse, POSED - at team A's scale.
+  // The simulation plants feet in WORLD space using `footReach(its own chassis)`,
+  // so a TANK's footfalls handed to a DRONE-sized rig land 1.24/0.86 = 1.44x
+  // further out than those legs can reach: the knee IK locks straight, the
+  // floor-plant drags the whole body down onto the over-reaching foot, and the
+  // figure lurches and skates. On screen that read as one fighter "moving
+  // backwards" while its opponent - the one whose chassis the ring happened to be
+  // built from - walked normally.
+  const swapRingSide = useRef<((side: 0 | 1, c: Chassis) => void) | null>(null);
   const loadedChassis = useRef<Chassis | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [editor, setEditor] = useState<MoonEditor | null>(null);
@@ -539,6 +550,7 @@ export function MoonStage({
     flyRoot.add(flyFit);
 
     let flyRig: SkinnedBot | null = null;
+    let flyChassis: Chassis = chassisRef.current;
     /**
      * Load one chassis and stand it up, replacing whatever body is there.
      *
@@ -546,37 +558,72 @@ export function MoonStage({
      * instead of a full teardown. `loadedChassis` doubles as the guard against a slow
      * fetch landing after a newer pick has already won the race.
      */
+    // Up to three classes can be on screen at once — the bench portrait and the
+    // two sides of the ring — so a bind is fetched, skinned and weighted ONCE per
+    // class and shared. `buildSkinnedBot` does not clone the geometry, so the cache
+    // OWNS it: nothing below may dispose a rig's geometry, or every other rig cut
+    // from the same bind goes with it. Teardown's `scene.traverse` reaches them all.
+    const bindCache = new Map<Chassis, ReturnType<typeof bindChassis>>();
+    /**
+     * Hand `use` the bind for a class, fetching and skinning it on first ask.
+     *
+     * NEVER calls back synchronously, cache hit or not. `loadChassis` runs while
+     * the effect body is still executing, above the point where `ring`, `ringRigs`
+     * and `buildSide` are declared — a synchronous hit would touch them in the
+     * temporal dead zone. The microtask is what keeps that safe.
+     */
+    const withBind = (name: Chassis, use: (bind: ReturnType<typeof bindChassis>) => void) => {
+      const hit = bindCache.get(name);
+      if (hit) { queueMicrotask(() => { if (!disposed) use(hit); }); return; }
+      new GLTFLoader().load(`${base}models/${name.toLowerCase()}.glb`, (gltf) => {
+        if (disposed) return;
+        let source: THREE.Mesh | undefined;
+        gltf.scene.traverse((o) => { if (!source && o instanceof THREE.Mesh) source = o; });
+        if (!source) return;
+        const bind = bindChassis(source);
+        bindCache.set(name, bind);
+        use(bind);
+      }, undefined, () => {});
+    };
+
+    /** The bench portrait: one body, the class being looked at. */
     const loadChassis = (name: Chassis) => {
       loadedChassis.current = name;
-      new GLTFLoader().load(`${base}models/${name.toLowerCase()}.glb`, (gltf) => {
-      if (disposed || loadedChassis.current !== name) { return; }
-      let source: THREE.Mesh | undefined;
-      gltf.scene.traverse((o) => { if (!source && o instanceof THREE.Mesh) source = o; });
-      if (!source) return;
-      // retire the body that is standing there now, and its ring copies
-      if (flyRig) { flyFit.remove(flyRig.mesh); flyRig.mesh.geometry.dispose(); flyRig = null; }
-      for (const pool of ringRigs) {
-        for (const slot of pool) { ring.remove(slot.holder); slot.rig.mesh.geometry.dispose(); }
+      withBind(name, (bind) => {
+        if (loadedChassis.current !== name) return;
+        // retire the body that is standing there now (its geometry belongs to the
+        // cache and is shared with the ring, so it is detached, not disposed)
+        if (flyRig) { flyFit.remove(flyRig.mesh); flyRig = null; }
+        // NO ink hull on the rigged bodies. A normal-inflate outline assumes a
+        // CLOSED mesh: render its back faces and you see only the silhouette. This
+        // chassis is not closed — it is plates and separate parts — so back faces
+        // are visible all over the body and read as black wedges that change shape
+        // as the limbs swing. The hatch shader already carries the figure against
+        // the moon, so the outline is not paying for itself here.
+        flyRig = buildSkinnedBot(bind, propMat, name);
+        // poseBot must be handed the class the rig was BUILT from, not whatever the
+        // prop says this frame: between the pick and the fetch landing they differ.
+        flyChassis = name;
+        // buildSkinnedBot sizes the mesh at true scale for the ring; the portrait
+        // wants the chassis spread compressed so every one of them fits the shot.
+        flyFit.scale.setScalar(FLY_FIT * showcaseScale(name));
+        flyFit.add(flyRig.mesh);
+        snapFlyToGround();
+      });
+    };
+
+    /** One side of the ring, in its own team's class. */
+    const loadRingSide = (side: 0 | 1, name: Chassis) => {
+      if (ringWant[side] === name) return;
+      ringWant[side] = name;
+      withBind(name, (bind) => {
+        if (ringWant[side] !== name) return;
+        const pool = ringRigs[side]!;
+        for (const slot of pool) ring.remove(slot.holder);
         pool.length = 0;
-      }
-      // One bind, two rigs: the inked body and the ink hull behind it. The hull has
-      // to be skinned too — a static clone would stay rigid while the body deforms.
-      const bind = bindChassis(source);
-      // NO ink hull on the rigged bodies. A normal-inflate outline assumes a
-      // CLOSED mesh: render its back faces and you see only the silhouette. This
-      // chassis is not closed — it is plates and separate parts — so back faces
-      // are visible all over the body and read as black wedges that change shape
-      // as the limbs swing. The hatch shader already carries the figure against
-      // the moon, so the outline is not paying for itself here.
-      flyRig = buildSkinnedBot(bind, propMat, name);
-      // buildSkinnedBot sizes the mesh at true scale for the ring; the portrait
-      // wants the chassis spread compressed so every one of them fits the shot.
-      flyFit.scale.setScalar(FLY_FIT * showcaseScale(name));
-      flyFit.add(flyRig.mesh);
-      buildSide(0, bind, name);
-      buildSide(1, bind, name);
-      snapFlyToGround();
-      }, undefined, () => {});
+        buildSide(side, bind, name);
+        ringChassis[side] = name;
+      });
     };
     /**
      * Feet on the floor, measured rather than authored.
@@ -771,6 +818,11 @@ export function MoonStage({
     ring.quaternion.setFromUnitVectors(WORLD_UP, ringUp);
     scene.add(ring);
     const ringRigs: { rig: SkinnedBot; holder: THREE.Group }[][] = [[], []];
+    // what each side is WEARING (built and posed) vs what it has been ASKED to
+    // wear (a fetch may still be in flight). Poses read the first, loads gate on
+    // the second, so a class change mid-fetch cannot pose a rig at the wrong scale.
+    const ringChassis: [Chassis, Chassis] = [chassisRef.current, chassisRef.current];
+    const ringWant: [Chassis | null, Chassis | null] = [null, null];
     const buildSide = (side: 0 | 1, bind: ReturnType<typeof bindChassis>, name: Chassis) => {
       for (let i = 0; i < MAX_SQUAD; i++) {
         const holder = new THREE.Group();
@@ -785,6 +837,17 @@ export function MoonStage({
         ringRigs[side]!.push({ rig, holder });
       }
     };
+    // Prime the two sides HERE, not up beside `loadChassis`.
+    //
+    // `loadChassis` gets away with sitting above this block because its body only
+    // runs inside a callback, by which time the whole effect has executed.
+    // `loadRingSide` does not: its first line reads `ringWant` to no-op a repeat
+    // request, so calling it any earlier is a temporal-dead-zone throw that takes
+    // the whole component down with it. (It did. Typecheck cannot see closure TDZ —
+    // the blank page did.)
+    swapRingSide.current = loadRingSide;
+    loadRingSide(0, fightersRef.current?.[0]?.chassis ?? chassisRef.current);
+    loadRingSide(1, fightersRef.current?.[1]?.chassis ?? chassisRef.current);
 
     const resize = () => {
       const { width, height } = element.getBoundingClientRect();
@@ -817,7 +880,9 @@ export function MoonStage({
 
     // Dev-only live handles. Tweak in the console and the scene updates on the
     // next frame; `fw.dump()` prints the literals to paste back into this file.
-    interface FwHandles { fly: THREE.Group; title: THREE.Group; enter: THREE.Group; camera: THREE.PerspectiveCamera; target: THREE.Vector3; dump: () => void }
+    interface FwHandles { fly: THREE.Group; title: THREE.Group; enter: THREE.Group; camera: THREE.PerspectiveCamera; target: THREE.Vector3; dump: () => void;
+      /** what each side of the ring is actually wearing — the two must differ in a mixed-class fight */
+      sides: () => { side: number; chassis: Chassis; verts: number; scale: number; visible: number }[] }
     if (import.meta.env.DEV) {
       const r3 = (v: number) => Math.round(v * 100) / 100;
       (window as unknown as { fw: FwHandles }).fw = {
@@ -826,6 +891,13 @@ export function MoonStage({
         enter: enterGroup,
         camera,
         target: CAM_TGT,
+        sides: () => ringRigs.map((pool, side) => ({
+          side,
+          chassis: ringChassis[side]!,
+          verts: pool[0]?.rig.mesh.geometry.getAttribute("position").count ?? 0,
+          scale: pool[0]?.rig.mesh.scale.x ?? 0,
+          visible: pool.filter((s2) => s2.holder.visible).length,
+        })),
         dump: () => {
           const f = flyRoot, t = titleGroup;
           console.log(
@@ -1035,7 +1107,9 @@ export function MoonStage({
           // fighters were four body-heights of empty moon apart on screen: correct
           // framing of two specks. Scaling the margin to the figure keeps them the
           // size of the model on the landing page, trading fists.
-          const bodyH = rigHeight(chassisRef.current) * RING_SCALE;
+          // the taller of the two classes, or a TANK slides out of the top of the
+          // shot whenever it is fighting a DRONE
+          const bodyH = Math.max(rigHeight(ringChassis[0]!), rigHeight(ringChassis[1]!)) * RING_SCALE;
           const need = spread + bodyH * 1.25;
           // Separation in DEPTH becomes VERTICAL spread on screen at this elevation
           // (by sin of it), and the vertical field is much narrower than the
@@ -1135,7 +1209,7 @@ export function MoonStage({
               slot.holder.position.set(lx0, (-lx0 * lx0) / (2 * MOON_R), 0);
               slot.holder.quaternion.identity();
               slot.holder.rotateY(side === 0 ? Math.PI / 2 : -Math.PI / 2);
-              poseSkinnedBot(slot.rig, idleState(t), chassisRef.current);
+              poseSkinnedBot(slot.rig, idleState(t), ringChassis[side]!);
               continue;
             }
             // Sim metres to ring units. The ring plane is tangent to the moon at
@@ -1160,14 +1234,14 @@ export function MoonStage({
             _headQ.setFromAxisAngle(WORLD_UP, -unit.heading - Math.PI / 2);
             slot.holder.quaternion.copy(_tiltQ).multiply(_headQ);
 
-            poseSkinnedBot(slot.rig, unit, chassisRef.current);
+            poseSkinnedBot(slot.rig, unit, ringChassis[side]!);
           }
         }
 
         // The fly's idle comes off its own rig, not a root bob: the mesh is
         // skinned, so the legs shift weight at the joints instead of the whole
         // body translating. Only the authored pose is held here.
-        if (flyRig) poseSkinnedBot(flyRig, idleState(t), chassisRef.current);
+        if (flyRig) poseSkinnedBot(flyRig, idleState(t), flyChassis);
         // ENTER swells under the cursor; eased so it never snaps
         enterEase += ((enterHover ? 1 : 0) - enterEase) * 0.14;
         const k = 1 + enterEase * 0.16;
@@ -1217,6 +1291,16 @@ export function MoonStage({
     if (loadedChassis.current === null || loadedChassis.current === chassis) return;
     swapChassis.current?.(chassis);
   }, [chassis]);
+
+  // ...and each side of the ring when ITS loadout does. `fighters` is a fresh array
+  // every render, so this runs constantly; `loadRingSide` is a no-op when the class
+  // it is handed is the one already asked for, which is what makes that cheap.
+  const p1Chassis = fighters?.[0]?.chassis ?? chassis;
+  const p2Chassis = fighters?.[1]?.chassis ?? chassis;
+  useEffect(() => {
+    swapRingSide.current?.(0, p1Chassis);
+    swapRingSide.current?.(1, p2Chassis);
+  }, [p1Chassis, p2Chassis]);
 
   return (
     <div

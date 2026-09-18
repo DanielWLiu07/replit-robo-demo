@@ -121,7 +121,44 @@ const PUNCH_COOLDOWN = 6;
 const PUNCH_RECOVERY = 16;      // ticks you are open after committing to a swing
 const GUARD_RISE = 0.30;
 const GUARD_HOLD = 14;          // ticks the arms stay up after the reflex fires        // how fast the arms come up
-const GUARD_BLOCK = 0.78;       // damage removed by a full guard      // ticks between throws, so it reads as a flurry
+const GUARD_BLOCK = 0.70;       // damage removed by a full guard
+/**
+ * Hands up, as a STANCE — what every fighter has before any circuit fires.
+ *
+ * The guard used to come from exactly one place: an LPLC2 spike. A brain without
+ * that circuit therefore had `guard === 0` for the entire match and ate every punch
+ * at full price, with no way to build otherwise. Two of the three roster classes are
+ * exactly that: measured over 12 matches the TANK's mean guard was 0.00 and the
+ * HORNET's 0.02, against 0.66 for the DRONE and 0.59 for the champion — and since
+ * a full guard removes 78% of a hit, that one gap was a 2x damage swing in each
+ * direction at once. tank-vs-champion finished 0-12 in 7 seconds with the champion
+ * still on 82% hull, which is not a fight.
+ *
+ * So the reflex no longer OWNS the guard, it RAISES it: everyone holds a baseline in
+ * the pocket, and LPLC2 is what snaps the hands up the rest of the way to an actual
+ * block.
+ *
+ * WHY 0.20 AND NOT MORE. A baseline is free survivability, and free survivability is
+ * worth more to a bad brain than a good one. Swept against three things at once:
+ * how close the roster matchups are, how many of 60 matches end in a KO, and where
+ * the neuroevolved champion lands in the distribution of RANDOM brains — the last
+ * being the one that catches this. At 0.30 the roster balanced beautifully and the
+ * skill gradient collapsed: the random-brain median rose 6.0 -> 9.4 and the champion
+ * fell from beating 100% of random brains to 73%, i.e. evolution had stopped
+ * mattering. 0.20 keeps the champion at 100% and all 60 matches decisive while still
+ * closing the class gaps (10-2 -> 8-4, 9-3 -> 6-6, 7-5 -> 6-6) and roughly doubling
+ * how long a fight lasts.
+ */
+const GUARD_BASE = 0.20;
+/**
+ * Guard level above which you are blocking, not boxing, and cannot start a punch.
+ *
+ * Derived from GUARD_BASE rather than written as a literal, because the two are the
+ * same number seen from opposite sides: the resting guard converges exactly on
+ * GUARD_BASE, so if that ever reached the gate NOBODY could throw a punch and every
+ * match would be a 90-second staring contest. Tying them makes that unbuildable.
+ */
+const GUARD_PUNCH_GATE = GUARD_BASE + 0.05;
 /**
  * Pulls the arms back to the guard.
  *
@@ -168,7 +205,7 @@ const TIP_BAR_ARM = 0.55;
  * with eight seeded matches each: 15 is the first value where all four land inside
  * 24-50s AND every single match is decisive.
  */
-const STRIKE_DAMAGE = 13;
+const STRIKE_DAMAGE = 12;
 /**
  * How far a fist gets from the body CENTRE. The rig hangs the shoulder on the
  * midline, so this is the arm — adding a torso radius on top, as this did, put the
@@ -183,7 +220,7 @@ const FIST_RADIUS = BOT_RADIUS * 1.18;
  *  longer effective reach and a cleaner hit. Acquisition used to buy nothing after
  *  the approach, which left an LC11 build winless in 18 matches. */
 const LOCK_REACH = 0.15;
-const LOCK_DAMAGE = 0.38;
+const LOCK_DAMAGE = 0.28;
 const PUNCH_RANGE = STRIKE_REACH * 1.43;   // start the swing a little before it lands
 
 // ── range discipline ────────────────────────────────────────────────────────
@@ -716,7 +753,11 @@ export function* runMatch(
       if (body.gassed && body.recovery === 0) body.guardHold = Math.max(body.guardHold, 2);
       if (body.guardHold > 0) body.guardHold--;
       const wantGuard = body.guardHold > 0 && body.recovery === 0;
-      body.guard += ((wantGuard ? 1 : 0) - body.guard) * GUARD_RISE;
+      // Out of the pocket the hands come down — a baseline guard is a thing you hold
+      // against someone in front of you, not a permanent posture, and dropping it is
+      // what makes standing off the pocket the way you breathe.
+      const rest = closeQuarters && body.recovery === 0 ? GUARD_BASE : 0;
+      body.guard += ((wantGuard ? 1 : rest) - body.guard) * GUARD_RISE;
       // you cannot block out of a swing you already committed to
       if (body.recovery > 0) body.guard = 0;
       // MDN (moonwalker) pulls back out of range to reset — spacing, not just reverse.
@@ -728,7 +769,7 @@ export function* runMatch(
       // Starting a flurry needs hands free, gas in the tank and the target actually in
       // front of you; continuing one only needs the gap between punches to have elapsed.
       const aimed = Math.abs(s.bearing) < PUNCH_CONE;
-      const canStart = body.recovery === 0 && body.guard < 0.35 && !body.gassed;
+      const canStart = body.recovery === 0 && body.guard < GUARD_PUNCH_GATE && !body.gassed;
       /**
        * A brain with no pursuit circuit could never throw a punch AT ALL.
        *
