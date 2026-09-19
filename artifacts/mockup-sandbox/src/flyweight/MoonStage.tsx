@@ -848,6 +848,30 @@ export function MoonStage({
       ring.add(mesh);
       impactPool.push({ mesh, life: 0, power: 1 });
     }
+    /**
+     * A pointer over your own fly.
+     *
+     * Both sides wear the same chassis model and fight in the same ink, so in
+     * motion nothing on screen said which one you were driving — you had to
+     * infer it from the hull bars. One marker per unit on side A, hovering over
+     * the head and bobbing so it reads as an overlay, not as part of the body.
+     */
+    const playerMarks: THREE.Mesh[] = [];
+    {
+      const markGeo = new THREE.ConeGeometry(0.1, 0.2, 4);
+      markGeo.rotateX(Math.PI); // point DOWN at the fly it belongs to
+      for (let i = 0; i < MAX_SQUAD; i++) {
+        const mesh = new THREE.Mesh(
+          markGeo,
+          new THREE.MeshBasicMaterial({ color: 0xf6f6f1, transparent: true, opacity: 0.95, depthWrite: false }),
+        );
+        mesh.visible = false;
+        mesh.renderOrder = 5;
+        ring.add(mesh);
+        playerMarks.push(mesh);
+      }
+    }
+
     let impactNext = 0;
     /** camera kick, 0..1, decayed every frame */
     let shake = 0;
@@ -917,7 +941,9 @@ export function MoonStage({
     // next frame; `fw.dump()` prints the literals to paste back into this file.
     interface FwHandles { fly: THREE.Group; title: THREE.Group; enter: THREE.Group; camera: THREE.PerspectiveCamera; target: THREE.Vector3; dump: () => void;
       /** what each side of the ring is actually wearing — the two must differ in a mixed-class fight */
-      sides: () => { side: number; chassis: Chassis; verts: number; scale: number; visible: number }[] }
+      sides: () => { side: number; chassis: Chassis; verts: number; scale: number; visible: number }[];
+      /** world position of every fighter on screen, so framing can be MEASURED rather than eyeballed */
+      fighters: () => number[][] }
     if (import.meta.env.DEV) {
       const r3 = (v: number) => Math.round(v * 100) / 100;
       (window as unknown as { fw: FwHandles }).fw = {
@@ -926,6 +952,9 @@ export function MoonStage({
         enter: enterGroup,
         camera,
         target: CAM_TGT,
+        fighters: () => ringRigs.flat()
+          .filter((s2) => s2.holder.visible)
+          .map((s2) => { const v = new THREE.Vector3(); s2.holder.getWorldPosition(v); return v.toArray(); }),
         sides: () => ringRigs.map((pool, side) => ({
           side,
           chassis: ringChassis[side]!,
@@ -1129,7 +1158,23 @@ export function MoonStage({
            * camera can sit closer and the figures come up to the size of the model
            * on the landing page.
            */
-          const el = 0.52;
+          /**
+           * Camera elevation above the ring plane, radians.
+           *
+           * The moon is only 70 units across and the fight camera sits about a metre
+           * off the deck, which puts the HORIZON 11-12 units away — closer than it
+           * sounds, because the shot is framed on bodies two units apart. At the old
+           * 0.52 the camera pitched down barely more than the horizon's own
+           * depression, so the ground ran out a quarter of the way down the screen
+           * and 35% of the frame's TOP EDGE was open space. The fighters read as
+           * brawling on the rim of a small planet rather than out on its face.
+           *
+           * Swept against a ray-cast measure of how much frame misses the moon:
+           * 0.52 -> 35.1% of the top edge is sky, 0.62 -> 20.5%, 0.72 -> 9.3%,
+           * 0.82 -> 0.0%. 0.82 is the first value where the surface fills the shot
+           * completely, which is what puts them in the middle of the moon.
+           */
+          const el = 0.82;
           let cx = 0, cz = 0, spread = 0;
           for (const u of live) { cx += u.x * RING_SCALE; cz += u.y * RING_SCALE; }
           cx /= live.length; cz /= live.length;
@@ -1273,6 +1318,7 @@ export function MoonStage({
             // lead of each side stands there on the same idle the landing uses.
             const idling = !f && i === 0;
             slot.holder.visible = alive || idling;
+            if (side === 0 && playerMarks[i]) playerMarks[i]!.visible = slot.holder.visible;
             if (!slot.holder.visible) continue;
             if (!unit) {
               const lx0 = side === 0 ? -2.2 : 2.2;
@@ -1306,6 +1352,22 @@ export function MoonStage({
 
             poseSkinnedBot(slot.rig, unit, ringChassis[side]!);
             _hitAt.copy(slot.holder.position);
+
+            // your side only, floating over the head
+            if (side === 0) {
+              const mark = playerMarks[i];
+              if (mark) {
+                // `ringUp` is a WORLD vector but these positions are ring-LOCAL,
+                // so offsetting along it sent the marker sideways into the moon.
+                // Local up is simply +Y.
+                // Close over the head, not floating above it: the shot frames the
+                // pair tightly and rides them high, so a marker a whole body-height
+                // up simply leaves the top of the screen.
+                const lift = rigHeight(ringChassis[0]!) * RING_SCALE * 1.12;
+                mark.position.copy(slot.holder.position);
+                mark.position.y += lift + Math.sin(t * 3.4) * 0.04;
+              }
+            }
           }
         }
 

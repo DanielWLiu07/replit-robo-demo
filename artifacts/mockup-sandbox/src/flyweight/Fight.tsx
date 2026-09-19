@@ -70,7 +70,8 @@ function SquadHud({
   return (
     <div className={`hud-hull hull-${slot}`}>
       <div className="hud-hull-head">
-        <span className="bot-marker">{slot ? "B" : "A"}</span>
+        {/* "A" and "B" told you there were two sides, not which one was yours. */}
+        <span className={`bot-marker${slot ? "" : " you"}`}>{slot ? "CPU" : "YOU"}</span>
         <strong>{bot.name}</strong>
         <span className="mono">
           {hull.toFixed(0)}

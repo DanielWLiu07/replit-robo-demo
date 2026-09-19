@@ -16,7 +16,7 @@ import {
   tuneBody,
   type TuneStep,
 } from "@workspace/sim";
-import { CHAMPION_BRAIN, isUnspent } from "./modules";
+import { BUILD_KEY, CHAMPION_BRAIN, isUnspent } from "./modules";
 import { go } from "./route";
 
 /** The four things you can actually change about a body, with their units. */
@@ -223,7 +223,7 @@ export function BrainLab({
   };
 
   const commit = (next: BotSpec, then: (b: BotSpec) => void) => {
-    localStorage.setItem("flyweight.bot", JSON.stringify(next));
+    localStorage.setItem(BUILD_KEY, JSON.stringify(next));
     then(next);
   };
 
@@ -310,10 +310,16 @@ export function BrainLab({
               {instinctSpent}
               <small> / {INSTINCT_POOL}</small>
             </b>
-            <em className="pool-weight">{weightBudget.toFixed(0)} weight</em>
-            {roundsCleared > 0 && (
-              <em className="pool-earned">+{INSTINCT_POOL - INSTINCT_POOL_BASE} from {roundsCleared} round{roundsCleared === 1 ? "" : "s"}</em>
-            )}
+            {/* The two footnotes share ONE row. Each used to be a direct child of the
+                three-column grid claiming `grid-column: 2 / -1`, so they could not sit
+                beside each other — every footnote added another row and another 10px
+                gap, and the pool read as four loose lines stacked down the panel. */}
+            <p className="pool-meta">
+              <span>{weightBudget.toFixed(0)} weight</span>
+              {roundsCleared > 0 && (
+                <span>+{INSTINCT_POOL - INSTINCT_POOL_BASE} from {roundsCleared} round{roundsCleared === 1 ? "" : "s"}</span>
+              )}
+            </p>
           </div>
           {([
             ["PRESSURE", "aggression"],

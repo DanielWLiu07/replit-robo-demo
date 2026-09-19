@@ -1146,10 +1146,15 @@ html,body{background:#07070a}
 }
 /* Back stays the quieter of the two — it is an exit, not the action */
 .route-select .back-link{border-color:rgba(255,255,255,.22)}
-.point-pool .pool-earned{
-  grid-column:2 / -1;font-style:normal;font-size:8px;
-  color:rgba(242,243,245,.42);letter-spacing:.1em;
+/* Footnotes under the pool bar — one row, not one row EACH. Both used to be direct
+   grid children spanning `2 / -1`, which in a three-column grid means each takes a
+   fresh row; two footnotes therefore cost two extra rows and two 10px gaps. They are
+   now one flex line inside a single cell, so adding a third costs nothing. */
+.point-pool .pool-meta{
+  grid-column:2 / -1;margin:0;display:flex;flex-wrap:wrap;gap:4px 10px;
+  font-size:8px;letter-spacing:.1em;color:rgba(242,243,245,.5);
 }
+.point-pool .pool-meta span:not(:first-child){color:rgba(242,243,245,.38)}
 
 /* ── Bench buttons: same language as the rest ───────────────────────────────
    OPTIMISE / RESET / NEXT · FIGHT / ← ROSTER were square-ish 9px boxes with a
@@ -1251,13 +1256,21 @@ html,body{background:#07070a}
    the roster and bench already do for their own panels. */
 .route-campaign .world-stage{opacity:.5}
 .campaign-node .node-foe{font-size:8px;letter-spacing:.12em;color:rgba(242,243,245,.55)}
-.point-pool .pool-weight{
-  grid-column:2 / -1;font-style:normal;font-size:8px;
-  color:rgba(242,243,245,.55);letter-spacing:.1em;
-}
 /* What a cleared level actually bought you. */
 .result-reward{
   margin:0 0 14px;font-size:9px;letter-spacing:.14em;color:#f2f2ee;
   display:grid;gap:3px;
 }
 .result-reward small{font-size:8px;color:rgba(242,243,245,.55);letter-spacing:.1em}
+
+/* Which side is yours — the HUD half of the same question the 3D marker answers. */
+.hud-hull .bot-marker{
+  width:auto;min-width:34px;padding:0 7px;height:18px;
+  font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.12em;
+  border-radius:999px;
+}
+.hud-hull .bot-marker.you{background:#f2f2ee;color:#0a0a0d}
+.hud-hull .bot-marker:not(.you){
+  background:transparent;color:rgba(242,243,245,.65);
+  border:1px solid rgba(255,255,255,.3);
+}

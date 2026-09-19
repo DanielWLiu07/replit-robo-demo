@@ -9,7 +9,7 @@ import { Landing } from "./Landing";
 import { MoonStage } from "./MoonStage";
 import type { StationName } from "./moonLayout";
 import { RosterSelect } from "./RosterSelect";
-import { isUnspent, UNSPENT_BUILD } from "./modules";
+import { BUILD_KEY, isUnspent, UNSPENT_BUILD } from "./modules";
 import { Campaign } from "./Campaign";
 import { CAMPAIGN_LEVELS, levelFor } from "./campaignLevels";
 import { ROSTER } from "./roster";
@@ -32,11 +32,19 @@ const DEFAULT_OPPONENT = ROSTER.find((r) => r.bot.id === "hornet")!.bot;
  * the pool already spent on the player's behalf. A new player therefore never made
  * the build decision the lab exists for; they inherited someone else's and could
  * only nudge it. Now they start with the pool untouched and distribute it.
+ *
+ * THE KEY IS VERSIONED, and that is not bookkeeping. A build saved before the pool
+ * changed meaning is still a legal BotSpec, so it loads cleanly and silently — which
+ * is how a browser that had played once kept opening the bench at "150 / 150 spent"
+ * long after a fresh one correctly opened at zero. The stored spec cannot tell you
+ * which rules it was built under, so the key has to.
  */
 function loadBuild(): BotSpec {
   try {
-    const parsed = BotSpec.safeParse(JSON.parse(localStorage.getItem("flyweight.bot") || "null"));
+    const parsed = BotSpec.safeParse(JSON.parse(localStorage.getItem(BUILD_KEY) || "null"));
     if (parsed.success) return parsed.data;
+    // a build from before the pool was re-based: drop it rather than reinterpret it
+    localStorage.removeItem("flyweight.bot");
   } catch {
     /* fall through to an unspent build */
   }

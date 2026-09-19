@@ -105,6 +105,17 @@ export const UNSPENT_BUILD: BotSpec = {
   },
 };
 
+/**
+ * Where the player's build is saved, and the version of the RULES it was saved under.
+ *
+ * A build from before the pool was re-based is still a legal BotSpec, so it loads
+ * cleanly and silently — which is how a browser that had played once kept opening
+ * the bench already spent, long after a fresh one correctly opened at zero. The
+ * stored spec cannot say which rules built it, so the key has to. Bump this whenever
+ * the meaning of a saved build changes.
+ */
+export const BUILD_KEY = "flyweight.bot.v2";
+
 /** True when nothing has been spent yet — nothing to fight with. */
 export const isUnspent = (bot: BotSpec) =>
   bot.brain.slots.reduce((a, s) => a + s.weight, 0) <= 0;
