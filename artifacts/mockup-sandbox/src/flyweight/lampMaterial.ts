@@ -9,7 +9,7 @@ import { eeveeLighting } from "./vendor/blender-to-threejs/primitives/eevee-ligh
  * `mechanicalMaterial` fakes its light by reading the world normal, which is
  * fine on white paper where everything is lit anyway. On black it falls apart:
  * a fake gradient has no falloff, so nothing reads as being *near* a light.
- * This is the real thing — a Blender point light with inverse-square falloff —
+ * This is the real thing, a Blender point light with inverse-square falloff,
  * so the near side of the subject blows out to solid halftone and the far side
  * drops to bare page, and the darkness has a source.
  */

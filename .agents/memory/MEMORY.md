@@ -1,1 +1,1 @@
-- [Workspace package installation](package-installation.md) — use explicit pnpm filters when adding dependencies to a specific workspace package.
+- [Workspace package installation](package-installation.md), use explicit pnpm filters when adding dependencies to a specific workspace package.

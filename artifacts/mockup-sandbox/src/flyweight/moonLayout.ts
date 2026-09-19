@@ -55,7 +55,7 @@ export const ADDED_PROPS: PropRecord[] = [
   // pitches 36 deg down, so its top edge sits 14 deg BELOW the horizon and a dome
   // puts nearly everything above the frame (measured: 1 of 58 on screen). These
   // are seeded by picking a point on the FRAME, unprojecting it to a distance,
-  // and keeping it only if the moon does not hide it — then sized by how big it
+  // and keeping it only if the moon does not hide it, then sized by how big it
   // should LOOK rather than by a world scale, and spaced by screen distance so
   // nothing clumps. Checked against ARRIVAL and BAY, kept off the fighter and off
   // the wordmark's slab. Mostly stars on purpose: chunkier shapes this close read
@@ -182,7 +182,7 @@ export function applyLayout(objects: Map<string, THREE.Object3D>, layout: SceneL
  * block wholesale and would otherwise delete them.
  *
  * RING sits out at d≈11.7 from the crown, where the sphere has already dropped
- * to about y=-1.0 — the fighters stand on that, not on y=0.
+ * to about y=-1.0, the fighters stand on that, not on y=0.
  */
 export type StationName = "ARRIVAL" | "BAY" | "RING";
 

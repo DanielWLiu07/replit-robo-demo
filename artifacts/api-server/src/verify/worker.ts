@@ -2,7 +2,7 @@
  * The verifier, in its own process.
  *
  * Replaying a match twice and hashing every frame costs up to ~2.4s of solid
- * CPU for a 5v5 — measured, not guessed. On the request thread that would
+ * CPU for a 5v5, measured, not guessed. On the request thread that would
  * freeze every live match socket at 60 Hz for two seconds, which is the exact
  * mistake the trainer already taught us not to make. So it forks.
  *

@@ -6,7 +6,7 @@ import * as THREE from "three";
  * three ships no typeface JSON in this install and pulling one over the network
  * for a single word is a dependency we do not need, so FLYWEIGHT's nine glyphs
  * are cut by hand on a 10-unit cap height with a 2.2 stem. Straight edges and
- * 1.4 chamfers throughout: it reads as engineering stencil, which is the point —
+ * 1.4 chamfers throughout: it reads as engineering stencil, which is the point,
  * this is a technical study, not a logotype.
  */
 type Pt = [number, number];
@@ -29,7 +29,7 @@ const TRACKING = 1.0;
 export interface WordmarkOptions {
   /** extrusion depth in glyph units */
   depth?: number;
-  /** cap height in world units — the whole word scales off this */
+  /** cap height in world units, the whole word scales off this */
   size?: number;
 }
 

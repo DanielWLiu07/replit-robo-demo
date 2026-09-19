@@ -22,13 +22,13 @@ import { go } from "./route";
 /** The four things you can actually change about a body, with their units. */
 const DIALS = [
   { key: "mass", label: "MASS", unit: "kg", min: 48, max: 124, step: 1, dp: 0,
-    note: "Heavier hits harder and accelerates worse — leg force grows as M^⅔, mass as M." },
+    note: "Heavier hits harder and accelerates worse, leg force grows as M^⅔, mass as M." },
   { key: "reach", label: "REACH", unit: "m", min: 0.4, max: 0.76, step: 0.01, dp: 2,
     note: "Shoulder to fist. Longer arms reach further and swing slower: inertia goes with L²." },
   { key: "torque", label: "SHOULDER", unit: "N·m", min: 55, max: 200, step: 1, dp: 0,
     note: "What drives the swing. The only dial that buys fist speed without costing you range." },
   { key: "stance", label: "STANCE", unit: "m", min: 0.24, max: 0.64, step: 0.01, dp: 2,
-    note: "Feet apart. A wide base is hard to knock over and slow to turn — same parameter, both ways." },
+    note: "Feet apart. A wide base is hard to knock over and slow to turn, same parameter, both ways." },
 ] as const;
 
 const pctDelta = (mine: number, stock: number) => (mine / stock - 1) * 100;
@@ -44,7 +44,7 @@ function Derived({ label, value, unit, delta, better }: {
       <span className="derived-label">{label}</span>
       <span className="derived-value">{value}<em>{unit}</em></span>
       <span className={`derived-delta ${!moved ? "flat" : good ? "up" : "down"}`}>
-        {!moved ? "—" : `${delta > 0 ? "+" : ""}${delta.toFixed(0)}%`}
+        {!moved ? "-" : `${delta > 0 ? "+" : ""}${delta.toFixed(0)}%`}
       </span>
     </div>
   );
@@ -72,9 +72,9 @@ function RefractoryCurve({ value }: { value: number }) {
  * build is a shape rather than a level. But the ceiling is now measured, not felt,
  * because two harder limits sit under it:
  *
- *  - What the weight budget can BUY AT ALL. The three stats are not priced alike —
+ *  - What the weight budget can BUY AT ALL. The three stats are not priced alike,
  *    evasion buys at 28 points per unit of synaptic weight, aggression 26, tracking
- *    24 — so BRAIN_WEIGHT_BUDGET tops out near 211 points, and only in one lopsided
+ *    24, so BRAIN_WEIGHT_BUDGET tops out near 211 points, and only in one lopsided
  *    distribution. The old 276 was unreachable: past ~211 the campaign was paying
  *    out points that could not be placed anywhere on the fly.
  *
@@ -85,15 +85,15 @@ function RefractoryCurve({ value }: { value: number }) {
  *    at 180 every distribution is delivered exactly, at 190 the worst loses 2 points,
  *    at 195 eight, and past 200 it comes apart.
  *
- * So 180 is the ceiling. The base starts LEVEL with the roster — which spends
- * between 136 (TANK) and 166 (the old stock build) — and the campaign carries it to
+ * So 180 is the ceiling. The base starts LEVEL with the roster, which spends
+ * between 136 (TANK) and 166 (the old stock build), and the campaign carries it to
  * the top in five rounds. The player begins with none of it spent.
  */
 const INSTINCT_POOL_BASE = 140;
 const INSTINCT_POOL_PER_ROUND = 10;
 /**
  * Measured: the largest pool spendable in EVERY distribution with nothing lost.
- * `tsx lib/sim/src/__poolfit.ts` — 188, and unchanged by any weight budget from
+ * `tsx lib/sim/src/__poolfit.ts`: 188, and unchanged by any weight budget from
  * 8 to 16, because the stat-to-weight mapping saturates first. Paying out more
  * than this hands the player points the solver then quietly scales away.
  */
@@ -118,7 +118,7 @@ export function BrainLab({
   onChassisChange,
 }: {
   bot: BotSpec;
-  /** campaign rounds beaten — each one buys more instinct points */
+  /** campaign rounds beaten, each one buys more instinct points */
   roundsCleared?: number;
   onChassisChange: (chassis: Chassis) => void;
   onLaunch: (bot: BotSpec) => void;
@@ -137,7 +137,7 @@ export function BrainLab({
   /**
    * A build with nothing spent is legal but inert: every weight is zero, so no
    * circuit ever reaches threshold and the fly stands there being hit. The schema
-   * cannot object to it — a zero weight is a perfectly valid weight — so the lab has
+   * cannot object to it, a zero weight is a perfectly valid weight, so the lab has
    * to, or a new player's first act is to walk an empty brain into the ring and lose
    * without ever learning that the dials were the game.
    */
@@ -151,7 +151,7 @@ export function BrainLab({
    * Instinct is a fixed pool of points, not three free dials.
    *
    * It had to become one. The three targets are solved into synaptic weights and
-   * `simpleBrain` rescales the lot whenever they exceed BRAIN_WEIGHT_BUDGET — so
+   * `simpleBrain` rescales the lot whenever they exceed BRAIN_WEIGHT_BUDGET: so
    * pushing all three to 100 produced the same ratios, and therefore the same
    * brain, as leaving all three at 50. The dials moved and nothing changed. A
    * budget that is enforced by silent renormalisation is not a budget the player
@@ -164,7 +164,7 @@ export function BrainLab({
    *
    * Points alone were decoration: the solver scaled every target back down to a
    * fixed budget, so a 140-point build and a 180-point build came out the same
-   * total strength and won the same fraction of their fights — measured, the
+   * total strength and won the same fraction of their fights, measured, the
    * curve was flat within noise. Points decide the SHAPE, this decides how much
    * there is to shape, and only the pair together make a cleared level felt.
    */
@@ -172,7 +172,7 @@ export function BrainLab({
   const instinctSpent = profile.aggression + profile.evasion + profile.tracking;
   const instinctLeft = Math.max(0, INSTINCT_POOL - instinctSpent);
 
-  /** Re-solve the wiring from three instinct targets — no circuit shopping. */
+  /** Re-solve the wiring from three instinct targets, no circuit shopping. */
   const setInstinct = (key: "aggression" | "evasion" | "tracking", v: number) => {
     // Never spend past the pool: the dial stops where the points run out.
     const others = instinctSpent - profile[key];
@@ -246,7 +246,7 @@ export function BrainLab({
           />
           {/*
             The class is chosen on the roster, not here. This bench is for tuning
-            the body you already picked — offering the three classes again made
+            the body you already picked, offering the three classes again made
             the lab a second character-select, and quietly threw away every dial
             you had set, because switching adopted that class's stock body.
           */}
@@ -312,7 +312,7 @@ export function BrainLab({
             </b>
             {/* The two footnotes share ONE row. Each used to be a direct child of the
                 three-column grid claiming `grid-column: 2 / -1`, so they could not sit
-                beside each other — every footnote added another row and another 10px
+                beside each other, every footnote added another row and another 10px
                 gap, and the pool read as four loose lines stacked down the panel. */}
             <p className="pool-meta">
               <span>{weightBudget.toFixed(0)} weight</span>
@@ -351,7 +351,7 @@ export function BrainLab({
             />
           </label>
           <p className="bench-note">
-            The curve is 216 measured matches — identical brains, only this dial moved.
+            The curve is 216 measured matches, identical brains, only this dial moved.
             It peaks at {bestRefractory()}.
           </p>
         </div>
@@ -377,7 +377,7 @@ export function BrainLab({
         <div className="bench-actions go">
           <button className="button primary" disabled={!ready}
                   onClick={() => valid.success && ready && commit(valid.data, onLaunch)}>
-            NEXT · FIGHT →
+            NEXT · CAMPAIGN →
           </button>
           <button className="button" disabled={!ready}
                   onClick={() => valid.success && ready && commit(valid.data, onRoster)}>
@@ -385,7 +385,7 @@ export function BrainLab({
           </button>
           {unspent && (
             <p className="bench-blocked" role="status">
-              Spend your instinct points before you fight — every dial is at zero, so
+              Spend your instinct points before you fight, every dial is at zero, so
               nothing in this fly would fire.
             </p>
           )}

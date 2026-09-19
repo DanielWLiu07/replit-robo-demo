@@ -5,16 +5,16 @@ two of them fight in an arena while their neurons spike on screen.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — API + match socket (port 8080 in the container)
-- `pnpm --filter @workspace/db run push` — apply Drizzle schema changes (dev only)
-- `pnpm run typecheck` — typecheck every package
-- `pnpm run build` — typecheck + build all packages
+- `pnpm --filter @workspace/api-server run dev`: API + match socket (port 8080 in the container)
+- `pnpm --filter @workspace/db run push`: apply Drizzle schema changes (dev only)
+- `pnpm run typecheck`: typecheck every package
+- `pnpm run build`: typecheck + build all packages
 - Seed the house roster: `pnpm --filter @workspace/api-server exec tsx src/cli/seed.ts` (idempotent)
 - Prove replay works: `pnpm --filter @workspace/api-server exec tsx src/cli/verify-determinism.ts`
 - Measure the ladder curve: `pnpm --filter @workspace/api-server exec tsx src/cli/ladder-curve.ts`
 - Required Secrets: `DATABASE_URL`, and `CLERK_SECRET_KEY` / `CLERK_PUBLISHABLE_KEY` for sign-in
 
-**Locally** `pnpm run <script>` fails — the root `preinstall` guard reads
+**Locally** `pnpm run <script>` fails, the root `preinstall` guard reads
 `npm_config_user_agent`, which pnpm-via-corepack doesn't set. Run binaries directly:
 
 ```sh
@@ -36,7 +36,7 @@ health is `/api/healthz`.
 
 | What | Where |
 |---|---|
-| **Shared contract — source of truth for every boundary** | `lib/contract/src/index.ts` (`@workspace/contract`) |
+| **Shared contract, source of truth for every boundary** | `lib/contract/src/index.ts` (`@workspace/contract`) |
 | DB schema | `lib/db/src/schema/` (one file per table) |
 | Simulation core | `lib/sim/src/` (`@workspace/sim`) |
 | REST routes | `artifacts/api-server/src/routes/` |
@@ -58,7 +58,7 @@ health is `/api/healthz`.
   costs one row.
 - **The simulation is versioned too.** Snapshotting the brains stops a *bot* edit from
   rewriting history; nothing stopped a *physics* edit from doing it, and it happened
-  during the build — matches replayed with the same winner and a different tick count.
+  during the build, matches replayed with the same winner and a different tick count.
   `SIM_VERSION` in the contract is now recorded on every match, and a cross-version
   replay is reported as stale instead of being passed off as the original fight.
   **Bump `SIM_VERSION` whenever the sim changes.** It has already earned its keep twice:
@@ -71,7 +71,7 @@ health is `/api/healthz`.
   the leaderboard is about and it costs milliseconds; the socket then paces the same
   generator to the wall clock.
 - **One schema gate.** Every request body crosses `parseBody()` and nothing else. An
-  invalid brain cannot reach the database or the simulation — it is rejected at the edge
+  invalid brain cannot reach the database or the simulation: it is rejected at the edge
   with the offending field named.
 - **Two-headed identity.** Clerk when a session exists, an httpOnly guest cookie
   otherwise, and ownership accepts either. The demo path has no login wall; signing in
@@ -84,7 +84,7 @@ health is `/api/healthz`.
   and is readable at `/api/bots/:id`. The ladder added no transport of its own. Generated
   bots are flagged out of the bot list and the Elo board.
 - **Ladder difficulty is selection pressure, not crippled opponents.** Starving early
-  opponents of synaptic weight makes them ineffectual rather than easy — neither side can
+  opponents of synaptic weight makes them ineffectual rather than easy, neither side can
   finish and half of round 1 hits the 90-second cap. Instead every opponent gets a working
   brain and the ladder picks from a scored field: middling early, the one that beats you
   hardest late. `src/cli/ladder-curve.ts` measures the curve; re-run it after tuning.
@@ -123,7 +123,7 @@ connectivity from FlyWire. It is **not** "running the connectome". Do not say th
   `node_modules/.pnpm/*/node_modules/` and a clean install loses them.
 - To add a dependency without disturbing that: edit the manifest, run
   `pnpm install --lockfile-only --ignore-scripts`, then place the package by hand.
-- `/api/me` returns 401 locally — `.env` holds **placeholder** Clerk keys. Nothing on the
+- `/api/me` returns 401 locally: `.env` holds **placeholder** Clerk keys. Nothing on the
   demo path depends on auth, by design.
 - The match socket needs `/ws` in the artifact's `paths`. Without it Replit's router
   never forwards the upgrade and every deployed replay hangs on connect.
@@ -134,6 +134,6 @@ connectivity from FlyWire. It is **not** "running the connectome". Do not say th
 
 ## Pointers
 
-- `docs/PLAN.md` — the product, the science, and the split of work
-- `docs/API-backend.md` — endpoints, wire protocol, identity model
+- `docs/PLAN.md`: the product, the science, and the split of work
+- `docs/API-backend.md`: endpoints, wire protocol, identity model
 - See the `pnpm-workspace` skill for workspace structure and TypeScript setup

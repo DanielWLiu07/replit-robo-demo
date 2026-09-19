@@ -36,7 +36,7 @@ export const BRAIN_WEIGHT_BUDGET = 8;
  *
  * The stat-to-weight mapping saturates well before the budget does: five slots
  * capped at 4 weight each, priced per stat, means the largest pool a player can
- * FULLY spend is 188 points — and `lib/sim/src/__poolfit.ts` finds that same 188
+ * FULLY spend is 188 points, and `lib/sim/src/__poolfit.ts` finds that same 188
  * at every budget from 8 to 16. Raising the ceiling therefore moved nothing
  * except to let a brain past the schema gate without earning it, so the gate is
  * back to the flat budget and progression is carried by the point pool alone.
@@ -73,8 +73,8 @@ export type Chassis = z.infer<typeof Chassis>;
  *
  * TANK used to carry 150 against DRONE's 82, and that is not a tough fighter, it is
  * an unkillable one. Measured: TANK v TANK throws the MOST punches of any matchup
- * (15 a match against DRONE's 1.3) and deals the SAME damage as DRONE v DRONE — 135
- * against 131 — but carries 208 combined hull to DRONE's 160 and holds a guard twice
+ * (15 a match against DRONE's 1.3) and deals the SAME damage as DRONE v DRONE, 135
+ * against 131, but carries 208 combined hull to DRONE's 160 and holds a guard twice
  * as often, so 7 fights in 8 ran to the 90 second cap. Buffing speed did nothing;
  * the problem was never engagement.
  *
@@ -89,7 +89,7 @@ export const CHASSIS_STATS: Record<Chassis, { hull: number; accel: number; turn:
 
 
 /**
- * The physical build — four measurements of an actual body.
+ * The physical build, four measurements of an actual body.
  *
  * These are not stat bars with invented consequences. Every number downstream is
  * derived from these by mechanics that hold in the real world (see `bodyMechanics`
@@ -97,7 +97,7 @@ export const CHASSIS_STATS: Record<Chassis, { hull: number; accel: number; turn:
  * without paying for it somewhere the physics decides, not somewhere we chose.
  *
  * The sharpest of those trades: a longer arm reaches further but, for the same
- * shoulder torque, moves SLOWER at the fist — rotational inertia goes with L², so
+ * shoulder torque, moves SLOWER at the fist, rotational inertia goes with L², so
  * tip speed goes with 1/L. Reach and power are genuinely opposed.
  */
 export const BodySpec = z.object({
@@ -107,14 +107,14 @@ export const BodySpec = z.object({
   reach: z.number().min(0.40).max(0.76),
   /** peak shoulder torque driving a swing, N·m */
   torque: z.number().min(55).max(200),
-  /** distance between the feet, metres — the base you balance over */
+  /** distance between the feet, metres, the base you balance over */
   stance: z.number().min(0.24).max(0.64),
 });
 export type BodySpec = z.infer<typeof BodySpec>;
 
 /**
  * The build each chassis arrives with. A bot that never visits the bench uses
- * exactly these, and the arena applies body physics as a RATIO against them — so
+ * exactly these, and the arena applies body physics as a RATIO against them, so
  * an untuned bot computes 1.0 everywhere and fights identically to before the
  * bench existed. That is what keeps the existing balance runs meaningful.
  */
@@ -129,7 +129,7 @@ export const BotSpec = z.object({
   name: z.string().min(1).max(24),
   chassis: Chassis,
   brain: BrainSpec,
-  /** Absent means "stock for this chassis" — see BODY_BY_CHASSIS. */
+  /** Absent means "stock for this chassis", see BODY_BY_CHASSIS. */
   body: BodySpec.optional(),
 });
 export type BotSpec = z.infer<typeof BotSpec>;
@@ -149,17 +149,17 @@ export const ArenaBotState = z.object({
   x: z.number(), y: z.number(), heading: z.number(),
   vx: z.number(), vy: z.number(),
   hull: z.number(),
-  /** modules that fired this tick — this is what the spike raster renders. */
+  /** modules that fired this tick: this is what the spike raster renders. */
   spiked: z.array(NeuronModule),
   /** membrane potential per module, for the trace plot. */
   potentials: z.record(NeuronModule, z.number()),
   /** P1 arousal gain, 1.0 at rest, rises with damage taken. Multiplies every circuit. */
   arousal: z.number(),
   /** Giant Fiber habituation, 0..1 normalised. Climbs with each escape, recovers when
-   *  the looming stops — this is why a dodging bot stops being able to dodge. */
+   *  the looming stops: this is why a dodging bot stops being able to dodge. */
   gfFatigue: z.number(),
   /** Arm swing angles in radians, relative to the torso. Driven by motor output,
-   *  integrated with angular momentum — a swing that connects fast does damage. */
+   *  integrated with angular momentum, a swing that connects fast does damage. */
   armL: z.number(),
   armR: z.number(),
   /** Angular velocity of each arm; tip speed is what decides a strike. */
@@ -173,7 +173,7 @@ export const ArenaBotState = z.object({
    * Streamed rather than derived on the client because a planted foot is a physical
    * fact about the fight, not a drawing detail: the body pivots over it, and the
    * renderer must put it exactly where the simulation says it is or the contact is
-   * a lie. `z` is height above the surface — zero in stance, arced during the swing.
+   * a lie. `z` is height above the surface, zero in stance, arced during the swing.
    */
   feet: z.array(z.number()).length(6),
   /** true on the tick a strike lands, for hit sparks and screen shake. */
@@ -181,23 +181,23 @@ export const ArenaBotState = z.object({
   /** 0..1 guard. Arms up blunts an incoming strike, but you cannot punch while
    *  blocking and you cannot block during punch recovery. */
   guard: z.number(),
-  /** ticks of recovery left after a swing — the window where you are open. */
+  /** ticks of recovery left after a swing, the window where you are open. */
   recovery: z.number(),
   /** true on the tick a strike was blocked, for a parry effect. */
   blocked: z.boolean(),
-  /** forward/back torso lean in radians. Responds to acceleration and to being hit —
+  /** forward/back torso lean in radians. Responds to acceleration and to being hit,
    *  a swing you commit to and miss nearly puts you on your face. */
   lean: z.number(),
   /** lateral tilt in radians, from knockback and from legs buckling. */
   tilt: z.number(),
   /** ticks left on the floor. 0 = standing. Cannot punch or block while down. */
   down: z.number(),
-  /** true on the tick this bot was hit while still inside its own punch recovery —
+  /** true on the tick this bot was hit while still inside its own punch recovery,
    *  a counter, which lands for bonus damage. Worth its own flag so the UI can
    *  punctuate it differently from an ordinary hit. */
   countered: z.boolean(),
   /** 0..1 stamina. Every punch spends from it; a held guard and time spent out of
-   *  punching range refill it. Empty does not stop a swing, it slows it — and a slow
+   *  punching range refill it. Empty does not stop a swing, it slows it, and a slow
    *  fist misses the strike threshold, so a gassed bot whiffs on its own punches. */
   stamina: z.number(),
 });
@@ -257,7 +257,7 @@ export const StartMatchRequest = z.object({
 export const LeaderboardRow = z.object({
   botId: z.string(), name: z.string(), chassis: Chassis,
   wins: z.number().int(), losses: z.number().int(), elo: z.number().int(),
-  /** added by 1.2 — optional on input so existing callers keep compiling. */
+  /** added by 1.2, optional on input so existing callers keep compiling. */
   draws: z.number().int().default(0),
 });
 export type LeaderboardRow = z.infer<typeof LeaderboardRow>;
@@ -279,29 +279,29 @@ export type StartMatchRequest = z.infer<typeof StartMatchRequest>;
  * matches it already fought. The same argument applies one level up and was
  * missing: a match replays as `seed + snapshots` fed back through the sim, so
  * the sim is an input to the replay too. Change the physics and every stored
- * match silently replays into a *different fight* — same winner if you are
+ * match silently replays into a *different fight*, same winner if you are
  * lucky, different tick count, different everything else.
  *
  * So matches record the sim version they were fought under, and a replay across
  * a version boundary is reported as such instead of being passed off as the
  * original fight.
  *
- * **1.1 owns this constant — bump it whenever physics, the neuron model, the
+ * **1.1 owns this constant, bump it whenever physics, the neuron model, the
  * arena or the RNG changes.** It is a coarse marker on purpose: it does not
  * need to be a hash, it needs to be honest.
  */
 export const SIM_VERSION = "3";
-// "3": boxing pass — range discipline (forward drive is governed off inside the
+// "3": boxing pass, range discipline (forward drive is governed off inside the
 //      pocket, plus a soft break before torsos touch), counter-punch damage on a
 //      defender caught in recovery, stamina, and lateral footwork. Physics changed,
 //      so a v2 match does NOT replay to the same fight: same shape, different ticks.
 // "2": squads (MAX_SQUAD, teamSplit, survivors) plus arousal / gfFatigue per bot.
-//      1v1 stayed API-compatible but NOT numerically identical — the brain
+//      1v1 stayed API-compatible but NOT numerically identical, the brain
 //      constructor's RNG draws shifted, so a v1 match replays to a different
 //      tick count. Caught by verify-determinism, which is what it is for.
 
 /**
- * The single function 1.2 calls into 1.1 — implemented in `@workspace/sim`.
+ * The single function 1.2 calls into 1.1, implemented in `@workspace/sim`.
  *
  * Pull-based on purpose: the caller drives it with `.next()`, so transport
  * decides the pace. A headless run for persistence drains it as fast as the CPU
@@ -311,7 +311,7 @@ export const SIM_VERSION = "3";
  *
  * Server-authoritative: given the same seed and the same two BotSpecs it
  * produces identical frames and an identical result, forever. That is the
- * property that makes replay free — we persist `seed + two BotSpec snapshots`
+ * property that makes replay free: we persist `seed + two BotSpec snapshots`
  * and never store a frame.
  *
  * The returned MatchResult carries `matchId: ""`; the sim does not know its own
@@ -319,7 +319,7 @@ export const SIM_VERSION = "3";
  *
  * `squadSize` deploys that many copies of each spec per side (1..MAX_SQUAD).
  * It is part of the replay input, so it is persisted on the match row next to
- * the seed — a 5v5 replayed as a 1v1 is not the same fight.
+ * the seed, a 5v5 replayed as a 1v1 is not the same fight.
  */
 export type MatchRunner = (
   seed: string,
@@ -332,7 +332,7 @@ export type MatchRunner = (
 export const MatchStatus = z.enum(["PENDING", "RUNNING", "COMPLETE", "FAILED"]);
 export type MatchStatus = z.infer<typeof MatchStatus>;
 
-/** Append-only. KO and hits, not frames — frames are re-derived from the seed. */
+/** Append-only. KO and hits, not frames, frames are re-derived from the seed. */
 export const MatchEventKind = z.enum(["HIT", "KO", "TIMEOUT", "DRAW"]);
 export type MatchEventKind = z.infer<typeof MatchEventKind>;
 
@@ -363,7 +363,7 @@ export const Bot = z.object({
   name: z.string(),
   chassis: Chassis,
   brain: BrainSpec,
-  /** version of `brain` — the head revision. */
+  /** version of `brain`, the head revision. */
   brainVersion: z.number().int().min(1),
   brainId: z.string(),
   /** true for the built-in roster you can fight without signing in. */
@@ -372,7 +372,7 @@ export const Bot = z.object({
   mine: z.boolean(),
   createdAt: z.string(),
   /**
-   * Derived character card — stat bars, playstyle, neuron count. Optional only
+   * Derived character card, stat bars, playstyle, neuron count. Optional only
    * so older callers keep parsing; the server always sends it.
    */
   profile: z.lazy(() => BotProfile).optional(),
@@ -430,7 +430,7 @@ export type LeaderboardResponse = z.infer<typeof LeaderboardResponse>;
 
 export const ApiError = z.object({
   error: z.string(),
-  /** populated when a body failed schema validation — the gate, made visible. */
+  /** populated when a body failed schema validation, the gate, made visible. */
   issues: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
 });
 export type ApiError = z.infer<typeof ApiError>;
@@ -539,7 +539,7 @@ export const VerifyVerdict = z.enum([
   "REPRODUCED",
   /** Replays agreed, but the sim has moved on since. Expected, not a defect. */
   "STALE_SIM",
-  /** Replays agreed and the sim has NOT moved — the row and the sim disagree. */
+  /** Replays agreed and the sim has NOT moved, the row and the sim disagree. */
   "DIVERGED",
   /** The two replays disagreed with each other. The sim itself is not deterministic. */
   "NONDETERMINISTIC",
@@ -551,7 +551,7 @@ export const VerifyMatchResponse = z.object({
   /** the badge: true only for REPRODUCED. */
   reproduced: z.boolean(),
   verdict: VerifyVerdict,
-  /** SHA-256 over every frame of the replay, truncated — for eyeballing, not for security. */
+  /** SHA-256 over every frame of the replay, truncated, for eyeballing, not for security. */
   digest: z.string(),
   /** the second, independent replay. Differs from `digest` only if the sim is broken. */
   digestRepeat: z.string(),
@@ -591,14 +591,14 @@ export type VerifierResult = z.infer<typeof VerifierResult>;
 // A run is `(runSeed, round)` -> opponent, deterministically, so a run is
 // reproducible and shareable exactly like a match. Each round is also persisted
 // as a real match row, which means a ladder fight is watchable on the existing
-// /ws/match/:id socket and checkable with /api/matches/:id/verify — the ladder
+// /ws/match/:id socket and checkable with /api/matches/:id/verify, the ladder
 // adds no transport of its own.
 
 /** Safety rail. Nobody is beating this, and it bounds the table. */
 export const LADDER_MAX_ROUND = 40;
 
 /**
- * Clear the campaign by winning this many rounds — five levels on the moon.
+ * Clear the campaign by winning this many rounds, five levels on the moon.
  * Measured against the roster the expected furthest round is about 3, so five
  * is a real finish line rather than a formality, and short enough that a
  * stranger can see the end of it.
@@ -610,7 +610,7 @@ export type LadderStatus = z.infer<typeof LadderStatus>;
 
 /**
  * How round N was built. Persisted per round so the difficulty curve is
- * inspectable rather than folklore — you can see exactly what beat you.
+ * inspectable rather than folklore: you can see exactly what beat you.
  */
 export const LadderDifficulty = z.object({
   /**
@@ -646,7 +646,7 @@ export const LadderRun = z.object({
   status: LadderStatus,
   /**
    * Your bot as it was when the run started, pinned. Retuning mid-run does not
-   * retroactively change the rounds you already cleared — same rule as matches.
+   * retroactively change the rounds you already cleared, same rule as matches.
    */
   bot: BotSpec,
   botId: z.string(),
@@ -688,7 +688,7 @@ export const LadderLeaderboardRow = z.object({
   /** furthest round cleared */
   round: z.number().int(),
   status: LadderStatus,
-  /** true once the whole campaign is beaten — these rank above unfinished runs. */
+  /** true once the whole campaign is beaten: these rank above unfinished runs. */
   cleared: z.boolean(),
   /** total simulated ticks across the run; the ranking key for cleared runs. */
   clearTicks: z.number().int(),
@@ -740,7 +740,7 @@ export const BotProfile = z.object({
   hull: z.number(),
   speed: z.number(),
   agility: z.number(),
-  /** one-line read on how it fights — the "character type". */
+  /** one-line read on how it fights, the "character type". */
   playstyle: z.string(),
   /** total cells across every equipped population: the brain-size stat. */
   neuronCount: z.number().int(),

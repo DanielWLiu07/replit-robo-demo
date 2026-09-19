@@ -148,7 +148,7 @@ export async function startRun(
  * The generated fly becomes a real `bots` row with a real brain revision, and
  * the fight becomes a real `matches` row. That is deliberate: it means a ladder
  * round is watchable on the ordinary /ws/match/:id socket, checkable with
- * /api/matches/:id/verify, and inspectable at /api/bots/:id — you can go and
+ * /api/matches/:id/verify, and inspectable at /api/bots/:id: you can go and
  * read the brain that just knocked you out. The ladder adds no transport and no
  * second replay path of its own.
  *
@@ -164,8 +164,8 @@ export async function playNextRound(
   if (run.status !== "ACTIVE") {
     throw badRequest(
       run.status === "CLEARED"
-        ? "You already cleared this campaign — start a new run"
-        : "That run is over — start a new one",
+        ? "You already cleared this campaign. Start a new run"
+        : "That run is over. Start a new one",
     );
   }
   if (run.round >= LADDER_MAX_ROUND) {
@@ -175,7 +175,7 @@ export async function playNextRound(
     throw badRequest(
       `This run was started under sim v${run.simVersion} and the server now runs ` +
         `v${SIM_VERSION}. Continuing it would mix two different simulations in one ` +
-        `run — start a new run.`,
+        `run, start a new run.`,
     );
   }
   if (inFlight >= MAX_CONCURRENT_ROUNDS) throw new LadderBusyError();

@@ -2,8 +2,8 @@
  * Binds a generated chassis mesh to the simulation's own skeleton.
  *
  * autoRig fits a 17-bone rest skeleton to the welded mesh and weights every vertex
- * against it. This file is the other half: it takes poseBot() from @workspace/sim —
- * the same pure function the sim could pose a bot with on any tick — and drives the
+ * against it. This file is the other half: it takes poseBot() from @workspace/sim,
+ * the same pure function the sim could pose a bot with on any tick, and drives the
  * bound mesh from it, so the fighters animate off simulation state rather than off
  * anything hand-keyed here.
  *
@@ -11,7 +11,7 @@
  * proportions are hardcoded ratios while the mesh's are whatever the generator
  * produced, so reading positions across would stretch limbs to fit a skeleton the
  * geometry does not have. Taking the angle and walking the fitted bone lengths keeps
- * the mesh intact, and a final shift plants the lower foot on the floor — which is
+ * the mesh intact, and a final shift plants the lower foot on the floor, which is
  * what the IK in poseBot was for, recovered without needing the two to agree on how
  * long a shin is.
  */
@@ -27,7 +27,7 @@ const toArena = (v: readonly number[]): V3 => [-v[2], v[1], v[0]];
 /** Fighters read a little larger than the rig's nominal height at this camera. */
 export const DISPLAY = 1.25;
 
-/** The expensive half of binding — fit and weights — done once per chassis. */
+/** The expensive half of binding, fit and weights, done once per chassis. */
 export interface ChassisBind {
   geometry: THREE.BufferGeometry;
   rest: RestBone[];
@@ -46,7 +46,7 @@ export interface SkinnedBot {
 
 /**
  * Fit and weight one chassis. A squad may field five identical units a side, so this
- * runs once per chassis and every unit shares the result — only the skeleton and the
+ * runs once per chassis and every unit shares the result, only the skeleton and the
  * material are per-unit. The geometry is re-centred to unit height with its feet on
  * y=0 first, so the fitted skeleton and the display scale are both in known units
  * whatever the generator emitted.
@@ -129,7 +129,7 @@ export function poseSkinnedBot(rig: SkinnedBot, state: ArenaBotState, chassis: C
   //
   // This used to measure the FEET only, which is right up to the moment somebody
   // gets knocked over. On the floor the feet are the HIGHEST part of a bot, so the
-  // lift went negative and drove the whole body down through the surface — the one
+  // lift went negative and drove the whole body down through the surface, the one
   // pose where the plant mattered most was the one it inverted. Measuring every
   // bone costs a few dozen comparisons and is correct in both.
   let lowest = Infinity;

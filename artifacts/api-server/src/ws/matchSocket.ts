@@ -16,7 +16,7 @@ import { getMatchRow } from "../services/matches";
 /**
  * Canonical path is `/ws/match/:id`. The `/api` prefix is accepted as well
  * because Replit's application router forwards by path prefix and `/api` is
- * the one prefix this service is guaranteed to own — so a deployment that
+ * the one prefix this service is guaranteed to own, so a deployment that
  * loses the `/ws` route still streams instead of hanging on connect.
  */
 export const MATCH_WS_PATH = /^(?:\/api)?\/ws\/match\/([A-Za-z0-9_-]+)$/;
@@ -72,7 +72,7 @@ function send(ws: WebSocket, message: ServerMessage): void {
 /**
  * One BotSpec per *unit*, in the same order the frames use, so a renderer can
  * index straight from `frame.bots[i]` to the spec that produced it. Squad units
- * are suffixed `#0`, `#1`, ... exactly as the sim names them — two units off the
+ * are suffixed `#0`, `#1`, ... exactly as the sim names them, two units off the
  * same design still need to be distinguishable on a spike raster.
  *
  * `teamSplit` is where team B begins, which for equal squads is the squad size.
@@ -196,7 +196,7 @@ async function openMatchStream(ws: WebSocket, matchId: string): Promise<void> {
     const msg = parsed.data;
     switch (msg.type) {
       case "play":
-        // Restart from tick 0 — a new generator, same seed, same fight.
+        // Restart from tick 0, a new generator, same seed, same fight.
         stream.frames = newRun();
         stream.speed = msg.speed;
         stream.playing = true;

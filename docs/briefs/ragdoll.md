@@ -1,4 +1,4 @@
-# Brief — ragdoll physics (lane: fighting)
+# Brief: ragdoll physics (lane: fighting)
 
 Make the fighting feel like *Human Fall Flat*: floppy, physical, comic. Right now the bots
 are rigid bodies with rigidly driven arms. You own `lib/sim/src/arena.ts`.
@@ -13,7 +13,7 @@ are rigid bodies with rigidly driven arms. You own `lib/sim/src/arena.ts`.
 - **Buckling legs.** When stamina empties, the legs give and the stance sags.
 
 ## Hard constraint
-The simulation **must stay deterministic** — same seed, identical match. Replay, the
+The simulation **must stay deterministic**, same seed, identical match. Replay, the
 evolution fitness function and six of the 21 tests all depend on it. That means:
 no physics engine, no wall-clock, no `Math.random`. Only the seeded rng already threaded
 through `runMatch`.

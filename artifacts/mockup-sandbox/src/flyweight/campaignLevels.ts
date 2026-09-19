@@ -7,7 +7,7 @@ import { CHAMPION_BRAIN } from "./modules";
  * Escalation is in the wiring, not in hidden multipliers: each opponent spends
  * more of the same synaptic budget the player spends, on the same six circuits,
  * so every fight is against a brain you could legally have built. Level five is
- * the evolved champion — the one neuroevolution actually produced.
+ * the evolved champion, the one neuroevolution actually produced.
  *
  * Every bot here carries DNa02 and a target cell. That is not decoration: a fly
  * with no steering neuron cannot turn toward anything, drifts until the walls
@@ -30,13 +30,13 @@ export const CAMPAIGN: CampaignLevel[] = [
     round: 1,
     title: "FIRST CONTACT",
     // A DRONE: 70 hull, the fragile frame, wired barely enough to come at you.
-    // This was a HORNET and it beat the TANK four times in five — level one
+    // This was a HORNET and it beat the TANK four times in five, level one
     // cannot be the fight that ends a run.
     bot: {
       id: "lvl1", name: "MIDGE", chassis: "DRONE",
       // Low thresholds so it commits and dies; weak WEIGHTS make it harmless,
       // but a high threshold just makes it inert, and an inert fly cannot be
-      // finished — that read as a 73-second stalemate, not an easy first fight.
+      // finished: that read as a 73-second stalemate, not an easy first fight.
       brain: brain([
         { module: "DNA02", weight: 0.8, threshold: 0.75 },
         { module: "LC10A", weight: 0.65, threshold: 0.8 },
@@ -73,7 +73,7 @@ export const CAMPAIGN: CampaignLevel[] = [
     /**
      * Still a wall, but a wall you can get through.
      *
-     * This was a TANK — 150 hull against a DRONE's 70 — with a strong brain on
+     * This was a TANK, 150 hull against a DRONE's 70, with a strong brain on
      * top, and it measured 0% for both DRONE and HORNET: the campaign simply
      * ended here. Hull is the single most decisive stat in this sim, so the
      * heavy frame IS the challenge and its wiring has to give ground to pay for
@@ -92,7 +92,7 @@ export const CAMPAIGN: CampaignLevel[] = [
     round: 5,
     title: "CHAMPION",
     /**
-     * The real evolved champion — 14 generations against the archetypes — but
+     * The real evolved champion, 14 generations against the archetypes, but
      * flying a DRONE frame rather than its native one.
      *
      * Measured on the heavier frame it beat every class AND a fully tuned build

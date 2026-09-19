@@ -1,4 +1,4 @@
-/** Deterministic PRNG. Same seed, same match, every time — that is what makes replay free. */
+/** Deterministic PRNG. Same seed, same match, every time: that is what makes replay free. */
 export function makeRng(seed: string) {
   // xmur3 string hash -> 32-bit state
   let h = 1779033703 ^ seed.length;

@@ -1,5 +1,5 @@
 /**
- * eeveeLighting — EEVEE-faithful manual lighting primitive (fidelity: approximate).
+ * eeveeLighting, EEVEE-faithful manual lighting primitive (fidelity: approximate).
  *
  * MeshBasicNodeMaterial ignores scene lights, so the Principled BSDF -> ShaderToRGB
  * result is reimplemented per spec section 6.1:
@@ -11,7 +11,7 @@
  * GGX: D = a2 / (pi * denom^2), height-correlated Smith visibility,
  * alpha = roughness^2 (so a2 = roughness^4), F0 = 0.04 (Specular IOR 0.5).
  *
- * All light directions are SURFACE->LIGHT in Three's Y-up space — convert from
+ * All light directions are SURFACE->LIGHT in Three's Y-up space, convert from
  * Blender with (x,y,z) -> (x, z, -y) and negate the emission direction.
  *
  * NO UPPER CLAMP, deliberately. This used to clamp shade to 1, and Blender does
@@ -122,7 +122,7 @@ export type SketchLight = SunLight | PointLight;
  *
  * Measured, not remembered. An earlier port had this light as a distant
  * directional at "energy 0.088", which is its irradiance at 6.11 m, and applied
- * that number at 1.02 m, where the true value is 3.16 — a factor of 36.
+ * that number at 1.02 m, where the true value is 3.16, a factor of 36.
  */
 export const POINT_INTENSITY = 1 / (4 * Math.PI);
 

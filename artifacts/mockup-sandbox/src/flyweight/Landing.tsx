@@ -1,4 +1,4 @@
-/** The hook. Unchanged from the single-page build — only the CTAs are routes now. */
+/** The hook. Unchanged from the single-page build, only the CTAs are routes now. */
 export function Landing() {
   return (
     <>

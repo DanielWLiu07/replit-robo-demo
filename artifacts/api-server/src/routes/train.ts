@@ -12,7 +12,7 @@ import {
 const router: IRouter = Router();
 
 /**
- * Starts a run and returns 202 immediately — evolution takes ~30 seconds of
+ * Starts a run and returns 202 immediately, evolution takes ~30 seconds of
  * solid CPU and does not belong on a request. Poll `GET /api/train/:id` and
  * watch `curve` grow a point per generation.
  */

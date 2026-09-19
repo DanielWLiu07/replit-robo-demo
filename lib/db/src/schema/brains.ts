@@ -18,7 +18,7 @@ import { newId } from "./ids";
  * from an hour ago still replays against the brain that actually fought it.
  *
  * `spec` is validated against BrainSpec (contract) at the API edge before it
- * gets here — the schema gate. Invalid loadouts cannot reach the simulation.
+ * gets here, the schema gate. Invalid loadouts cannot reach the simulation.
  */
 export const brainsTable = pgTable(
   "brains",

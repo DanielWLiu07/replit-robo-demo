@@ -7,7 +7,7 @@ import type { PropKind } from "./moonLayout";
 /**
  * The moon scene's authoring owner.
  *
- * One `SceneEditor` per viewport, per the library's rule — it owns selection for
+ * One `SceneEditor` per viewport, per the library's rule: it owns selection for
  * the Outliner, viewport picking and the Blender G/S/R keymap at once, so there
  * is never a second keyboard owner disagreeing with it.
  *
@@ -55,7 +55,7 @@ export class MoonEditor {
 
     // connect() binds the CONFIRM click (and contextmenu) on whatever element it
     // is given. The canvas is inside a pointer-events:none, z-index:-1 stage, so
-    // it is never in the event path and a click could not end a gesture — the
+    // it is never in the event path and a click could not end a gesture, the
     // object just kept following the mouse. document.body always is in the path.
     this.disposers.push(
       this.editor.connect(document.body, {
@@ -228,7 +228,7 @@ export class MoonEditor {
    * Paste-ready source for `moonLayout.ts`.
    *
    * Everything registered gets a placement, added props carry their kind so
-   * they can be rebuilt on load, and the camera goes out too — so a copy is the
+   * they can be rebuilt on load, and the camera goes out too, so a copy is the
    * whole arrangement, not just the things that happened to be dragged.
    */
   layout(): string {

@@ -20,7 +20,7 @@ const names = Object.keys(builds);
 let ticks = 0, clinch = 0, pocket = 0, outside = 0, distSum = 0;
 let recoveryTicks = 0, guardTicks = 0, thrown = 0, landed = 0, blocked = 0, countered = 0;
 let staminaSum = 0, staminaSeen = 0, lateralSum = 0;
-// gap histogram, 0.15m buckets up to 3m — where do they actually stand?
+// gap histogram, 0.15m buckets up to 3m, where do they actually stand?
 const HIST = 20, HIST_W = 0.15;
 const hist = new Array(HIST + 1).fill(0);
 let kos = 0, draws = 0, total = 0, tickSum = 0; const nonKo: string[] = [];

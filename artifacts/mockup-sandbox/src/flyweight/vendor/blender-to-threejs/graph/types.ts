@@ -1,5 +1,5 @@
 /**
- * The authored node graph — the shape materials are built in by hand, as opposed
+ * The authored node graph, the shape materials are built in by hand, as opposed
  * to the wire-format IR the Blender exporter emits (src/ir/types.ts).
  *
  * Both describe the same thing, and deliberately so: nodes are keyed by Blender
@@ -16,7 +16,7 @@ import type { Vec4 } from '../transpiler/blender-ops';
 /** A float socket. */
 export type Scalar = number;
 
-/** An RGBA socket. Blender colours are LINEAR — never sRGB-encode these. */
+/** An RGBA socket. Blender colours are LINEAR, never sRGB-encode these. */
 export type Color = Vec4;
 
 export type GraphValue = Scalar | Color;

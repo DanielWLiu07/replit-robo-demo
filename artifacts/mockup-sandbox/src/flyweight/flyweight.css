@@ -326,7 +326,7 @@ body.title2d .landing-title{display:block}
 
 /* ═══ DARK GLASS ═══════════════════════════════════════════════════════════
    Every screen is the same room as the landing: near-black ground, frosted
-   panels, hairline light borders, light type. Instrumentation over space —
+   panels, hairline light borders, light type. Instrumentation over space,
    restrained, not neon. Numerics stay monospace.                           */
 .flyweight{
  --paper:#07070a; --ink:#e8e8e4; --line:#2b2c33;
@@ -469,7 +469,7 @@ html,body{background:#07070a}
 .readout-spend .readout-free output{color:var(--muted,#777777)}
 .readout-spend .readout-free i{opacity:.35}
 /* The landing copy sat over a light page. It now sits over a BRIGHT moon inside
-   a black sky, so it needs light type plus an ink shadow — one colour cannot
+   a black sky, so it needs light type plus an ink shadow: one colour cannot
    carry both grounds, but light-on-ink-shadow reads on either. */
 .route-home .landing-entry p,
 .route-home .landing-aside,
@@ -481,7 +481,7 @@ html,body{background:#07070a}
 
 /* ═══ ONE WORLD ════════════════════════════════════════════════════════════
    No navbar, header or footer anywhere: the moon is the page and the panels
-   float over it. The stage is never veiled now — it IS the scene, not a
+   float over it. The stage is never veiled now: it IS the scene, not a
    backdrop behind a page.                                                   */
 .topbar,.flyweight footer,.ticker{display:none}
 .route-select .world-stage,.route-lab .world-stage,.route-fight .world-stage{opacity:1}
@@ -501,7 +501,7 @@ html,body{background:#07070a}
 /* THE RING: the HUD brackets the arena, nothing sits in the middle */
 .route-fight .fight-section{padding-left:3vw;padding-right:3vw}
 /* the tagline carries a scrim pill (added for the light theme, still useful over
-   a bright moon) — invert it to dark glass instead of leaving a white slab */
+   a bright moon), invert it to dark glass instead of leaving a white slab */
 .route-home .landing-entry p{
  background:rgba(10,10,14,.55);
  border:1px solid rgba(255,255,255,.15);
@@ -514,7 +514,7 @@ html,body{background:#07070a}
 /* ── liquid glass ────────────────────────────────────────────────────────────
    Apple's glass is not a dark panel. It is a thin translucent layer that blurs
    AND saturates what is behind it, lifted by a hairline top highlight and a soft
-   drop shadow. It only reads when something is actually behind it — here that is
+   drop shadow. It only reads when something is actually behind it, here that is
    the moon, which .world-stage already fixes behind the whole app. Flat black
    kills the effect entirely, so these all stay genuinely translucent. */
 .roster-card,
@@ -646,7 +646,7 @@ html,body{background:#07070a}
 .fight-brain.brain-1 .fight-brain-head .char-cells{margin-left:0;margin-right:auto}
 
 /* ── Roster select: a way out, and the display face on the heading ──────────
-   The select screen had no way back to the landing — the only exits were the
+   The select screen had no way back to the landing, the only exits were the
    topbar nav and the browser. */
 .back-link{color:#676767;margin-right:auto}
 .back-link:hover{color:#111111}
@@ -665,7 +665,7 @@ html,body{background:#07070a}
 /* KatieRoze on the roster heading.
    Its own family, subset to exactly this string: the display cut the 3D title
    uses has no h, m or period, and a glyph outside a subset silently falls back
-   to the next font — which then gets inverted by the filter below and vanishes.
+   to the next font, which then gets inverted by the filter below and vanishes.
    That is what "C oose a nervous syste" was.
    It is also a COLOUR font: canvas and CSS both paint its embedded watercolour
    and ignore `color`, so the palette is forced with a filter instead. */
@@ -884,7 +884,7 @@ html,body{background:#07070a}
   border-right:2px solid #b4b4ae;pointer-events:none;
 }
 /* Overdrawn: a loadout carried over from a build made before the pool existed.
-   Shown honestly rather than clamped — you can lower a dial, not raise one. */
+   Shown honestly rather than clamped: you can lower a dial, not raise one. */
 .point-pool b.over{color:#1c1c1c;background:#e2e2dc;padding:1px 5px}
 
 /* The bench stays on the LEFT and the moon keeps the right half to itself.
@@ -903,7 +903,7 @@ html,body{background:#07070a}
 
 /* ── Bench: class is chosen, not chosen here ────────────────────────────────
    The lab used to re-offer DRONE/HORNET/TANK, which made it a second character
-   select — and picking one silently reset the body dials to that class's stock
+   select, and picking one silently reset the body dials to that class's stock
    values, losing the tuning you came here to do. Now it states what you are
    wearing and sends you back to the roster to change it. */
 .class-locked{
@@ -935,8 +935,8 @@ html,body{background:#07070a}
 .select-actions .squad-stepper{margin:0}
 
 /* ── Roster select: bigger title, one button design ─────────────────────────
-   Back and Next were two different objects — a small dark chip in the top
-   strip and a wide bordered button at the bottom — so the two ways out of the
+   Back and Next were two different objects, a small dark chip in the top
+   strip and a wide bordered button at the bottom, so the two ways out of the
    screen looked unrelated. They now share a box: same height, same padding,
    same type, differing only in fill, which is what marks one as the way on. */
 .route-select .section-heading h2{
@@ -992,8 +992,8 @@ html,body{background:#07070a}
 }
 
 /* ── FIGHT HUD: horizontal, and flush to the bottom ──────────────────────────
-   The instrumentation was two TALL stacked cards — head, then a brain canvas,
-   then meters underneath — with a gap below them. Two columns of that ate the
+   The instrumentation was two TALL stacked cards, head, then a brain canvas,
+   then meters underneath, with a gap below them. Two columns of that ate the
    middle of the window and left the actual fight in a letterbox strip.
    Now each panel is one horizontal band: the connectome beside its readout
    rather than above it, mirrored so both brains sit on the outer edges and the
@@ -1004,7 +1004,7 @@ html,body{background:#07070a}
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin: 0;
-  /* flush to the bottom edge — no strip of moon showing under the panels */
+  /* flush to the bottom edge, no strip of moon showing under the panels */
   padding: 0;
   z-index: 4;
   pointer-events: none;
@@ -1061,8 +1061,8 @@ html,body{background:#07070a}
 .fight-brain .fight-state i { font-size: 7.5px; padding: 2px 5px; }
 
 /* ── Fight HUD: one connected bar ───────────────────────────────────────────
-   The top was three separate objects — a hull panel, a floating clock with no
-   surface under it, another hull panel — with 28px of moon showing between
+   The top was three separate objects, a hull panel, a floating clock with no
+   surface under it, another hull panel, with 28px of moon showing between
    them, so the clock read as debris rather than as part of the HUD. It is now
    a single bar: the two hull halves and the clock share one surface, divided
    by rules rather than by gaps, and the clock squeezes in between them. */
@@ -1074,7 +1074,7 @@ html,body{background:#07070a}
   backdrop-filter:blur(14px);
   overflow:hidden;
 }
-/* the halves lose their own edges — the bar owns them now */
+/* the halves lose their own edges, the bar owns them now */
 .route-fight .fight-hud .hud-hull{
   background:transparent;
   border:0;
@@ -1119,7 +1119,7 @@ html,body{background:#07070a}
 /* ── Next, made to match the rest of the screen ─────────────────────────────
    It was off for three reasons, none of them the label. It was pinned right by
    an inherited `justify-content:flex-end` while every other element on the
-   screen — Back, the title, the cards, the dossier — starts at the same left
+   screen, Back, the title, the cards, the dossier, starts at the same left
    edge, so it read as a stray chip. It was dark glass sitting over the bright
    half of the moon, which is the one background that surface does not survive.
    And it was styled identically to Back, so nothing said which one goes
@@ -1144,9 +1144,9 @@ html,body{background:#07070a}
   border-color:#f2f2ee;
   transform:translateY(-2px);
 }
-/* Back stays the quieter of the two — it is an exit, not the action */
+/* Back stays the quieter of the two: it is an exit, not the action */
 .route-select .back-link{border-color:rgba(255,255,255,.22)}
-/* Footnotes under the pool bar — one row, not one row EACH. Both used to be direct
+/* Footnotes under the pool bar: one row, not one row EACH. Both used to be direct
    grid children spanning `2 / -1`, which in a three-column grid means each takes a
    fresh row; two footnotes therefore cost two extra rows and two 10px gaps. They are
    now one flex line inside a single cell, so adding a third costs nothing. */
@@ -1203,11 +1203,20 @@ html,body{background:#07070a}
   padding:22px 3% 24px;
 }
 .campaign-head{margin:6px 0 0}
+/* KatieRoze has no C, m or p.
+   The word rendered as "C mp": those three glyphs are absent from the face, so the
+   browser fell back to Barlow for them while the rest stayed script, and the two
+   designs sat on top of each other. Measured per glyph at 100px, C/m/p all come
+   back at exactly 60.2 (a fallback advance) against 27/14.3/26.8/32.1 for the
+   script letters. "Roster Select" gets away with it only because it happens to
+   contain none of the three.
+   So this heading uses the complete face outright rather than a mix of two. */
 .campaign-head h2{
-  font-family:'KatieRozeUI','Barlow Condensed',Impact,sans-serif;
-  font-size:clamp(52px,7vw,104px);font-weight:400;line-height:1;margin:0;
+  font-family:'Barlow Condensed',Impact,sans-serif;
+  font-size:clamp(46px,6vw,88px);font-weight:600;line-height:1;margin:0;
+  letter-spacing:-.01em;color:#fff;
 }
-.campaign-head p{margin:6px 0 0;color:rgba(242,243,245,.5);letter-spacing:.14em}
+.campaign-head p{margin:6px 0 0;color:rgba(255,255,255,.88);letter-spacing:.14em}
 
 .campaign-map{position:relative;flex:1 1 auto;min-height:340px;margin-top:10px}
 .campaign-path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -1217,34 +1226,54 @@ html,body{background:#07070a}
 }
 .campaign-path line.walked{stroke:rgba(255,255,255,.62);stroke-dasharray:none}
 
+/* A node is a CHIP, not floating text.
+   Transparent 10px labels at 40% opacity sat directly on the starfield and the
+   lunar terminator, so a level was the same size, colour and shape as the stars
+   behind it and the board read as decoration. Every node now carries its own
+   dark plate, which is what separates the board from the sky at any brightness. */
 .campaign-node{
   position:absolute;transform:translate(-50%,-50%);
-  display:grid;justify-items:center;gap:6px;
-  background:transparent;border:0;padding:6px;
-  color:rgba(242,243,245,.4);cursor:default;
+  display:grid;justify-items:center;gap:5px;
+  border:1.5px solid rgba(255,255,255,.55);border-radius:12px;
+  padding:9px 13px 10px;
+  background:rgba(255,255,255,.10);backdrop-filter:blur(7px);
+  color:#f2f3f5;cursor:default;
+  transition:background .15s,border-color .15s,color .15s;
 }
 .campaign-node .node-dot{
-  width:15px;height:15px;border-radius:999px;
-  border:1px solid rgba(255,255,255,.3);
-  background:var(--glass);backdrop-filter:blur(10px);
+  width:17px;height:17px;border-radius:999px;
+  border:2px solid rgba(255,255,255,.8);
+  background:rgba(255,255,255,.18);
   transition:transform .15s,background .15s,border-color .15s;
 }
-.campaign-node .node-round{font-size:11px;letter-spacing:.1em}
-.campaign-node .node-title{font-size:8px;letter-spacing:.14em;white-space:nowrap}
+/* Every label here is also `.mono`, and `.mono` pins a near-white colour. On the
+   dark chips that was invisible-adjacent; on the white LIVE chip it was invisible
+   outright, and the level number and title vanished off the plate entirely. Let
+   them inherit, so the node's own state colour is the single thing that decides. */
+.campaign-node .node-round,
+.campaign-node .node-title,
+.campaign-node .node-foe{color:inherit}
+.campaign-node .node-round{font-size:14px;font-weight:600;letter-spacing:.1em;line-height:1}
+.campaign-node .node-title{font-size:9.5px;font-weight:500;letter-spacing:.14em;white-space:nowrap}
 
 /* behind you: lit and solid */
-.campaign-node.cleared{color:rgba(242,243,245,.75)}
+.campaign-node.cleared{color:#fff;border-color:rgba(255,255,255,.78);background:rgba(255,255,255,.16)}
 .campaign-node.cleared .node-dot{background:#f2f2ee;border-color:#f2f2ee}
 
-/* the one you can actually take */
-.campaign-node.live{color:#f7f8fa;cursor:pointer}
+/* the one you can actually take: solid white, and the only inverted thing on screen */
+.campaign-node.live{
+  cursor:pointer;
+  background:#f4f5f7;border-color:#fff;color:#0b0b0e;
+  box-shadow:0 0 0 6px rgba(255,255,255,.16);
+}
 .campaign-node.live .node-dot{
-  width:21px;height:21px;
-  border-color:#f2f2ee;
-  box-shadow:0 0 0 5px rgba(255,255,255,.08);
+  width:22px;height:22px;
+  background:#0b0b0e;border-color:#0b0b0e;
   animation:fw-pulse 1.4s ease-in-out infinite;
 }
-.campaign-node.live:hover .node-dot{transform:scale(1.14);background:rgba(255,255,255,.22)}
+.campaign-node.live .node-round{font-size:16px}
+.campaign-node.live:hover{background:#fff;box-shadow:0 0 0 9px rgba(255,255,255,.22)}
+.campaign-node.live:hover .node-dot{transform:scale(1.14)}
 .campaign-node:disabled{pointer-events:none}
 
 .campaign .select-actions{justify-content:flex-start;margin-top:8px}
@@ -1252,10 +1281,18 @@ html,body{background:#07070a}
   .campaign-node .node-title{display:none}
   .campaign-map{min-height:260px}
 }
-/* The moon is the map, but the nodes have to win: knock the stage back the way
-   the roster and bench already do for their own panels. */
+/* The moon is the map, but the nodes have to win.
+   The first attempt bought that with black: a radial scrim under the board and the
+   stage knocked down to .28. That works, and it costs the moon, which is the thing
+   worth looking at. The board earns its own contrast instead: white plates, white
+   rules, white type. Nothing behind it is dimmed to make it readable. */
 .route-campaign .world-stage{opacity:.5}
-.campaign-node .node-foe{font-size:8px;letter-spacing:.12em;color:rgba(242,243,245,.55)}
+.campaign-path{z-index:1}
+.campaign-node{z-index:2}
+.campaign-node .node-foe{font-size:9px;letter-spacing:.12em;opacity:.8}
+/* the walked path has to be visible against the same sky */
+.campaign-path line{stroke:rgba(255,255,255,.45)}
+.campaign-path line.walked{stroke:rgba(255,255,255,.92)}
 /* What a cleared level actually bought you. */
 .result-reward{
   margin:0 0 14px;font-size:9px;letter-spacing:.14em;color:#f2f2ee;
@@ -1263,7 +1300,7 @@ html,body{background:#07070a}
 }
 .result-reward small{font-size:8px;color:rgba(242,243,245,.55);letter-spacing:.1em}
 
-/* Which side is yours — the HUD half of the same question the 3D marker answers. */
+/* Which side is yours, the HUD half of the same question the 3D marker answers. */
 .hud-hull .bot-marker{
   width:auto;min-width:34px;padding:0 7px;height:18px;
   font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.12em;

@@ -3,7 +3,7 @@
 <p align="center">Robot flies box each other on a moon, and their brains are real fruit fly circuits.</p>
 
 <p align="center">
-  <img src="docs/images/landing.jpg" alt="FLYWEIGHT — a bipedal robot fly on a lunar surface under a black sky" width="100%">
+  <img src="docs/images/landing.jpg" alt="FLYWEIGHT: a bipedal robot fly on a lunar surface under a black sky" width="100%">
 </p>
 
 ---
@@ -17,13 +17,13 @@ courtship-pursuit circuit did. Nothing is scripted.
 
 <p align="center">
   <img src="docs/images/roster.jpg" alt="Roster select: six fighters, stat bars derived from the wiring, and a deploy-count stepper" width="100%">
-  <br><sub>Every stat on the card is computed from the brain you wired — they are the same numbers that drive the fight.</sub>
+  <br><sub>Every stat on the card is computed from the brain you wired: they are the same numbers that drive the fight.</sub>
 </p>
 
 ## The neurons are real
 
 Cell populations are counted from the [FlyWire](https://flywire.ai) 783 public release
-(Schlegel et al., *Nature* 2024) — 139,249 annotated neurons.
+(Schlegel et al., *Nature* 2024), 139,249 annotated neurons.
 
 | Module | Circuit | Cells | Transmitter | In a fight |
 |---|---|--:|---|---|
@@ -39,7 +39,7 @@ descending cells, and the Giant Fiber is the only glutamatergic one in the set.
 
 That asymmetry is in the simulation: population size sets signal noise at `1/√N`, so the
 two-cell Giant Fiber is visibly twitchy while 234-cell pursuit is smooth. It is also in the
-3D brain view, which draws **one line per real cell** — when escape fires you see two
+3D brain view, which draws **one line per real cell**, when escape fires you see two
 threads flash; when pursuit fires, hundreds shimmer.
 
 Synaptic weights between modules are **not** from the connectome. Those are your loadout.
@@ -54,15 +54,15 @@ That is the game.
 
 Damage comes from swung fists, never from ramming. Bodies shove; only a fist wounds.
 
-- A punch is an **angular impulse** on a real arm body — momentum carries it against a spring back to guard
+- A punch is an **angular impulse** on a real arm body, momentum carries it against a spring back to guard
 - A strike only lands above **3.2 m/s at the fist**
 - **LC10a fires the punch.** A brain without pursuit equipped lands zero strikes and deals zero damage. It can chase, dodge and steer perfectly and never hurt anyone
 - Committing costs **16 recovery ticks** where you cannot block
-- The Giant Fiber guard blocks **78%** — but you cannot punch while blocking
+- The Giant Fiber guard blocks **78%**, but you cannot punch while blocking
 - The arena closes in after 25 seconds, so there is nowhere to run by the end
 
 The Giant Fiber does two jobs at two distances: escape when the threat is far, guard when it
-is close. Same reflex, same habituation — so a fly that panics too often loses both.
+is close. Same reflex, same habituation, so a fly that panics too often loses both.
 
 ## The brains can be evolved
 
@@ -83,7 +83,7 @@ champion vs all four hand-designed archetypes, on seeds it never trained on:
 ```
 
 The evolved champion is the boss. It also converged on a zero refractory period, which sent
-me to measure the parameter space and find that four fifths of that slider was dead space —
+me to measure the parameter space and find that four fifths of that slider was dead space,
 a finding about my bounds, not a bug in the search.
 
 ## Architecture
@@ -92,7 +92,7 @@ a finding about my bounds, not a bug in the search.
   <img src="docs/images/architecture.png" alt="FLYWEIGHT architecture" width="82%">
 </p>
 
-A match is persisted as **a seed plus two brain snapshots**. No frames are stored — replay
+A match is persisted as **a seed plus two brain snapshots**. No frames are stored, replay
 re-runs the simulation. Brain rows are append-only and versioned, so editing a bot cannot
 rewrite the history of fights it already had.
 
@@ -106,7 +106,7 @@ instead of closing. Real DNa02 is graded: firing rate encodes turn magnitude.
 oscillate. Real motor neurons low-pass spike trains into graded muscle tension, and that
 filter is also what makes the controller stable. The physiological fix was the engineering fix.
 
-**Habituation.** Escape was briefly an unbeatable strategy — a dodging bot never fought and
+**Habituation.** Escape was briefly an unbeatable strategy, a dodging bot never fought and
 nobody could catch it, so every draw was a zero-hit stalemate. Real Giant Fibers habituate to
 repeated looming, and adding that took draws from 15 to 0 and average match length from 57s
 to 31s. It habituates to *weak* repeated looming but never to a genuine charge, which is
@@ -120,7 +120,7 @@ peaked at 0.39 and blocked zero of 85 strikes.
 ```bash
 pnpm install
 
-# API — routes under /api, health at /api/healthz
+# API: routes under /api, health at /api/healthz
 cd artifacts/api-server && PORT=5000 pnpm dev
 
 # Web

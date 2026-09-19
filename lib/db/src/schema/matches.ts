@@ -19,7 +19,7 @@ import { brainsTable } from "./brains";
 import { newId } from "./ids";
 
 /**
- * A match IS `seed + two BotSpec snapshots`. Not a single frame is stored —
+ * A match IS `seed + two BotSpec snapshots`. Not a single frame is stored,
  * replaying means handing those three things back to the deterministic sim and
  * letting it produce the same 5400 frames it produced the first time.
  *

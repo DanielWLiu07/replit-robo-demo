@@ -5,7 +5,7 @@ import { CAMPAIGN, CAMPAIGN_LEVELS } from "./campaignLevels";
  *
  * Five levels laid along the surface rather than a list: the moon is already
  * behind every screen, so the run reads as a journey across it instead of a
- * menu on top of it. Each node is one round — the opponent is generated from
+ * menu on top of it. Each node is one round, the opponent is generated from
  * (runSeed, round) server-side, so a node is a real fight, not a label.
  *
  * Progress is the only gate. Cleared nodes stay lit behind you, the next one is

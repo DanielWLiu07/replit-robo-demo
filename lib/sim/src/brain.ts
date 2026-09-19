@@ -26,7 +26,7 @@ export interface MotorIntent {
 
 /**
  * A brain is the equipped modules, each a LIF cell fed by the sensory channel its
- * real counterpart responds to. Spikes are impulses on the motor bus — nothing
+ * real counterpart responds to. Spikes are impulses on the motor bus, nothing
  * integrates a "plan", which is the point.
  */
 export class Brain {
@@ -34,7 +34,7 @@ export class Brain {
   private weights = new Map<NeuronModule, number>();
   /** P1 arousal: multiplies every other module's drive. Rises with damage taken. */
   private arousal = 1;
-  /** LC11 gates LC10a — you chase what you have acquired. */
+  /** LC11 gates LC10a: you chase what you have acquired. */
   private acquired = 0;
   /**
    * Giant Fiber habituation. Repeated looming produces a diminishing escape response
@@ -92,7 +92,7 @@ export class Brain {
       return fired;
     };
 
-    // P1 — arousal. Damage and time raise it; it decays toward 1.
+    // P1, arousal. Damage and time raise it; it decays toward 1.
     if (this.cells.has("P1")) {
       if (fire("P1", damageTakenThisTick * 0.6 + 0.04)) {
         this.arousal = Math.min(1.65, this.arousal + 0.12 * (this.weights.get("P1") ?? 1));
@@ -113,18 +113,18 @@ export class Brain {
       intent.turn += (s.bearing >= 0 ? -1 : 1) * 1.7;
     }
 
-    // LC11 — small-object detection. Acquires a distant target, gating pursuit.
+    // LC11, small-object detection. Acquires a distant target, gating pursuit.
     // The *lock* has to outlive the acquisition: LC11 answers small moving objects,
     // and at punching range the opponent is not small any more. With a fast decay the
     // gate reopened every time a fight closed to the pocket, so an LC11 build simply
-    // stopped punching once it arrived — worth 0 wins in 18 matches. Acquisition is
+    // stopped punching once it arrived, worth 0 wins in 18 matches. Acquisition is
     // brief; tracking persists.
     if (fire("LC11", (s.angularSize < 0.45 ? 0.5 : 0.12) * w("LC11"))) {
       this.acquired = 1;
     }
     this.acquired *= 0.994;
 
-    // LC10a — visual pursuit. The courtship tracking circuit, pointed at violence.
+    // LC10a, visual pursuit. The courtship tracking circuit, pointed at violence.
     if (!escaping) {
       const aligned = Math.pow(Math.max(0, Math.cos(s.bearing)), 0.45);
       const gate = this.has("LC11") ? 0.35 + 0.65 * this.acquired : 1;
@@ -133,19 +133,19 @@ export class Brain {
       }
     }
 
-    // DNa02 — steering. Turns toward the bearing error.
+    // DNa02, steering. Turns toward the bearing error.
     // Graded, not bang-bang: DNa02's firing rate encodes turn magnitude, so the
     // impulse scales with bearing error. Constant-magnitude turns produced a stable
-    // 90-degree orbit — the bots circled each other instead of closing.
+    // 90-degree orbit, the bots circled each other instead of closing.
     if (fire("DNA02", Math.min(1, Math.abs(s.bearing) / Math.PI) * 0.8 * w("DNA02"))) {
       intent.turn += Math.sign(s.bearing) * Math.min(1, Math.abs(s.bearing) / 0.6);
     }
 
-    // MDN — moonwalker. Backs off to reset the exchange. The trigger used to be the
+    // MDN, moonwalker. Backs off to reset the exchange. The trigger used to be the
     // opponent's torso filling the view (angularSize 1.1 ~ 0.98m), which was reachable
     // only inside a clinch; now that the bots hold punching range it could never fire
     // at all. Re-aimed at the range it is actually for: they are close enough to hit
-    // you (1.6m), so step out. Same circuit, same meaning — spacing, not ramming.
+    // you (1.6m), so step out. Same circuit, same meaning, spacing, not ramming.
     if (!escaping && fire("MDN", (s.angularSize > 0.72 ? 0.55 : 0.02) * w("MDN"))) {
       intent.forward -= 0.9;
     }

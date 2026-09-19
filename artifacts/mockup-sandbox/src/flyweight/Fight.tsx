@@ -22,7 +22,7 @@ const teamMean = (units: ArenaBotState[], pick: (u: ArenaBotState) => number) =>
   units.length ? units.reduce((s, u) => s + pick(u), 0) / units.length : 0;
 
 /**
- * The character type, off the same `profileBot` the API serves on every bot —
+ * The character type, off the same `profileBot` the API serves on every bot,
  * one implementation, so the card on the roster and the chip in the fight can
  * never disagree about what a fly is.
  */
@@ -130,7 +130,7 @@ export function Fight({
           <div className="hud-round mono">ROUND {String(round + 1).padStart(2, "0")}</div>
           {suddenDeath && !result && (
             <div className="sudden-death mono" role="status">
-              <i /> SUDDEN DEATH — WALLS CLOSING
+              <i /> SUDDEN DEATH, WALLS CLOSING
             </div>
           )}
         </div>
@@ -149,7 +149,7 @@ export function Fight({
             A level is worth something, and the win screen is where you find out.
             Clearing one buys both more points to place and more synaptic weight
             to place them in, and neither is reachable without coming back
-            through the bench — so the win screen offers that route rather than
+            through the bench, so the win screen offers that route rather than
             leaving the run to guess where its reward went.
           */}
           {won && cleared > 0 && cleared <= CAMPAIGN_LEVELS && (

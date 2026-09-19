@@ -12,7 +12,7 @@ import { newId } from "./ids";
 import { usersTable } from "./users";
 
 /**
- * A bot is the durable identity — name, chassis, owner. Its brain lives in
+ * A bot is the durable identity, name, chassis, owner. Its brain lives in
  * `brains` as an append-only revision list, because matches point at a brain
  * *version* and editing a bot must not rewrite the past.
  *
@@ -37,9 +37,9 @@ export const botsTable = pgTable(
     /** built-in roster: always fightable, never editable. */
     isSeed: boolean("is_seed").notNull().default(false),
     /**
-     * Spawned by the ladder rather than by a person. Real rows — so a ladder
+     * Spawned by the ladder rather than by a person. Real rows, so a ladder
      * fight is an ordinary match with ordinary foreign keys and replays on the
-     * ordinary socket — but hidden from the bot list and the Elo board, which
+     * ordinary socket, but hidden from the bot list and the Elo board, which
      * are about bots somebody actually built.
      */
     isGenerated: boolean("is_generated").notNull().default(false),

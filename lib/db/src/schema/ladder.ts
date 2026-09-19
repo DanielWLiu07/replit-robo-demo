@@ -26,7 +26,7 @@ import { usersTable } from "./users";
  * last. Losing ends the run and the round you reached is the score.
  *
  * `bot_spec` pins your fly at the moment the run started. Retuning mid-run must
- * not retroactively change the rounds you already cleared — the same rule that
+ * not retroactively change the rounds you already cleared, the same rule that
  * makes brain revisions append-only, applied one level up.
  */
 export const ladderRunsTable = pgTable(
@@ -50,7 +50,7 @@ export const ladderRunsTable = pgTable(
     status: text("status").$type<LadderStatus>().notNull().default("ACTIVE"),
     /** furthest round cleared. */
     round: integer("round").notNull().default(0),
-    /** summed match ticks across the run — the clear-time ranking key. */
+    /** summed match ticks across the run, the clear-time ranking key. */
     totalTicks: integer("total_ticks").notNull().default(0),
     simVersion: text("sim_version").notNull().default("unknown"),
 
@@ -96,7 +96,7 @@ export const ladderRoundsTable = pgTable(
     won: boolean("won").notNull(),
     outcome: text("outcome").$type<MatchOutcome>().notNull(),
     ticks: integer("ticks").notNull(),
-    /** how the opponent was built — search depth and budget. Inspectable, not folklore. */
+    /** how the opponent was built, search depth and budget. Inspectable, not folklore. */
     difficulty: jsonb("difficulty").$type<LadderDifficulty>().notNull(),
 
     createdAt: timestamp("created_at", { withTimezone: true })

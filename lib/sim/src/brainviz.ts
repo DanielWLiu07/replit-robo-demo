@@ -10,7 +10,7 @@ import { makeRng } from "./rng.js";
  * as exactly 2, so when escape fires you see two thick lines flash while pursuit
  * shimmers across hundreds. The asymmetry is the anatomy, not a styling choice.
  *
- * Positions are schematic, not traced morphology — visual projection neurons run from
+ * Positions are schematic, not traced morphology, visual projection neurons run from
  * the optic lobes medially into the central brain, descending neurons run from the
  * central brain down toward the nerve cord, and P1 sits central. Honest framing:
  * "anatomically arranged, one fibre per counted cell", not "traced from the connectome".
@@ -113,6 +113,6 @@ export function buildBrainGeometry(seed = "flyweight-brain"): PopulationGeometry
   return out;
 }
 
-/** Total fibres drawn — useful for a "N cells rendered" readout. */
+/** Total fibres drawn, useful for a "N cells rendered" readout. */
 export const totalFibres = (g: PopulationGeometry[]) =>
   g.reduce((a, p) => a + p.fibres.length, 0);

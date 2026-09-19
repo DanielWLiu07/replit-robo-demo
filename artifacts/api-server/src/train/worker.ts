@@ -1,14 +1,14 @@
 /**
  * The trainer, in its own process.
  *
- * `evolve()` is CPU-bound and synchronous — a default run is ~2,300 simulated
+ * `evolve()` is CPU-bound and synchronous: a default run is ~2,300 simulated
  * matches and about half a minute of solid compute. Run that on the request
  * thread and the API stops answering, health checks fail, and every live match
  * socket freezes mid-fight at 60 Hz. So it runs here instead, and talks to the
  * API over IPC.
  *
  * This file must stay dependency-light: it is forked, so everything it imports
- * is paid for on every run. Sim and contract only — no express, no database.
+ * is paid for on every run. Sim and contract only, no express, no database.
  * The parent owns persistence; this process owns arithmetic.
  */
 import type { BotSpec, TrainConfig, TrainerMessage } from "@workspace/contract";
@@ -42,7 +42,7 @@ function main(): void {
   try {
     const { best } = evolve(input.panel, input.config, input.seed, (report) => {
       // Stream the curve as it is produced. The per-generation champion brain is
-      // dropped here rather than in the parent — it is the heaviest part of the
+      // dropped here rather than in the parent: it is the heaviest part of the
       // report and nothing downstream charts it.
       post({
         type: "generation",

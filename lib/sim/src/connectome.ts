@@ -8,7 +8,7 @@ import type { NeuronModule } from "@workspace/contract";
  *
  * The shape of this table is the interesting part: hundreds of visual projection
  * neurons converge onto two or four descending cells. The Giant Fiber really is a
- * population of two — one per hemisphere — and it is the only glutamatergic member
+ * population of two: one per hemisphere, and it is the only glutamatergic member
  * of the set. Everything else here is cholinergic.
  */
 export interface CellPopulation {
@@ -43,7 +43,7 @@ export function populationNoise(m: NeuronModule): number {
   return 0.34 / Math.sqrt(CONNECTOME[m].count);
 }
 
-/** Glutamatergic DNp01 hyperpolarises its followers — escape suppresses pursuit. */
+/** Glutamatergic DNp01 hyperpolarises its followers, escape suppresses pursuit. */
 export function isInhibitory(m: NeuronModule): boolean {
   return CONNECTOME[m].neurotransmitter === "glutamate";
 }

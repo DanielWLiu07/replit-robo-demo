@@ -4,7 +4,7 @@
  * The pool is a single scalar; the real constraint is synaptic weight, and the three
  * stats are not priced the same (evasion buys at 28 points per unit of weight,
  * aggression 26, tracking 24). So a pool that is affordable spread across evasion can
- * be unaffordable poured into tracking — and the solver answers that by scaling the
+ * be unaffordable poured into tracking, and the solver answers that by scaling the
  * whole ask down, which is the silent renormalisation the pool exists to abolish.
  * The honest pool is therefore the WORST case, not the best.
  */

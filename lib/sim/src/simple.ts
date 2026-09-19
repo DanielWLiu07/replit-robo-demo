@@ -13,7 +13,7 @@ import { BRAIN_WEIGHT_BUDGET, type BrainSpec, type ModuleSlot, type NeuronModule
  * full pair stays available underneath for anyone who wants it.
  */
 
-/** Sensible operating range, measured rather than guessed — see docs/PLAN.md. */
+/** Sensible operating range, measured rather than guessed, see docs/PLAN.md. */
 export const WEIGHT_MIN = 0.4, WEIGHT_MAX = 3.2;
 const THRESHOLD_HI = 1.15;   // timid: needs a lot of evidence
 const THRESHOLD_LO = 0.45;   // twitchy: fires on a hint
@@ -34,7 +34,7 @@ export const toIntensity = (slot: ModuleSlot): number =>
 /**
  * Build a legal brain from nothing but a list of (circuit, intensity) pairs.
  * Scales everything down proportionally if the budget is blown, so the UI can never
- * hand the schema something it will reject — the player just sees the bars shrink.
+ * hand the schema something it will reject, the player just sees the bars shrink.
  */
 export function simpleBrain(
   picks: Array<{ module: NeuronModule; intensity: number }>,
@@ -45,7 +45,7 @@ export function simpleBrain(
   if (total > BRAIN_WEIGHT_BUDGET) {
     // Scale to just under the cap and round DOWN. Rounding each weight to 2dp after
     // scaling can add back up to 0.005 per slot, which is enough to push a five-slot
-    // brain over the budget and get it rejected by the schema — invisible in the UI,
+    // brain over the budget and get it rejected by the schema, invisible in the UI,
     // and it would only show up as a launch that silently failed.
     const k = (BRAIN_WEIGHT_BUDGET - 0.05) / total;
     slots = slots.map((s) => ({

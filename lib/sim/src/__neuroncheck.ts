@@ -12,7 +12,7 @@ const FULL = [
 const NO_PURSUIT = FULL.filter(s => s.module !== "LC10A");
 const NO_GF      = FULL.filter(s => s.module !== "LPLC2_DNP01");
 
-/** A punch is a large jump in an arm's angular velocity — the impulse landing. */
+/** A punch is a large jump in an arm's angular velocity, the impulse landing. */
 function scan(me: BotSpec, foe: BotSpec, seeds = 6) {
   let punches = 0, punchOnPursuitTick = 0, guardRises = 0, guardOnGfTick = 0;
   const armWithArousal: Array<[number, number]> = [];

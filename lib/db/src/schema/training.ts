@@ -20,14 +20,14 @@ import { usersTable } from "./users";
 
 /**
  * A neuroevolution run. Spikes are not differentiable, so there is no gradient
- * to descend and training means evolution — which is CPU-bound, synchronous and
+ * to descend and training means evolution, which is CPU-bound, synchronous and
  * takes half a minute. It therefore runs in a forked process, and this table is
  * how the HTTP side watches it: the row is the job, the client polls it.
  *
  * `curve` is the chartable fitness history, appended a generation at a time, so
  * a chart can fill in live rather than appearing all at once at the end. The
- * per-generation champion brain is deliberately *not* kept — only `bestBrain`
- * at the end — because storing 24 BrainSpecs per run to draw one line is waste.
+ * per-generation champion brain is deliberately *not* kept, only `bestBrain`
+ * at the end, because storing 24 BrainSpecs per run to draw one line is waste.
  */
 export const trainingRunsTable = pgTable(
   "training_runs",
@@ -43,7 +43,7 @@ export const trainingRunsTable = pgTable(
     /** name the evolved bot will be given if the run succeeds. */
     name: text("name").notNull(),
     status: text("status").$type<TrainStatus>().notNull().default("PENDING"),
-    /** evolution is seeded too — a run is as reproducible as a match. */
+    /** evolution is seeded too, a run is as reproducible as a match. */
     seed: text("seed").notNull(),
     simVersion: text("sim_version").notNull().default("unknown"),
     config: jsonb("config").$type<TrainConfig>().notNull(),

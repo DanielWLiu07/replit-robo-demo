@@ -49,7 +49,7 @@ app.use(
   })),
 );
 
-// Clerk when there's a session, a guest cookie otherwise — see identity.ts.
+// Clerk when there's a session, a guest cookie otherwise, see identity.ts.
 app.use(identityMiddleware());
 
 app.use("/api", router);

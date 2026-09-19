@@ -14,7 +14,7 @@ import {
  * node-for-node port rather than a copy.
  *
  * The mechanism, unchanged: shade the surface off its own normal, invert it to
- * get ink density, then read a three-channel hatch atlas in SCREEN space — R, G
+ * get ink density, then read a three-channel hatch atlas in SCREEN space, R, G
  * and B are three hatch densities, folded in over their own tone windows so
  * strokes accumulate as the surface darkens. Compositing over a paper texture
  * keeps it a drawing rather than a render.
@@ -23,7 +23,7 @@ import {
  * a value quantised to 8 frames a second, so the hatching re-draws itself a few
  * times a second instead of sliding around with the camera. That is what reads
  * as hand-drawn. Their own perf pass hoisted those two values to the CPU and
- * this keeps that — `advanceBoil` is called once per frame, not per pixel.
+ * this keeps that, `advanceBoil` is called once per frame, not per pixel.
  */
 // TSL node handles are heavily generic; the vendored lighting primitive takes the
 // same escape hatch, and the call sites below stay readable because of it.

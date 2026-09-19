@@ -4,7 +4,7 @@ import { ServerMessage, TICK_HZ } from "@workspace/contract";
 import type { BotSpec, MatchFrame, MatchResult } from "@workspace/contract";
 import { runMatch } from "@workspace/sim";
 
-/** Ticks of spike history the rasters scroll through — six seconds at 60 Hz. */
+/** Ticks of spike history the rasters scroll through, six seconds at 60 Hz. */
 export const SCOPE_WINDOW = 360;
 
 export interface MatchState {

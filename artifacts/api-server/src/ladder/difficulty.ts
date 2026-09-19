@@ -5,7 +5,7 @@ import { BRAIN_WEIGHT_BUDGET, CHASSIS_STATS, type Chassis } from "@workspace/con
  *
  * Difficulty is **selection pressure**, not crippled opponents.
  *
- * The obvious design — starve early rounds of synaptic weight — was measured
+ * The obvious design, starve early rounds of synaptic weight, was measured
  * and does not work. A fly with a tiny budget is not easy, it is ineffectual:
  * neither side can finish, roughly half of round-1 fights hit the 90-second cap
  * (median 62-78s across three variants) and the player "wins" a stalemate on
@@ -19,8 +19,8 @@ import { BRAIN_WEIGHT_BUDGET, CHASSIS_STATS, type Chassis } from "@workspace/con
  * your actual bot, then round 1 sends the one that did **worst** and round 13
  * sends the one that did **best**.
  *
- * That is a real selection gradient — the cheap half of the same neuroevolution
- * the trainer runs — and it degrades honestly. There is no hidden stat
+ * That is a real selection gradient, the cheap half of the same neuroevolution
+ * the trainer runs, and it degrades honestly. There is no hidden stat
  * inflation: the opponent is always a brain you could legally have built.
  */
 export interface RoundPlan {
@@ -47,7 +47,7 @@ export function progressAt(round: number): number {
  * 150 hull against a DRONE's 70, and the 90-second tiebreak is hull fraction,
  * so a TANK that merely survives beats you. Measured, TANK rounds were the
  * sharpest spikes in the curve (27% at round 4, 0% at round 12). Alternating it
- * round to round also made the curve sawtooth — 80% at round 5, 33% at round 6 —
+ * round to round also made the curve sawtooth, 80% at round 5, 33% at round 6,
  * which reads as randomness rather than escalation.
  *
  * So it moves in tiers, and the order is not the obvious one. DRONEs are the
@@ -56,7 +56,7 @@ export function progressAt(round: number): number {
  * round-1 fights hit the 90-second cap (median 62s) with the player winning a
  * stalemate on hull. Fragile is no use if you cannot catch it.
  *
- * So the ladder opens on HORNETs — catchable and killable — then DRONEs, whose
+ * So the ladder opens on HORNETs, catchable and killable, then DRONEs, whose
  * evasion is a different kind of problem, then TANKs late, where a wall is
  * supposed to feel like a wall.
  */
@@ -72,8 +72,8 @@ const REFERENCE_HULL = CHASSIS_STATS.DRONE.hull;
 /**
  * A tier change hands the opponent more hull, and hull is worth a great deal:
  * moving from DRONE to HORNET is +43%, and the 90-second tiebreak rewards
- * simply not dying. Measured, the un-compensated tier boundary was a cliff —
- * 80% at round 5 to 33% at round 6 — which ends runs on a coin flip rather than
+ * simply not dying. Measured, the un-compensated tier boundary was a cliff,
+ * 80% at round 5 to 33% at round 6, which ends runs on a coin flip rather than
  * on the climb.
  *
  * So a tougher chassis buys a *smaller* brain budget. The exponent makes it a
@@ -95,7 +95,7 @@ export function planRound(round: number): RoundPlan {
     // A field to choose from. Wider later, so "best of" means more.
     candidates: Math.min(8, 3 + Math.floor((round - 1) / 2)),
     // Never the very bottom of the field. Taking the single worst candidate
-    // reliably finds a fly so useless that nobody can finish it — measured at
+    // reliably finds a fly so useless that nobody can finish it, measured at
     // 16 of 25 round-1 fights hitting the 90-second cap. The pathological tail
     // is not "easy", it is broken, so the curve starts above it and climbs to
     // the best of the field by round 13.

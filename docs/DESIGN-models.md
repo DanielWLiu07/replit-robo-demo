@@ -1,4 +1,4 @@
-# FLYWEIGHT — mechanical manga model direction
+# FLYWEIGHT: mechanical manga model direction
 
 A salvaged laboratory instrument that learned to fight. All insects are machines.
 The interface stays restrained and precise; the robots carry the grime.
@@ -12,7 +12,7 @@ nested halftone dots, crosshatch in deeper shadows, heavy silhouette accents.
 No sepia, neon, coloured eyes, glow, glossy toy plastic, or organic insect flesh.
 This is an authored adaptation, not a claim of an exact Blender scene conversion.
 
-## General art style — apply to EVERY generation
+## General art style: apply to EVERY generation
 
 Mechanical manga, drawn like a grimy black-and-white engineering plate. One coherent
 manufacturing family: bone-white enamel, charcoal steel, exposed fasteners, chipped
@@ -54,7 +54,7 @@ oversized specimen plate, the arena an observation chamber, the editor a lab ins
 - GLB, Y-up after import, centred on the ground, forward aligned by inspection.
 - Target 12,000 triangles per bot; normalize once on load. No runtime geometry repair.
 
-## 01 — DRONE / robotic Drosophila (first generation)
+## 01: DRONE / robotic Drosophila (first generation)
 
 Lightweight scouting chassis. Large compound camera eyes, thin abdominal plates,
 six spring-steel legs, small exposed flywheel in the thorax, twin narrow wing spars.
@@ -63,13 +63,13 @@ It should look agile but repairable with a screwdriver. Not a cute toy or real f
 Meshy prompt:
 A complete mechanical fruit fly battle robot, isolated full body in a neutral standing pose. Compact segmented metal head, thorax and tapered abdomen. Two oversized faceted compound camera eyes in bolted housings. Exactly six articulated piston legs with chunky hinges and claw feet, separated from the body. Two rigid swept-back perforated metal wing blades with exposed spars. Chipped white armour over blackened steel, rivets, panel seams, dents, vents and recessed cable bundles. Grimy industrial manga machinery, strong readable silhouette, hard surface geometry. All parts connected, feet level. No organic tissue, no fur, no transparent wings, no colour, no glow, no text, no logo, no pedestal, no scenery.
 
-## 02 — HORNET
+## 02: HORNET
 
 Same manufacturing family; longer pointed abdomen, heavier shoulders, narrow visor,
 longer swept wing blades. A black wedge between bone-white armour plates. Reinforced
 front legs give a pursuing, forward-leaning silhouette. Geometry changes, not colour.
 
-## 03 — TANK
+## 03: TANK
 
 Low, wide, beetle-like mechanical fly; overlapping thorax plates and heavy hydraulic
 legs. Short folded metal wings, thick impact bumper, protected camera eyes. Keep six

@@ -15,7 +15,7 @@ import { MoonOutliner } from "./MoonOutliner";
  *
  * Source: the UWDSC gacha prototype (`feat/gacha-reveal-prototype`,
  * `prototype/index.html`). The shaders below are that file's `moonMat` and
- * `propMat` **verbatim** — same GLSL, same crater placements, same camera and
+ * `propMat` **verbatim**: same GLSL, same crater placements, same camera and
  * key light. That is why this stage runs its own `WebGLRenderer` instead of
  * joining the WebGPU one the rest of the site uses: those are raw GLSL
  * `ShaderMaterial`s, and WebGPU cannot compile them. A second renderer on one
@@ -82,7 +82,7 @@ const MOON_FRAG = `precision highp float;uniform sampler2D hatchTex,paperTex;uni
       gl_FragColor=vec4(mix(vec3(0.05),paper,clamp(m2,0.0,1.0)),1.0);}`;
 
 /**
- * Prop / chassis vertex shader — WITH SKINNING.
+ * Prop / chassis vertex shader, WITH SKINNING.
  *
  * This used to transform `position` directly, which is the BIND POSE vertex. A raw
  * ShaderMaterial gets no skinning unless it asks for it, so every skinned body on
@@ -91,8 +91,8 @@ const MOON_FRAG = `precision highp float;uniform sampler2D hatchTex,paperTex;uni
  * the limbs never moved.
  *
  * It hid well. `SkinnedMesh.applyBoneTransform` is a CPU re-implementation of the
- * skinning maths, so every measurement taken through it — bone quaternions, swept
- * vertex range, joint amplitudes against the goose — was correct AND blind to this.
+ * skinning maths, so every measurement taken through it, bone quaternions, swept
+ * vertex range, joint amplitudes against the goose, was correct AND blind to this.
  * The only thing that would have caught it is looking at rendered pixels.
  *
  * The chunks are `#ifdef USE_SKINNING`, which the renderer defines per-object, so
@@ -126,7 +126,7 @@ const PROP_FRAG = `precision highp float;uniform sampler2D hatchTex,paperTex;uni
  * Screen-space ink outline.
  *
  * A normal-inflate hull needs a CLOSED mesh: you render its back faces and see
- * only the silhouette. The rigged chassis is not closed — it is separate plates —
+ * only the silhouette. The rigged chassis is not closed: it is separate plates,
  * so back faces show all over the body and read as black wedges that move with
  * the limbs. A depth Sobel has no such requirement: it finds the edge in the
  * DEPTH BUFFER, so it outlines whatever is actually on screen, manifold or not,
@@ -204,14 +204,14 @@ const FLY_FIT = 2.9;
  * The ring shows fighters at true scale, because there the size difference is
  * information: a TANK really does have the reach and the hull to match. The
  * showcase is a portrait at a fixed camera, and at true scale a TANK is 1.44x a
- * DRONE and does not fit the shot — measured at 883px tall in a 937px frame with
+ * DRONE and does not fit the shot, measured at 883px tall in a 937px frame with
  * its head 101px above the top edge, while the DRONE sat at 625px.
  *
  * So compress the spread rather than flattening it: the TANK still reads as the
  * heavy one, and all three are framed the same.
  *
  * Normalised on DRONE, not on the middle chassis, because DRONE is the default
- * build — it is what the landing shows, and that shot is already framed tight.
+ * build: it is what the landing shows, and that shot is already framed tight.
  * Anchoring here leaves it at exactly the size it was and only brings the other
  * two down to meet it.
  */
@@ -413,15 +413,15 @@ export function MoonStage({
     if (use3dTitle) scene.add(enterGroup);
     document.body.classList.toggle("title2d", !use3dTitle);
 
-    // KatieRoze — the face the pomme/casino scene sets its titles in.
+    // KatieRoze, the face the pomme/casino scene sets its titles in.
     //
     // It cannot be extruded: its `glyf` table holds only two-point placeholder
     // contours and the real letterforms live in the SVG/sbix tables as embedded
-    // watercolour artwork. So this uses the portfolio's own technique for it —
-    // draw the word to a canvas with the webfont and map that onto a plane —
+    // watercolour artwork. So this uses the portfolio's own technique for it,
+    // draw the word to a canvas with the webfont and map that onto a plane,
     // which keeps the type IN the scene, in perspective, with the right face.
     //
-    // Black outline, white inside — derived from the alpha, because a colour
+    // Black outline, white inside, derived from the alpha, because a colour
     // font will not take a fillStyle or a strokeText.
     const inkTextPlane = (text: string, width: number) => {
       const pad = 96;
@@ -512,7 +512,7 @@ export function MoonStage({
       try {
         // One subset for every string the UI sets in this face. The old display cut
         // was missing F, G, H, I and Y, so five of FLYWEIGHT's nine letters were
-        // silently falling back to `cursive` — a subset miss does not error, it
+        // silently falling back to `cursive`, a subset miss does not error, it
         // just quietly renders in the next font.
         const face = new FontFace("KatieRoze", `url(${base}fonts/katieroze-ui.woff2)`);
         await face.load();
@@ -560,8 +560,8 @@ export function MoonStage({
      * instead of a full teardown. `loadedChassis` doubles as the guard against a slow
      * fetch landing after a newer pick has already won the race.
      */
-    // Up to three classes can be on screen at once — the bench portrait and the
-    // two sides of the ring — so a bind is fetched, skinned and weighted ONCE per
+    // Up to three classes can be on screen at once, the bench portrait and the
+    // two sides of the ring, so a bind is fetched, skinned and weighted ONCE per
     // class and shared. `buildSkinnedBot` does not clone the geometry, so the cache
     // OWNS it: nothing below may dispose a rig's geometry, or every other rig cut
     // from the same bind goes with it. Teardown's `scene.traverse` reaches them all.
@@ -571,7 +571,7 @@ export function MoonStage({
      *
      * NEVER calls back synchronously, cache hit or not. `loadChassis` runs while
      * the effect body is still executing, above the point where `ring`, `ringRigs`
-     * and `buildSide` are declared — a synchronous hit would touch them in the
+     * and `buildSide` are declared, a synchronous hit would touch them in the
      * temporal dead zone. The microtask is what keeps that safe.
      */
     const withBind = (name: Chassis, use: (bind: ReturnType<typeof bindChassis>) => void) => {
@@ -598,7 +598,7 @@ export function MoonStage({
         if (flyRig) { flyFit.remove(flyRig.mesh); flyRig = null; }
         // NO ink hull on the rigged bodies. A normal-inflate outline assumes a
         // CLOSED mesh: render its back faces and you see only the silhouette. This
-        // chassis is not closed — it is plates and separate parts — so back faces
+        // chassis is not closed: it is plates and separate parts, so back faces
         // are visible all over the body and read as black wedges that change shape
         // as the limbs swing. The hatch shader already carries the figure against
         // the moon, so the outline is not paying for itself here.
@@ -633,7 +633,7 @@ export function MoonStage({
      * The layout's `fly` y is set by eye in the editor, and every chassis has a
      * different stance, so a hand-picked number sinks one body into the regolith
      * and floats the next. This reads the rig's real lowest vertex in world space
-     * and lifts the root by however far it sits under the surface — and the
+     * and lifts the root by however far it sits under the surface, and the
      * surface is a SPHERE, so the target height is the moon at this x/z, not zero.
      * Idempotent: measuring after a shift gives a delta of zero.
      */
@@ -648,12 +648,12 @@ export function MoonStage({
       // candidate reports: this one moves by exactly 5, the other two do not.
       //   Box3.setFromObject() runs SkinnedMesh.computeBoundingBox(), whose result
       //   already carries the world transform, then applies matrixWorld on top of
-      //   it — it called this body 63 units tall and flung the root 14 into the air.
+      //   it: it called this body 63 units tall and flung the root 14 into the air.
       //   getVertexPosition() skins properly, but buildSkinnedBot binds BEFORE the
       //   mesh is parented, so bindMatrix is identity and the bone matrices already
       //   hold the world transform; times matrixWorld that counts the transform
       //   twice (root +5 moved it +10), and because the layout's fly rotation is
-      //   most of a flip the error is nearly invariant to y — so a snap built on it
+      //   most of a flip the error is nearly invariant to y, so a snap built on it
       //   has a fixed point at a nonsense height and converges happily to it.
       // The bind pose is also the honest reference: bindChassis puts the soles at
       // y=0 and the idle is a weight shift, not a jump, so this does not jitter.
@@ -682,7 +682,7 @@ export function MoonStage({
      * animation path. What it has to SAY, though, is "fighter waiting for the
      * bell", and the first pass said "someone standing around": feet welded flat
      * and square, both arms swinging +/-0.34 rad off `idleSwing`, and a guard of
-     * 0.12 — which in fistLocal is an OPEN guard, so the fists hung by the hips.
+     * 0.12, which in fistLocal is an OPEN guard, so the fists hung by the hips.
      * Read as a person waiting for a bus, not a boxer.
      *
      * What it is now, in the sim's own terms:
@@ -690,7 +690,7 @@ export function MoonStage({
      *    right foot back and wider. That base is what makes the silhouette read as
      *    a fighter before anything moves at all.
      *  - the weight rocks between them at ~0.9 Hz, and the unloaded foot lifts a
-     *    few per cent of body height as it comes off — a boxer's rock, not a step.
+     *    few per cent of body height as it comes off, a boxer's rock, not a step.
      *  - `gait` no longer walks. With the feet planted it only drives secondary
      *    motion (torso sway, shoulder ride, the |sin| bob), so it oscillates about
      *    zero instead of cycling 0..1, which used to march the figure on the spot.
@@ -732,7 +732,7 @@ export function MoonStage({
         x: 0, y: 0,
         // Zero, deliberately. `feet` are world coordinates that poseBot rotates
         // into the body frame by heading, and the showcase mesh's facing comes
-        // from the layout rather than from state — so a heading sway here would
+        // from the layout rather than from state, so a heading sway here would
         // swivel the FEET under a body that never turned.
         heading: 0,
         vx: 0, vy: 0, hull: 100,
@@ -748,7 +748,7 @@ export function MoonStage({
          *
          * Over-throwing past the axis (this was 0.66) spends the extra travel
          * swinging the fist ACROSS the body while extension is already pinned at
-         * one — the arm hangs at full stretch through the retraction and then
+         * one, the arm hangs at full stretch through the retraction and then
          * snaps, and the fist drifts further forward as it comes back. Measured:
          * reach wandered 0.450 -> 0.473 m while the swing decayed from 1.0 to 0.54.
          */
@@ -765,7 +765,7 @@ export function MoonStage({
         down: 0,
         // [Lx, Ly, Lz, Rx, Ry, Rz] in world metres: +x is forward of the hips and
         // +y is the bot's left, so this is lead foot forward and inside, rear foot
-        // back and wider — a stance, not a parade rest.
+        // back and wider, a stance, not a parade rest.
         feet: [0.13, -0.11, liftL, -0.10, 0.15, liftR],
       };
     };
@@ -782,7 +782,7 @@ export function MoonStage({
      * still works.
      *
      * Keep the amount BELOW the narrowest gap on the model. This fly has thin
-     * crevices — arm against torso, leg against leg — and an inflation wider than
+     * crevices, arm against torso, leg against leg, and an inflation wider than
      * a crevice pushes the hull's back faces in front of the body and fills it
      * with black. As the limbs swing those patches change shape, which reads as a
      * second figure animating out of sync rather than as an outline.
@@ -808,7 +808,7 @@ export function MoonStage({
 
     // ── THE RING ─────────────────────────────────────────────────────────
     // Built into this scene rather than stacked as a second canvas: Arena runs a
-    // WebGPU renderer with node materials, so its scene cannot join this one —
+    // WebGPU renderer with node materials, so its scene cannot join this one,
     // but the rig and the pose function are material-agnostic, so the fighters
     // can be the same hatch-shaded bodies standing on the actual surface.
     const ring = new THREE.Group();
@@ -827,8 +827,8 @@ export function MoonStage({
      * `frame.hits` has been streaming since the first day and nothing in the
      * scene ever read it, so landing a punch looked exactly like missing one:
      * the hull number moved and nothing else did. A hit now spends itself two
-     * ways — a ring thrown off at the point of contact and a kick to the camera
-     * — both scaled by the damage actually dealt, so a clean hit reads harder
+     * ways, a ring thrown off at the point of contact and a kick to the camera,
+     * both scaled by the damage actually dealt, so a clean hit reads harder
      * than a graze.
      *
      * Pooled and pre-allocated: hits arrive in bursts at 60 Hz, and allocating
@@ -852,7 +852,7 @@ export function MoonStage({
      * A pointer over your own fly.
      *
      * Both sides wear the same chassis model and fight in the same ink, so in
-     * motion nothing on screen said which one you were driving — you had to
+     * motion nothing on screen said which one you were driving: you had to
      * infer it from the hull bars. One marker per unit on side A, hovering over
      * the head and bobbing so it reads as an overlay, not as part of the body.
      */
@@ -888,7 +888,7 @@ export function MoonStage({
         holder.visible = false;
         // buildSkinnedBot ALREADY scales the mesh by rigHeight * DISPLAY, so applying
         // rigHeight here too squares it. Divide DISPLAY back out and the body ends up
-        // exactly rigHeight * RING_SCALE tall — the same scale as its own footsteps.
+        // exactly rigHeight * RING_SCALE tall, the same scale as its own footsteps.
         holder.scale.setScalar(RING_SCALE / DISPLAY);
         const rig = buildSkinnedBot(bind, propMat, name);
         holder.add(rig.mesh);
@@ -902,7 +902,7 @@ export function MoonStage({
     // runs inside a callback, by which time the whole effect has executed.
     // `loadRingSide` does not: its first line reads `ringWant` to no-op a repeat
     // request, so calling it any earlier is a temporal-dead-zone throw that takes
-    // the whole component down with it. (It did. Typecheck cannot see closure TDZ —
+    // the whole component down with it. (It did. Typecheck cannot see closure TDZ,
     // the blank page did.)
     swapRingSide.current = loadRingSide;
     loadRingSide(0, fightersRef.current?.[0]?.chassis ?? chassisRef.current);
@@ -940,7 +940,7 @@ export function MoonStage({
     // Dev-only live handles. Tweak in the console and the scene updates on the
     // next frame; `fw.dump()` prints the literals to paste back into this file.
     interface FwHandles { fly: THREE.Group; title: THREE.Group; enter: THREE.Group; camera: THREE.PerspectiveCamera; target: THREE.Vector3; dump: () => void;
-      /** what each side of the ring is actually wearing — the two must differ in a mixed-class fight */
+      /** what each side of the ring is actually wearing, the two must differ in a mixed-class fight */
       sides: () => { side: number; chassis: Chassis; verts: number; scale: number; visible: number }[];
       /** world position of every fighter on screen, so framing can be MEASURED rather than eyeballed */
       fighters: () => number[][] }
@@ -975,7 +975,7 @@ export function MoonStage({
           );
         },
       };
-      console.log("%cfw ready", "font-weight:bold", "— fw.fly.position.x=5 · fw.fly.scale.setScalar(2) · fw.title · fw.camera.position · fw.target · fw.dump()");
+      console.log("%cfw ready", "font-weight:bold", "fw.fly.position.x=5 · fw.fly.scale.setScalar(2) · fw.title · fw.camera.position · fw.target · fw.dump()");
     }
 
     // Everything authorable, by id. Built before the editor exists because the
@@ -1038,7 +1038,7 @@ export function MoonStage({
     }
 
     // Idle motion for the sky dressing. Every term is an OFFSET from the pose
-    // the layout authored, and none of it runs while the editor is mounted —
+    // the layout authored, and none of it runs while the editor is mounted,
     // so "copy layout" always emits the authored numbers, never a frame of
     // animation, and a G/S/R gesture is never fought by the clock.
     interface Drift {
@@ -1084,7 +1084,7 @@ export function MoonStage({
       }
     }
 
-    // ENTER is geometry, so it needs its own hit test. Only in view mode — while
+    // ENTER is geometry, so it needs its own hit test. Only in view mode, while
     // editing, a click belongs to selection and gesture confirmation.
     const enterRay = new THREE.Raycaster();
     const hitEnter = (e: PointerEvent | MouseEvent) => {
@@ -1138,7 +1138,7 @@ export function MoonStage({
          *
          * The static RING pose framed the whole 9-unit arena from 9 units away, so
          * two 0.68-unit fighters came out about forty pixels tall, low in frame and
-         * behind the HUD glass — which is why the boxing looked like nothing was
+         * behind the HUD glass, which is why the boxing looked like nothing was
          * happening. Track the midpoint of whoever is still standing and pull back
          * only as far as their separation actually needs: it closes on a clinch and
          * opens out when they break, and they stay the size of the shot.
@@ -1151,7 +1151,7 @@ export function MoonStage({
            *
            * This was 0.86 rad (49 deg) to stop the far fighter dropping behind the
            * HUD, but looking down that hard foreshortens a thrown arm almost
-           * entirely into the screen — the bots throw a punch every 1.2 s and you
+           * entirely into the screen, the bots throw a punch every 1.2 s and you
            * simply could not see them. The both-axes fit below now handles keeping
            * the pair in frame, and dropping the angle also SHRINKS the vertical
            * spread a depth separation makes (it scales with sin of this), so the
@@ -1162,7 +1162,7 @@ export function MoonStage({
            * Camera elevation above the ring plane, radians.
            *
            * The moon is only 70 units across and the fight camera sits about a metre
-           * off the deck, which puts the HORIZON 11-12 units away — closer than it
+           * off the deck, which puts the HORIZON 11-12 units away, closer than it
            * sounds, because the shot is framed on bodies two units apart. At the old
            * 0.52 the camera pitched down barely more than the horizon's own
            * depression, so the ground ran out a quarter of the way down the screen
@@ -1181,7 +1181,7 @@ export function MoonStage({
           for (const u of live)
             spread = Math.max(spread, Math.hypot(u.x * RING_SCALE - cx, u.y * RING_SCALE - cz) * 2);
 
-          // The pair, plus air either side — measured in BODIES, not in absolute
+          // The pair, plus air either side, measured in BODIES, not in absolute
           // units. The margin used to be a flat 2.7 against a body only 0.58 units
           // tall, so once the collision geometry shrank to match the drawn torsos the
           // fighters were four body-heights of empty moon apart on screen: correct
@@ -1193,7 +1193,7 @@ export function MoonStage({
           const need = spread + bodyH * 1.25;
           // Separation in DEPTH becomes VERTICAL spread on screen at this elevation
           // (by sin of it), and the vertical field is much narrower than the
-          // horizontal one — so fitting only the width let the far fighter slide out
+          // horizontal one, so fitting only the width let the far fighter slide out
           // of the bottom of the shot. Fit both axes and take whichever needs more
           // room.
           const tall = spread * Math.sin(el) + bodyH * 1.45;
@@ -1214,7 +1214,7 @@ export function MoonStage({
           // Aim BELOW them so they ride high in the shot: the brain panels own the
           // bottom half of the screen, and a centred subject sits behind them.
           // Aim at chest height on the bodies themselves. The old bias was written
-          // against a frame several times larger — subtracting a fraction of it from
+          // against a frame several times larger, subtracting a fraction of it from
           // a flat 0.5 aimed BELOW the feet once the shot tightened, which threw the
           // fighters up into the HUD.
           // Aim just BELOW the feet, so the bodies ride ABOVE the centre line.
@@ -1222,7 +1222,7 @@ export function MoonStage({
           // This aimed 0.62 body-heights UP, at chest height, which does the
           // opposite of what the comment above it intends: looking at their
           // chests puts their chests in the middle of frame and drops everything
-          // else toward the bottom — and the bottom is where the brain panels
+          // else toward the bottom, and the bottom is where the brain panels
           // are. Measured in screen space the fighters were sitting between
           // normalised y -0.3 and -0.9, i.e. in the band the panels cover.
           tgtWant.copy(_mid).addScaledVector(ringUp, -bodyH * 0.22);
@@ -1237,7 +1237,7 @@ export function MoonStage({
          * Lazy while the shot is good, quick when it is not.
          *
          * A flat 0.55 was chosen so the fighters travel across the frame instead
-         * of being pinned to the middle at a constant size — which is right, but
+         * of being pinned to the middle at a constant size, which is right, but
          * it also meant the camera could not keep up when they broke apart, and
          * measured in screen space they were leaving the BOTTOM of the frame
          * (normalised y below -1, well under the brain panels). The same
@@ -1287,7 +1287,7 @@ export function MoonStage({
           if (d.flat) {
             // Stars and crescents are flat extruded shapes, baked with their face
             // aimed at the camera. Spinning them about world Y swings them edge-on
-            // and they read as white slivers for half of every cycle — measured at
+            // and they read as white slivers for half of every cycle, measured at
             // 25 of the 66 on screen. Euler XYZ applies Z FIRST, i.e. in the
             // object's own plane, so spinning that keeps the face toward the
             // camera and still turns the points of the star.

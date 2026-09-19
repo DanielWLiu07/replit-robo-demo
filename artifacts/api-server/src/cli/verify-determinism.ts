@@ -3,7 +3,7 @@
  *
  * A match is persisted as `seed + two BotSpec snapshots` and nothing else. If
  * the sim is deterministic, re-running those inputs reproduces the fight tick
- * for tick — which is what makes replay free and makes a forged result
+ * for tick, which is what makes replay free and makes a forged result
  * impossible to smuggle past the server. If it is not, every replay in the
  * product is a lie, so this runs the newest match twice and compares hashes.
  *
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
     : await db.select().from(matchesTable).orderBy(desc(matchesTable.createdAt)).limit(1);
   if (!row) {
     console.error(
-      wanted ? `no match ${wanted}` : "no matches to verify — POST /api/matches first",
+      wanted ? `no match ${wanted}` : "no matches to verify. POST /api/matches first",
     );
     process.exit(1);
   }
@@ -77,7 +77,7 @@ async function main(): Promise<void> {
     if (row.simVersion !== SIM_VERSION) {
       console.error(
         `\nSTALE: this match was fought under sim "${row.simVersion}" and cannot be\n` +
-          `replayed under sim "${SIM_VERSION}" — it ends on tick ${a.ticks}, not ${row.ticks}.\n` +
+          `replayed under sim "${SIM_VERSION}": it ends on tick ${a.ticks}, not ${row.ticks}.\n` +
           `The sim is deterministic (both runs agree); it is simply a different sim.\n` +
           `Re-run the match, or keep the old sim around, but do not call this a replay.`,
       );

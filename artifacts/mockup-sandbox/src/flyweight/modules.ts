@@ -86,7 +86,7 @@ export const DEFAULT_BOTS: [BotSpec, BotSpec] = [
  * The build a new player starts with: a chassis, and not one point spent.
  *
  * Every dial reads zero, the whole instinct pool is unspent, and the fly has a
- * pursuit circuit installed at zero weight — present, wired, and driving nothing.
+ * pursuit circuit installed at zero weight, present, wired, and driving nothing.
  * It cannot fight in that state, and that is the point: the loadout is the game, so
  * handing a stranger a pre-solved brain skips the only decision they get to make.
  *
@@ -109,13 +109,13 @@ export const UNSPENT_BUILD: BotSpec = {
  * Where the player's build is saved, and the version of the RULES it was saved under.
  *
  * A build from before the pool was re-based is still a legal BotSpec, so it loads
- * cleanly and silently — which is how a browser that had played once kept opening
+ * cleanly and silently, which is how a browser that had played once kept opening
  * the bench already spent, long after a fresh one correctly opened at zero. The
  * stored spec cannot say which rules built it, so the key has to. Bump this whenever
  * the meaning of a saved build changes.
  */
 export const BUILD_KEY = "flyweight.bot.v2";
 
-/** True when nothing has been spent yet — nothing to fight with. */
+/** True when nothing has been spent yet: nothing to fight with. */
 export const isUnspent = (bot: BotSpec) =>
   bot.brain.slots.reduce((a, s) => a + s.weight, 0) <= 0;

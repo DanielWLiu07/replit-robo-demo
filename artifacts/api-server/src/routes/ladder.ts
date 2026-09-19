@@ -18,7 +18,7 @@ import {
 
 const router: IRouter = Router();
 
-/** Furthest round reached. Public — it is a scoreboard. */
+/** Furthest round reached. Public: it is a scoreboard. */
 router.get("/ladder/leaderboard", async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 25, 100);
   res.json(LadderLeaderboardResponse.parse({ rows: await ladderLeaderboard(limit) }));
@@ -36,7 +36,7 @@ router.post("/ladder", async (req, res) => {
 
 router.get("/ladder/:id", async (req, res) => {
   const row = await getRun(req.params.id);
-  // A run in progress is private — otherwise you could scout the ladder by
+  // A run in progress is private, otherwise you could scout the ladder by
   // reading somebody else's rounds. Finished runs show up on the leaderboard.
   if (row.status === "ACTIVE" && !ownsRun(req.identity, row)) {
     throw forbidden("That ladder run isn't yours");
@@ -46,7 +46,7 @@ router.get("/ladder/:id", async (req, res) => {
 
 /**
  * Fight the next round. Returns the round just fought; `run.status` is ENDED
- * when you lost. The round carries a real `matchId` — watch it on
+ * when you lost. The round carries a real `matchId`, watch it on
  * /ws/match/:id, check it with /api/matches/:id/verify.
  */
 router.post("/ladder/:id/next", async (req, res) => {

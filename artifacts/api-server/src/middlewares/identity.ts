@@ -11,7 +11,7 @@ export interface Identity {
   /** `users.id`, only when a real Clerk session is present. */
   userId: number | null;
   clerkUserId: string | null;
-  /** always present — an opaque, unguessable per-browser id. */
+  /** always present, an opaque, unguessable per-browser id. */
   guestId: string;
 }
 
@@ -31,7 +31,7 @@ declare global {
  * must not have auth on it: a stranger opens the link, builds a bot and fights
  * it without an account. So every request also carries a guest id from an
  * httpOnly cookie, and ownership checks accept either. The cookie value is 160
- * bits of randomness — guessing someone else's is the attack, and it isn't one.
+ * bits of randomness, guessing someone else's is the attack, and it isn't one.
  *
  * Signing in later is an UPDATE stamping `owner_user_id` onto the guest's rows;
  * nothing else in the system needs to know which kind of owner it is dealing with.

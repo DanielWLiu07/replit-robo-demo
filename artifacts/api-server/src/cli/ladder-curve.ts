@@ -8,7 +8,7 @@
  * generate, across several run seeds, and reports win rate, fight length and
  * how often a fight fails to end in a KO. The curve in docs/API-backend.md came
  * from this; change `src/ladder/difficulty.ts` and re-run it rather than
- * guessing, because difficulty here is not intuitive — see the notes in that
+ * guessing, because difficulty here is not intuitive, see the notes in that
  * file for three plausible-sounding schemes that measurement killed.
  */
 import type { BotSpec } from "@workspace/contract";

@@ -10,14 +10,14 @@ import { makeRng } from "./rng.js";
 /**
  * Ring size, metres. Scaled with the bodies: at the old 1.2 m torso this was 11.7
  * body-widths across, and keeping 14 m once a torso became 0.4 m turned every match
- * into a long walk — measured 4420 ticks against about 1300 before.
+ * into a long walk, measured 4420 ticks against about 1300 before.
  */
-export const ARENA_SIZE = 5.2;   // metres, square — tight enough to force engagement
+export const ARENA_SIZE = 5.2;   // metres, square, tight enough to force engagement
 /**
  * Half-width the walls close to in sudden death.
  *
  * Was a flat 2.6, which happened to equal the whole arena half once ARENA_SIZE came
- * down to match the drawn bodies — so the walls "closed" to exactly where they
+ * down to match the drawn bodies, so the walls "closed" to exactly where they
  * already were and sudden death did nothing. Kept as the same FRACTION of the ring
  * it used to be (2.6 of 7.0), so it scales with the geometry from here on.
  */
@@ -39,10 +39,10 @@ export function arenaHalfAt(tick: number, squad = 1): number {
 /**
  * Torso radius, metres.
  *
- * Was 0.6 — a 1.2 m wide body on a creature 1.06 m TALL, and 4.1x wider than the
+ * Was 0.6, a 1.2 m wide body on a creature 1.06 m TALL, and 4.1x wider than the
  * one actually drawn (half-shoulder 0.146 m). Bodies therefore could never close
  * inside 1.2 m while the visible arm reaches about 0.5 m, so every punch resolved
- * with the drawn fist a measured 0.94 m — nearly a whole body-height — clear of the
+ * with the drawn fist a measured 0.94 m, nearly a whole body-height, clear of the
  * target. They looked like they were boxing past each other, because they were.
  *
  * Now it matches the shoulders that are on screen, so closing to contact means the
@@ -52,14 +52,14 @@ export const BOT_RADIUS = 0.2;
 const DT = 1 / TICK_HZ;
 // Spike trains are impulses; muscle tension is graded. A neuromuscular junction
 // low-passes one into the other, and that filter is also what makes the plant
-// stable — impulses straight into a double integrator can only oscillate.
+// stable, impulses straight into a double integrator can only oscillate.
 const NMJ_SMOOTHING = 0.14;     // spike train -> graded drive
 const DRIVE_GAIN = 5.0;         // ~20% spike duty -> ~full command
 /**
  * Top speed, m/s at full command.
  *
  * Scaled down with the world. The arena went 14 m -> 5.2 m and torsos 1.2 m -> 0.4 m
- * to match the drawn bodies, but these were left alone — so everything moved about
+ * to match the drawn bodies, but these were left alone, so everything moved about
  * three times too fast for its own size. Measured: 4.9 body-lengths per second and
  * 296 deg/s of turn, which on a 1.8 m human is an 8.8 m/s sprint while pirouetting.
  * That is what read as "weird, sometimes backwards, sometimes forwards": not the
@@ -72,14 +72,14 @@ const VEL_LAG = 0.16;           // how fast actual velocity chases commanded
 /**
  * What the legs can actually put into the ground, m/s^2 at the stock body.
  *
- * Until now the body simply became the velocity it was asked for — kinematics in a
+ * Until now the body simply became the velocity it was asked for, kinematics in a
  * physics coat. Mass did nothing to how fast you got going, and the feet were drawn
  * on afterwards. Now the demand is the same, but it has to be DELIVERED by a foot
  * that is on the floor, and there is a ceiling on what one can deliver.
  *
  * Calibrated so a stock body is almost never capped: below the ceiling this is
  * algebraically identical to the old lag, which is what keeps the balance table and
- * the champion's fitness meaningful. What changes is the edges — a heavy body, or
+ * the champion's fitness meaningful. What changes is the edges, a heavy body, or
  * anyone demanding a violent direction change, now runs out of traction and slides.
  */
 const PUSH_CEILING = 108;
@@ -92,7 +92,7 @@ const STEP_ARC = 0.1;
  * Where to put the foot down, as a fraction of a stride ahead of the hip.
  *
  * A stance runs from here backwards by one stride's worth of body travel, so the
- * midpoint — where the leg is actually loaded — sits at this minus half the stance.
+ * midpoint, where the leg is actually loaded, sits at this minus half the stance.
  */
 const REACH_AHEAD = 0.58;
 /** Half the distance between the feet, metres. */
@@ -110,9 +110,9 @@ const MIN_RAM_SPEED = 0.8;      // below this a touch does nothing
 // bodies: motor output applies torque, momentum carries the swing, and a tip
 // that crosses an enemy torso while moving fast enough lands a strike. Damage
 // therefore comes from *hitting*, not from driving into someone.
-const ARM_LENGTH = 0.66;        // metres shoulder to fist — longer reach, more time in range
+const ARM_LENGTH = 0.66;        // metres shoulder to fist, longer reach, more time in range
 const ARM_DAMP = 0.88;
-const PUNCH_IMPULSE = 17;       // rad/s into an arm on a swing — faster hands
+const PUNCH_IMPULSE = 17;       // rad/s into an arm on a swing, faster hands
 /** Ticks between unprompted swings when no pursuit circuit is driving them. */
 const INNATE_SWING_GAP = 52;
 /** Forward drive a bot supplies itself when not fleeing, before any circuit. */
@@ -123,13 +123,13 @@ const GUARD_RISE = 0.30;
 const GUARD_HOLD = 14;          // ticks the arms stay up after the reflex fires        // how fast the arms come up
 const GUARD_BLOCK = 0.70;       // damage removed by a full guard
 /**
- * Hands up, as a STANCE — what every fighter has before any circuit fires.
+ * Hands up, as a STANCE, what every fighter has before any circuit fires.
  *
  * The guard used to come from exactly one place: an LPLC2 spike. A brain without
  * that circuit therefore had `guard === 0` for the entire match and ate every punch
  * at full price, with no way to build otherwise. Two of the three roster classes are
  * exactly that: measured over 12 matches the TANK's mean guard was 0.00 and the
- * HORNET's 0.02, against 0.66 for the DRONE and 0.59 for the champion — and since
+ * HORNET's 0.02, against 0.66 for the DRONE and 0.59 for the champion, and since
  * a full guard removes 78% of a hit, that one gap was a 2x damage swing in each
  * direction at once. tank-vs-champion finished 0-12 in 7 seconds with the champion
  * still on 82% hull, which is not a fight.
@@ -141,7 +141,7 @@ const GUARD_BLOCK = 0.70;       // damage removed by a full guard
  * WHY 0.20 AND NOT MORE. A baseline is free survivability, and free survivability is
  * worth more to a bad brain than a good one. Swept against three things at once:
  * how close the roster matchups are, how many of 60 matches end in a KO, and where
- * the neuroevolved champion lands in the distribution of RANDOM brains — the last
+ * the neuroevolved champion lands in the distribution of RANDOM brains, the last
  * being the one that catches this. At 0.30 the roster balanced beautifully and the
  * skill gradient collapsed: the random-brain median rose 6.0 -> 9.4 and the champion
  * fell from beating 100% of random brains to 73%, i.e. evolution had stopped
@@ -162,7 +162,7 @@ const GUARD_PUNCH_GATE = GUARD_BASE + 0.05;
 /**
  * Pulls the arms back to the guard.
  *
- * Was 3.4, whose effective time constant works out to about 2.4 SECONDS — far
+ * Was 3.4, whose effective time constant works out to about 2.4 SECONDS, far
  * longer than the gap between punches, so the arm never got home. Measured, the
  * hands were in the guard only 20% of the time and spent the rest drifting
  * half-extended: no stance to speak of, and a punch was indistinguishable from the
@@ -174,7 +174,7 @@ const ARM_SPRING = 22;
 
 // ── ragdoll ─────────────────────────────────────────────────────────────────
 // Not a physics engine: a handful of springs integrated at the same fixed timestep
-// as everything else, so a match stays bit-identical for a given seed — which
+// as everything else, so a match stays bit-identical for a given seed, which
 // replay, the evolution fitness function and six tests all depend on.
 const LEAN_FROM_ACCEL = 0.16;   // how hard your own acceleration pitches the torso
 const LEAN_SPRING = 4.2;        // pulls you back upright
@@ -200,7 +200,7 @@ const TIP_BAR_ARM = 0.55;
  * Damage per m/s of tip speed over the bar.
  *
  * Retuned alongside the innate press and swing. Once every loadout could actually
- * engage, fights resolved but ran long — 32 to 69 seconds against a 90 second cap,
+ * engage, fights resolved but ran long, 32 to 69 seconds against a 90 second cap,
  * which is a lot of circling to watch. Swept 6.5 / 9 / 12 / 15 across four matchups
  * with eight seeded matches each: 15 is the first value where all four land inside
  * 24-50s AND every single match is decisive.
@@ -208,12 +208,12 @@ const TIP_BAR_ARM = 0.55;
 const STRIKE_DAMAGE = 12;
 /**
  * How far a fist gets from the body CENTRE. The rig hangs the shoulder on the
- * midline, so this is the arm — adding a torso radius on top, as this did, put the
+ * midline, so this is the arm, adding a torso radius on top, as this did, put the
  * hit half a metre beyond the hand.
  */
 const STRIKE_REACH = ARM_LENGTH;
 /** How close the fist has to pass to the torso to count. Tight enough that footwork
- *  and a slip can take you off the end of a punch — with a generous hitbox nothing
+ *  and a slip can take you off the end of a punch, with a generous hitbox nothing
  *  ever whiffed, and a counter-punch bonus with no whiffs to punish is decoration. */
 const FIST_RADIUS = BOT_RADIUS * 1.18;
 /** What an LC11 target lock is worth once the fight is in the pocket: a slightly
@@ -227,14 +227,14 @@ const PUNCH_RANGE = STRIKE_REACH * 1.43;   // start the swing a little before it
 // A boxer does not walk into his opponent; he stands at the end of his own reach
 // and throws from there. Torsos touch at 2*BOT_RADIUS = 1.20m, and before this the
 // pair spent 61% of every match welded to exactly that wall, trading from inside a
-// clinch — which reads as two bodies colliding, not as a fight. The pocket is the
+// clinch, which reads as two bodies colliding, not as a fight. The pocket is the
 // band where a fist lands but a torso does not.
 // Derived from the reach rather than written as absolutes, so the pocket keeps its
 // shape if the geometry moves again. The multipliers are the ratios the hand-tuned
 // values had against the old reach, so the FEEL of the pocket is preserved.
 const POCKET_FAR = STRIKE_REACH * 1.46;   // stop closing here: your fist already reaches
 const POCKET_NEAR = STRIKE_REACH * 1.25;  // forward drive is gone entirely inside this
-const CLINCH_RANGE = BOT_RADIUS * 2.3;    // soft break below this — boxers separate, they do not hug
+const CLINCH_RANGE = BOT_RADIUS * 2.3;    // soft break below this, boxers separate, they do not hug
 
 /**
  * The engagement distances, published for the balance tests.
@@ -254,7 +254,7 @@ export const RANGES = {
  * Separation acceleration at full penetration, m/s^2.
  *
  * Scaled with the pace. Velocities came down to 0.40 of their old values when the
- * world shrank, but the impulses that CHANGE velocity did not — so a shove became
+ * world shrank, but the impulses that CHANGE velocity did not, so a shove became
  * proportionally three times harder and repeatedly tore bodies off their planted
  * feet. Foot slip went from 2.6% of distance travelled to 6.4%.
  */
@@ -270,7 +270,7 @@ const CIRCLE_SPAN = 120;        // ...plus up to this many more
 
 // ── stamina ─────────────────────────────────────────────────────────────────
 // Every commit spends from the tank; a held guard and time spent out of the pocket
-// pay it back. Empty does not stop the swing, it slows it — and a slow fist cannot
+// pay it back. Empty does not stop the swing, it slows it, and a slow fist cannot
 // clear STRIKE_MIN_TIP_SPEED, so a gassed bot whiffs on its own punches. That is the
 // pacing pressure: flurry now and the next exchange is fought on empty.
 const PUNCH_COST = 0.22;        // ~4.5 punches in the tank before it starts to bite
@@ -280,7 +280,7 @@ const REGEN_RANGE = 0.006;      // outside the pocket, resetting
 const GAS_FLOOR = 0.45;         // punch power multiplier on an empty tank
 const GASSED_RECOVERY = 7;      // extra open ticks when you swing on empty
 /** Hysteresis, not a threshold. A bot that empties the tank has to breathe some of
- *  it back before it commits again — otherwise it flails one weak punch per refill
+ *  it back before it commits again, otherwise it flails one weak punch per refill
  *  forever, which is exactly what the first measurement showed (4.7% of 10,102
  *  swings landed). Covering up while it recovers is what a blown boxer does. */
 const GASSED_RESET = 0.45;
@@ -302,13 +302,13 @@ const COMBO_GAP = 7;            // ticks between punches inside a flurry
 const RESET_TICKS = 26;         // hands back up, feet moving, before the next flurry
 /** You do not throw at someone who is not in front of you. The geometric hit cone
  *  at pocket range is about 35 degrees, so swinging outside this is a guaranteed
- *  whiff — and whiffing was 80% of all punches before this gate existed. */
+ *  whiff, and whiffing was 80% of all punches before this gate existed. */
 /**
  * Radians of bearing error you may still throw through.
  *
  * 0.50 (29 deg) quietly excluded the slow chassis from fighting at all. A TANK
  * chasing a DRONE cannot bring its turn rate to bear inside that arc, so it threw
- * ONE punch in an 18 second match and its stamina never moved — it was not losing,
+ * ONE punch in an 18 second match and its stamina never moved: it was not losing,
  * it was standing there. 0.75 (43 deg) is still a punch you have lined up, and the
  * same matchup now throws five.
  */
@@ -327,7 +327,7 @@ interface Body {
   /** arm angles and angular velocities, relative to torso heading */
   armL: number; armR: number; armLv: number; armRv: number;
   gait: number; struck: boolean;
-  /** world metres, [Lx,Ly,Lz,Rx,Ry,Rz] — where each foot IS, not where it is drawn */
+  /** world metres, [Lx,Ly,Lz,Rx,Ry,Rz], where each foot IS, not where it is drawn */
   feet: Float64Array;
   /** was this foot on the ground last tick, so a touchdown can be detected */
   footDown: [boolean, boolean];
@@ -340,7 +340,7 @@ interface Body {
   punchCd: number; punchSide: 0 | 1;
   guard: number; recovery: number; blocked: boolean; guardHold: number;
   lean: number; leanV: number; tilt: number; tiltV: number; down: number; swungAt: number;
-  /** true on the tick this bot ate a counter — for the HUD, like `blocked` */
+  /** true on the tick this bot ate a counter, for the HUD, like `blocked` */
   countered: boolean;
   /** 0..1 gas tank; punching spends it, guarding and range refill it */
   stamina: number;
@@ -357,7 +357,7 @@ interface Body {
   armLength: number;
   strikeReach: number;
   punchRange: number;
-  /** lean angle this body tips over at — wider stance, larger angle */
+  /** lean angle this body tips over at, wider stance, larger angle */
   knockdownLean: number;
   /** m/s at the fist below which a swing is a nudge, scaled to this body */
   tipBar: number;
@@ -385,7 +385,7 @@ function senses(self: Body, foe: Body): Senses {
   while (bearing > Math.PI) bearing -= 2 * Math.PI;
   while (bearing < -Math.PI) bearing += 2 * Math.PI;
   const angularSize = 2 * Math.atan(BOT_RADIUS / distance);
-  // A fist coming at your face is a looming edge too — arguably the one LPLC2 is for.
+  // A fist coming at your face is a looming edge too, arguably the one LPLC2 is for.
   // Without this the Giant Fiber only ever answers a charge, and once the bots hold
   // their range nobody charges: blocks collapsed to 5.7% of hits. Same channel, same
   // cell, because the fly does not have a separate detector for punches.
@@ -428,7 +428,7 @@ function toState(b: Body, spiked: NeuronModule[]): ArenaBotState {
 
 /**
  * Run a whole match deterministically. A match is fully described by
- * (seed, botA, botB) — so replay is just calling this again. Nothing is stored
+ * (seed, botA, botB), so replay is just calling this again. Nothing is stored
  * per frame; the server streams what this yields and throws it away.
  */
 export function* runMatch(
@@ -443,7 +443,7 @@ export function* runMatch(
      *
      * Was 0.74 of the half-arena plus up to 1.2 m, which put them 3.8-6.2 m apart
      * in a 5.2 m ring. At the pace the bots actually move that is a 2.7 s walk
-     * before the first punch lands — nearly a quarter of a 12 s round spent with
+     * before the first punch lands, nearly a quarter of a 12 s round spent with
      * nothing happening, and it reads as the fighters doing nothing to each other.
      * Closer start, same ring: still an approach, just not a hike.
      */
@@ -452,7 +452,7 @@ export function* runMatch(
     const spread = n === 1 ? 0 : (idx / (n - 1) - 0.5) * 0.9;
     const a = angle + spread;
     // Hoisted so the feet can be placed relative to it. Reconstructing it inside the
-    // literal is not possible — it consumes the rng, and the spawn must stay seeded.
+    // literal is not possible: it consumes the rng, and the spawn must stay seeded.
     const heading0 = a + Math.PI + (rng() - 0.5) * 0.5;
     const spawnX = Math.cos(a) * r, spawnY = Math.sin(a) * r;
     const latX0 = -Math.sin(heading0) * HALF_HIP, latY0 = Math.cos(heading0) * HALF_HIP;
@@ -497,13 +497,13 @@ export function* runMatch(
          * long arm twice over: rotational inertia already makes a long arm slower
          * (v_tip goes with 1/L), and then it had to clear a higher bar as well. The
          * bench lets you build exactly that, and the result is a fighter that cannot
-         * damage anything — measured across the slider range, max-reach deals 2 a
+         * damage anything, measured across the slider range, max-reach deals 2 a
          * match, min-torque deals ZERO while still throwing three punches, and a
          * heavy long-armed weak build deals zero and never swings at all.
          *
          * Relative to the body's own peak, every legal build can land when it fully
-         * commits, while the gait's idle arm motion — far slower than a thrown punch
-         * — still cannot register as a strike. The reach/power trade stays: a long
+         * commits, while the gait's idle arm motion, far slower than a thrown punch,
+         * still cannot register as a strike. The reach/power trade stays: a long
          * arm hits SOFTER, which is the physics, it just no longer hits for nothing.
          */
         const peakTip = PUNCH_IMPULSE * (phys.tipSpeed / phys.reach) * armLength;
@@ -546,12 +546,12 @@ export function* runMatch(
 
       const base = CHASSIS_STATS[body.spec.chassis];
       // The chassis still sets the character; the body scales it. Square-cube law on
-      // accel, yaw inertia on turn — both exactly 1.0 for a bot that never got tuned.
+      // accel, yaw inertia on turn, both exactly 1.0 for a bot that never got tuned.
       const stats = { hull: base.hull, accel: base.accel * body.phys.accel, turn: base.turn * body.phys.turn };
 
       // The Giant Fiber means two different things at two distances. Far away it is an
       // escape: reverse hard and turn out. At punching range the same spike is a block,
-      // and a boxer who backs out of every jab never fights — so in range the flight
+      // and a boxer who backs out of every jab never fights, so in range the flight
       // half is damped to a slip and only the hands (the guard, below) answer. Done to
       // the intent rather than in the brain because it is the *body* that knows how far
       // away the other one is; the cell fires the same either way.
@@ -567,7 +567,7 @@ export function* runMatch(
        * LC10a was the ONLY thing that ever added positive forward drive, so a brain
        * without it could do nothing but retreat. Measured: two escape builds drift
        * apart and land 3 hits between them across a full 90 second match, even with
-       * the sudden-death walls shut — and closing the walls further barely moved it,
+       * the sudden-death walls shut, and closing the walls further barely moved it,
        * because neither bot was ever trying to close.
        *
        * A fly that is not actively fleeing closes on what is in front of it. The
@@ -588,11 +588,11 @@ export function* runMatch(
       // fist can land, so closing ends at punching range instead of at the chest.
       // Deliberately a motor governor rather than a brain edit: LC10a still fires, so
       // the spike raster still shows pursuit and evolution's fitness landscape keeps
-      // its shape. Backing off is never suppressed — you can always give ground.
+      // its shape. Backing off is never suppressed: you can always give ground.
       // How far out this bot wants to stand *right now*. Blown, or covering up behind
       // a guard, means make space and breathe; otherwise hold the end of your own
       // reach. A standoff that moves with the bot's state is what gives the fight an
-      // in-and-out rhythm instead of one fixed trading range — and a punch thrown at
+      // in-and-out rhythm instead of one fixed trading range, and a punch thrown at
       // someone who has just stepped back is the whiff the counter-punch exists for.
       // The pocket is where YOUR fist already reaches, so it travels with your arm.
       const pocketFar = POCKET_FAR + (body.armLength - ARM_LENGTH);
@@ -635,7 +635,7 @@ export function* runMatch(
       const wantVy = Math.sin(body.heading) * wantSpeed + ly * strafe;
 
       // A leg can only push while its foot is down. The two alternate, so contact
-      // never drops to zero, but thrust dips as weight transfers — which is what
+      // never drops to zero, but thrust dips as weight transfers, which is what
       // gives a stride its surge instead of a constant glide. Same gait phase the
       // pose plants the foot on, so the push happens on the leg you can see loaded.
       const stanceLoad = 1 - SWING_LOSS * Math.abs(Math.sin(body.gait * Math.PI * 2));
@@ -680,7 +680,7 @@ export function* runMatch(
       if (Math.abs(body.lean) > body.knockdownLean || Math.abs(body.tilt) > body.knockdownLean) {
         body.down = KNOCKDOWN_TICKS;
         // Clamp BOTH axes. Only lean was held, so roll kept whatever value tipped
-        // the body over and then froze there for the whole count — measured out to
+        // the body over and then froze there for the whole count, measured out to
         // 1.61 rad, which is a bot lying fully on its side rather than going down.
         body.lean = Math.sign(body.lean) * body.knockdownLean;
         body.tilt = Math.sign(body.tilt) * Math.min(Math.abs(body.tilt), body.knockdownLean);
@@ -689,7 +689,7 @@ export function* runMatch(
       // Arms. A punch is an EVENT, not an oscillation: when the brain is driving
       // forward and a target is inside reach, dump a single large impulse into the
       // alternating arm and let momentum carry the fist through. Tying the swing to
-      // the gait phase failed — at speed the gait cycles every five ticks, so the
+      // the gait phase failed, at speed the gait cycles every five ticks, so the
       // torque reversed before the arm could build any tip speed at all.
       if (body.punchCd > 0) body.punchCd--;
       if (body.recovery > 0) body.recovery--;
@@ -718,7 +718,7 @@ export function* runMatch(
           // so a body that went over backwards flipped from -0.79 to +0.50 in one
           // tick. The ragdoll rotates the whole figure about its feet, so that is
           // 74 degrees of whole-body rotation in a single frame and the fists
-          // teleport about 0.9 m — measured at 53 m/s against a true tip speed near
+          // teleport about 0.9 m, measured at 53 m/s against a true tip speed near
           // 4. Preserving the sign keeps the getup on the correct side and turns a
           // 1.29 rad discontinuity into a 0.29 rad one the lean spring can absorb.
           body.lean = (body.lean < 0 ? -1 : 1) * GETUP_LEAN;
@@ -742,25 +742,25 @@ export function* runMatch(
 
       // The Giant Fiber reads looming. Far away that means run; at punching range it
       // means an incoming fist, so the same spike puts the arms up instead. Escape
-      // and block are one reflex pointed at two distances — which is why habituation
+      // and block are one reflex pointed at two distances, which is why habituation
       // hurts twice: a tired Giant Fiber can neither flee nor guard.
       const inRange = closeQuarters;
-      // A block is held, not flashed. One spike commits the arms for a window —
+      // A block is held, not flashed. One spike commits the arms for a window,
       // which is exactly why it is a decision: guard up means no punches thrown.
       if (spiked.includes("LPLC2_DNP01") && inRange && body.recovery === 0) body.guardHold = GUARD_HOLD;
-      // Blown means cover up. Nothing decides this — there is nothing left to decide
-      // with — and holding the guard is also the fastest way back to a full tank.
+      // Blown means cover up. Nothing decides this: there is nothing left to decide
+      // with, and holding the guard is also the fastest way back to a full tank.
       if (body.gassed && body.recovery === 0) body.guardHold = Math.max(body.guardHold, 2);
       if (body.guardHold > 0) body.guardHold--;
       const wantGuard = body.guardHold > 0 && body.recovery === 0;
-      // Out of the pocket the hands come down — a baseline guard is a thing you hold
+      // Out of the pocket the hands come down, a baseline guard is a thing you hold
       // against someone in front of you, not a permanent posture, and dropping it is
       // what makes standing off the pocket the way you breathe.
       const rest = closeQuarters && body.recovery === 0 ? GUARD_BASE : 0;
       body.guard += ((wantGuard ? 1 : rest) - body.guard) * GUARD_RISE;
       // you cannot block out of a swing you already committed to
       if (body.recovery > 0) body.guard = 0;
-      // MDN (moonwalker) pulls back out of range to reset — spacing, not just reverse.
+      // MDN (moonwalker) pulls back out of range to reset, spacing, not just reverse.
       const backingOff = spiked.includes("MDN");
       // LC10a pursuit fires the strike; P1 arousal lets a wound-up bot swing harder.
       const pursuitFired = spiked.includes("LC10A");
@@ -774,7 +774,7 @@ export function* runMatch(
        * A brain with no pursuit circuit could never throw a punch AT ALL.
        *
        * Measured across matchups: two escape-heavy builds land ZERO hits in a full
-       * 90 second match, every time, and pursuit-versus-escape lands 0.6 — both
+       * 90 second match, every time, and pursuit-versus-escape lands 0.6, both
        * always scoreless draws. LC10a was an absolute veto on being able to attack
        * rather than a driver of how often you commit, so a whole class of loadout
        * was simply inert. Closing the sudden-death walls does not help: the bot
@@ -782,7 +782,7 @@ export function* runMatch(
        *
        * Every fly has descending motor pathways to its legs and body; LC10a is the
        * one that decides to CHASE. So a bot with a target in front of it can still
-       * throw on its own, just far less often — pursuit builds punch about every
+       * throw on its own, just far less often, pursuit builds punch about every
        * 1.2s, this is closer to every 1.6s, so the circuit still earns its place.
        */
       const innate = tick - body.swungAt > INNATE_SWING_GAP;
@@ -799,7 +799,7 @@ export function* runMatch(
         const gas = GAS_FLOOR + (1 - GAS_FLOOR) * body.stamina;
         // Tip speed is ω·L, so to land the mechanically correct v_tip on an arm of
         // this length the angular impulse carries tipSpeed/reach. A long arm gets LESS
-        // angular velocity and still ends up slower at the fist — that is the trade.
+        // angular velocity and still ends up slower at the fist: that is the trade.
         const swing = PUNCH_IMPULSE * (body.phys.tipSpeed / body.phys.reach);
         const power = swing * gas * (0.75 + 0.25 * Math.min(1, body.brain.arousalLevel - 0.4));
         if (body.punchSide === 0) body.armLv -= power; else body.armRv += power;
@@ -843,7 +843,7 @@ export function* runMatch(
        * A foot plants `reach` ahead of the hip and stays put until the body has
        * carried it `reach` behind, so one stance sweeps 2·reach of ground. That
        * sweep is the whole budget: it is the furthest the leg can span without
-       * straightening. The cycle then follows from how long that takes —
+       * straightening. The cycle then follows from how long that takes,
        * T_stance = 2·reach / v, and the stance is STANCE of a full cycle.
        *
        * Deriving it the other way round, from a stride curve, is what broke it:
@@ -865,12 +865,12 @@ export function* runMatch(
 
       if (body.down === 0) {
       /**
-       * FOOTFALL — plant the foot in the WORLD and leave it there.
+       * FOOTFALL, plant the foot in the WORLD and leave it there.
        *
        * This is the difference between walking and sliding, and no amount of gait
        * timing fixes it. The pose used to place each foot in BODY-LOCAL space at
        * cos(phase)·stride, so the foot was repositioned relative to the body every
-       * frame and could never actually be stationary on the ground — matching the
+       * frame and could never actually be stationary on the ground, matching the
        * phase rate to ground speed only made it right ON AVERAGE across a half
        * cycle, while instantaneously the foot still swept back and forth.
        *
@@ -899,14 +899,14 @@ export function* runMatch(
         //
         // Boxers circle and strafe: a lot of the travel during a stance is sideways,
         // and aiming the plant down the heading budgeted none of it. The foot then
-        // ran out of reach halfway through and was dragged — 47% of stance ticks.
+        // ran out of reach halfway through and was dragged, 47% of stance ticks.
         const tx = body.x + goX * reach + latX * lateral;
         const ty = body.y + goY * reach + latY * lateral;
 
         if (inStance) {
           // A shove, a knockback or a hard turn can carry the body further in one
           // stance than the gait budgeted for, and a foot left pinned behind it
-          // stretches the leg to a length it does not have — measured out to 5.2 m
+          // stretches the leg to a length it does not have, measured out to 5.2 m
           // on a 0.52 m leg, which the knee solver cannot answer and the mesh wears
           // as a distortion. Past the limit the foot is simply picked up and put
           // down again. It is a discrete correction, and it is what a body does
@@ -915,7 +915,7 @@ export function* runMatch(
           /**
            * Turning on a planted foot is a STEP, not a scrape.
            *
-           * The foot plants correctly — 89.6% of stance ticks are perfectly still —
+           * The foot plants correctly, 89.6% of stance ticks are perfectly still,
            * but 80% of the remaining drag happens while the body is rotating: the
            * hips swing around a foot that is pinned, the reach clamp catches it, and
            * it scrapes. A boxer pivoting past this angle picks the foot up and puts
@@ -936,14 +936,14 @@ export function* runMatch(
            *
            * A stance is budgeted to sweep exactly 2·reach of ground, which works
            * while the body travels at the speed the gait was derived from. It does
-           * not survive a shove, a knockback or a hard strafe — the body outruns
+           * not survive a shove, a knockback or a hard strafe, the body outruns
            * its own foot, and no re-planting rule fixes that, because by the time
            * the rule trips the leg is already stretched. Re-planting on drift also
            * fired more often than feet actually landed.
            *
            * So the invariant is enforced directly: a planted foot is pulled back to
            * the edge of the reachable circle whenever the body has gone too far.
-           * That IS a drag, and it is meant to be — being shoved off your stance
+           * That IS a drag, and it is meant to be, being shoved off your stance
            * scrapes your foot along the floor. Normal walking never reaches it, so
            * slip stays exactly zero there.
            */
@@ -995,7 +995,7 @@ export function* runMatch(
          * Resolve the strike against the arm that is actually DRAWN.
          *
          * This used to place the fist at full extension the instant a swing was
-         * live — `BOT_RADIUS + armLength`, always — while the rig drew the hand
+         * live, `BOT_RADIUS + armLength`, always, while the rig drew the hand
          * anywhere from 42% to 100% of the way out, swinging with the gait. The
          * hit and the picture were two different events: a punch could land with
          * the visible arm still tucked into the guard, or sweep clean through a
@@ -1003,7 +1003,7 @@ export function* runMatch(
          *
          * `fistLocal` is the same function the pose calls, so the angle and the
          * extension here are the ones on screen. The reach stays on the arena's
-         * scale (BOT_RADIUS is a collision radius, not a drawing measurement) —
+         * scale (BOT_RADIUS is a collision radius, not a drawing measurement),
          * what changes is that the arm must genuinely be out and pointed at you.
          */
         const drawn = fistLocal(att, att.spec.chassis, side ? 1 : -1);
@@ -1023,7 +1023,7 @@ export function* runMatch(
           // Caught him mid-swing, hands down: that is a counter, and it pays extra.
           const counter = def.recovery > 0;
           // A hit is worth its kinetic energy, ½·m_arm·v². Tip speed is already in
-          // this expression, so only the arm-mass half is applied here — scaling by the
+          // this expression, so only the arm-mass half is applied here, scaling by the
           // whole energy ratio would count v twice.
           const armMass = att.phys.impactEnergy / att.phys.tipSpeed ** 2;
           const raw = (tipSpeed - tipBar) * STRIKE_DAMAGE * armMass * flush / Math.sqrt(n)
@@ -1050,7 +1050,7 @@ export function* runMatch(
     }
 
     // A swing that connected will have set struck on its target. If a bot committed
-    // this tick and nothing registered, its own momentum takes it forward — the whiff
+    // this tick and nothing registered, its own momentum takes it forward, the whiff
     // punish is physical rather than a rule.
     for (const b of bodies) {
       if (b.alive && b.swungAt === tick && !hits.some((h) => h.attacker === b.spec.id)) {

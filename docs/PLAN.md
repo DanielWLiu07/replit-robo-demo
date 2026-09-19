@@ -1,4 +1,4 @@
-# FLYWEIGHT — connectome-driven battle bots
+# FLYWEIGHT: connectome-driven battle bots
 
 Build a bot. Wire its brain from real *Drosophila* connectome circuits. Send it into
 an arena to fight someone else's bot. Watch both brains spike while they do it.
@@ -14,12 +14,12 @@ real underneath. 444 applicants; nobody else submits a fly.
 
 ## The science (this part is not invented)
 
-FlyWire published the complete adult fly connectome in 2024 — ~140k neurons. We use a
+FlyWire published the complete adult fly connectome in 2024, ~140k neurons. We use a
 handful of well-characterised visual-to-motor cells as swappable brain modules:
 
 | Module | Real circuit | Battle behaviour |
 |---|---|---|
-| `LPLC2 -> DNp01` | looming detection into the Giant Fiber escape reflex | dodge — fires on one spike, no deliberation |
+| `LPLC2 -> DNp01` | looming detection into the Giant Fiber escape reflex | dodge, fires on one spike, no deliberation |
 | `LC10a` | small-target visual pursuit (courtship tracking) | chase the opponent |
 | `LC11` | small-object detection | target acquisition |
 | `DNa02` | steering descending neuron | turn rate |
@@ -48,7 +48,7 @@ of the set. Population size drives signal noise in the sim (variance falls as 1/
 so the 2-cell Giant Fiber is visibly twitchy while 234-cell LC10a pursuit is smooth.
 
 **Modelled, not loaded.** Synaptic weights between modules are not taken from the
-connectome — they are the player's loadout, which is the game. Say "cell populations and
+connectome: they are the player's loadout, which is the game. Say "cell populations and
 transmitter identity from FlyWire; connectivity qualitative from the literature." Do not
 say "running the connectome". (Same lesson as the INT8/fp32 resume problem.)
 
@@ -62,7 +62,7 @@ produces the same match, so fitness is an **exact reproducible number** rather t
 sample, and `evolve()` itself replays identically from its seed.
 
 Measured: 24 genomes, 14 generations, 40 seconds. Best fitness 26.34 to 27.66, population
-mean 6.85 to 15.94 — the whole population improves, and by far more than the elite does.
+mean 6.85 to 15.94, the whole population improves, and by far more than the elite does.
 The champion goes **39W 1L 0D against all four hand-designed archetypes on seeds it never
 trained on**, so it generalises rather than memorising. Saved with its full fitness curve in
 `lib/sim/src/champion.json` and used as the boss opponent.
@@ -74,12 +74,12 @@ drag the rest of the population up to that line. A harder panel would give the e
 to climb; that is the next pass, not tonight's.
 
 **The champion is an artifact of the physics, and the boxing pass proved it.** Re-measured
-against the new arena, the old champion — evolved when the bots fought in a clinch — went
+against the new arena, the old champion, evolved when the bots fought in a clinch, went
 **0W 40L**. It had converged on a steering-only brain with `refractoryTicks: 0`: at zero
 metres of spacing, all that mattered was staying pointed at the opponent. Re-evolved against
 the same panel under boxing physics, with the same seed, it now equips **all five modules**
 (acquisition, guard, arousal, steering, pursuit) and settles at `refractoryTicks: 6`. Same
-search, same seed, same code — a different fight, and so a different animal.
+search, same seed, same code, a different fight, and so a different animal.
 
 That made the refractory period worth re-measuring too: a 216-match round robin holding the
 brain fixed and varying only that one number.
@@ -97,42 +97,42 @@ brain fixed and varying only that one number.
 
 The ranking inverted, and the dead space is gone. The contract permits 0–30; before,
 everything past about 6 was unplayable, so four fifths of that slider did nothing. Now the
-curve has an interior optimum — it climbs to a plateau around 9–20 and falls off again by 30
-— because stamina is exactly the compensating benefit a long refractory period was missing.
+curve has an interior optimum: it climbs to a plateau around 9–20 and falls off again by 30,
+because stamina is exactly the compensating benefit a long refractory period was missing.
 A neuron that never goes deaf throws every punch it can, gasses out, and gets countered on
 an empty tank. This was written down as the fix to attempt in a later pass; it turned out to
 fall out of the boxing pass for free, which is the kind of thing you only find by measuring
 the same experiment twice.
 
-## Architecture — five tiers
+## Architecture: five tiers
 
-1. **Client** — React + Three.js arena, black-and-white glass UI, brain lab, spike rasters.
-2. **API** — Express 5, REST + `/ws/match/:id`, Clerk auth, Zod on every boundary.
-3. **Sim core** — pure TypeScript, zero I/O. Deterministic fixed timestep, seeded RNG,
+1. **Client**, React + Three.js arena, black-and-white glass UI, brain lab, spike rasters.
+2. **API**, Express 5, REST + `/ws/match/:id`, Clerk auth, Zod on every boundary.
+3. **Sim core**, pure TypeScript, zero I/O. Deterministic fixed timestep, seeded RNG,
    leaky integrate-and-fire neurons. Same module runs on server and in-browser for preview.
-4. **Data** — Postgres + Drizzle: users, bots, brains, matches, match_events, leaderboard.
-5. **Replay** — a match is `seed + two brain snapshots`. Re-run the sim to replay it.
+4. **Data**, Postgres + Drizzle: users, bots, brains, matches, match_events, leaderboard.
+5. **Replay**, a match is `seed + two brain snapshots`. Re-run the sim to replay it.
    No frame storage. Brain snapshots are versioned so old matches still replay after you
    edit your bot.
 
-## Tuning the fight — five bugs found by measuring
+## Tuning the fight: five bugs found by measuring
 
 1. **They orbited at exactly 90 degrees, forever.** DNa02 fired bang-bang full-turn
    regardless of error, so it could never settle. Real DNa02 is graded: firing rate encodes
    turn magnitude. Made it proportional.
 2. **The motor plant could only oscillate.** Spike impulses fed a double integrator with
-   proportional control. The physiologically correct fix is also the stable one — a
+   proportional control. The physiologically correct fix is also the stable one, a
    neuromuscular junction low-passes spike trains into graded muscle tension.
 3. **They welded together at 1.20m.** Momentum exchange ran every overlapping tick and bled
    all the energy. Now it only fires on the tick they are actually closing.
 4. **Escape was an unbeatable strategy.** Every draw was a dodger match with zero hits and
    both bots at full hull. Fixed with real biology: the Giant Fiber **habituates** to
    repeated looming. Draws went 15 to 0, KOs 17 to 29, match length 57s to 31s. Crucially
-   it habituates to *weak* repeated looming but never to a real charge — which is exactly
+   it habituates to *weak* repeated looming but never to a real charge, which is exactly
    what habituation is for.
 
-5. **They fought in a clinch.** The punches were real — discrete impulses on real arm
-   bodies, a tip-speed threshold, recovery frames — but 61% of every match was spent
+5. **They fought in a clinch.** The punches were real, discrete impulses on real arm
+   bodies, a tip-speed threshold, recovery frames, but 61% of every match was spent
    welded to the body-contact wall at 1.20m, two torsos leaning on each other and
    swinging. Boxing is a spacing game before it is a punching game, so the fix is
    spacing: forward drive is governed off across the pocket, and a soft break starts
@@ -144,7 +144,7 @@ the same experiment twice.
    swings too slowly to clear the strike threshold, so flailing punishes itself; and
    an uncommitted bot **circles** rather than shuttling in and out on one axis.
 
-   Two modules quietly died in the move, both the same way — a trigger condition that
+   Two modules quietly died in the move, both the same way, a trigger condition that
    the new spacing made unreachable. LC11's target lock decayed before the fight
    arrived, so an LC11 build stopped punching the moment it got there (0 wins in 18);
    MDN fired on the opponent's torso filling the view, which now never happens. Both
@@ -158,12 +158,12 @@ winning, 73% of engaged ticks spent at punching range and 4% in a clinch.
 ## The parts worth discussing in an interview
 
 - **Server-authoritative determinism.** Client renders, server decides. Same seed, same
-  result, every time — which is what makes replay free and cheating hard.
+  result, every time, which is what makes replay free and cheating hard.
 - **Brain snapshot versioning.** Editing your bot must not rewrite history.
 - **A schema gate between the brain editor and the sim.** Invalid loadouts cannot reach
   the simulation. Direct echo of Pomme, where an unvalidated command drives a real rover
   into a wall.
-- **Why a single-spike reflex is the right shape for a safety path** — no deliberation,
+- **Why a single-spike reflex is the right shape for a safety path**, no deliberation,
   fixed latency. Same argument as putting Pomme's e-stop on the MCU instead of behind the AI.
 
 ## Split of work
@@ -176,6 +176,6 @@ Everyone codes against `lib/contract` (below). Build it first, then work in para
 
 ## Tonight's bar (deadline 09:00)
 
-Not "finished" — **a stranger opens the link and sees two fly-brained bots fight.**
+Not "finished", **a stranger opens the link and sees two fly-brained bots fight.**
 One working loop beats five half-features. Polish ships tomorrow; the app keeps updating
 after submission, only the WaterlooWorks documents hard-lock at 09:00.

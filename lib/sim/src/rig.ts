@@ -29,7 +29,7 @@ export interface Pose {
   /** world position + facing, for placing the rig */
   origin: [number, number, number];
   headingY: number;
-  /** 0..1, how far through a stagger from being hit — drives a ragdoll lean */
+  /** 0..1, how far through a stagger from being hit, drives a ragdoll lean */
   stagger: number;
 }
 
@@ -54,7 +54,7 @@ function solveKnee(
    * `bendDir` arrives as a fixed hint ([0,-1,0] for an elbow, [1,0,0] for a knee)
    * and was used raw. Whenever the limb happened to point along that hint the
    * "perpendicular" offset ran ALONG the limb instead of across it, so the joint
-   * slid up the bone and both segment lengths broke — a guard, with the hand at
+   * slid up the bone and both segment lengths broke, a guard, with the hand at
    * chin height close to the shoulder, points an arm almost straight down the hint.
    * Measured over a real fight: the forearm ranged 0.085-0.302 against a fixed
    * 0.249, wrong in 98% of frames. Rubber arms.
@@ -100,7 +100,7 @@ export const strideFor = (speed: number, chassis: Chassis): number =>
  * How far from directly under the hip a foot may be placed, horizontally, in metres.
  *
  * The leg is a two-bar linkage of fixed length standing at a fixed hip height, so
- * this is just Pythagoras — and it is a HARD limit, not a preference. Ignoring it is
+ * this is just Pythagoras, and it is a HARD limit, not a preference. Ignoring it is
  * what let the arena plant feet up to 5.2 m from a 0.52 m leg: the knee solver then
  * has no valid answer, the limb straightens and stretches, and the whole figure
  * distorts. The safety factor keeps the knee bent rather than locked straight, which
@@ -117,7 +117,7 @@ export const footReach = (chassis: Chassis): number => {
 };
 
 
-/** What the arm state the fist geometry needs — a subset of ArenaBotState. */
+/** What the arm state the fist geometry needs, a subset of ArenaBotState. */
 export interface ArmState {
   armL: number; armR: number; guard: number; recovery: number; gait: number;
   vx: number; vy: number;
@@ -158,19 +158,19 @@ export function fistLocal(state: ArmState, chassis: Chassis, side: -1 | 1) {
   /**
    * How far through a swing this arm is: 0 at the guard, 1 fully committed.
    *
-   * Measured from the PUNCH AXIS — the angle at which the fist points straight
-   * forward — not from the distance travelled away from rest.
+   * Measured from the PUNCH AXIS, the angle at which the fist points straight
+   * forward, not from the distance travelled away from rest.
    *
    * Travelled-distance was the obvious reading and it was wrong. An arm at rest
    * sits ARM_REST off the forward axis, so a clean jab (swinging to ang 0, fist
    * pointing straight out) only covers 0.35 rad and scored 0.30 excursion: the
    * arm reached 0.65 extension and never straightened. Full extension arrived
    * only once the arm had swung right ACROSS the body, which is a hook. A jab
-   * could be forward or extended, never both — measured on the roster idle, the
+   * could be forward or extended, never both, measured on the roster idle, the
    * fist peaked at 0.299 m out on a 0.91 m body while dropping 0.10 m.
    *
-   * Zero at rest, one when the arm points forward, and pinned at one beyond that
-   * — so a jab lands fully extended pointing where it is thrown, and the arena's
+   * Zero at rest, one when the arm points forward, and pinned at one beyond that,
+   * so a jab lands fully extended pointing where it is thrown, and the arena's
    * deeper swing past the axis reads as a hook at the same full reach.
    */
   const rest = side < 0 ? ARM_REST : -ARM_REST;
@@ -183,7 +183,7 @@ export function fistLocal(state: ArmState, chassis: Chassis, side: -1 | 1) {
    * THE GUARD, and the punch as a departure from it.
    *
    * The hands used to be placed by swinging a fixed 42%-extended arm around the
-   * shoulder, which put the fists 0.16·s BELOW the shoulders and out in front —
+   * shoulder, which put the fists 0.16·s BELOW the shoulders and out in front,
    * arms held out, not a boxer. A guard is hands at chin height, tucked in near the
    * cheeks, inside the line of the shoulders, elbows down.
    *
@@ -197,7 +197,7 @@ export function fistLocal(state: ArmState, chassis: Chassis, side: -1 | 1) {
     shoulderH + 0.07 * s - open * 0.30 * s,      // chin height; drops when caught open
     side * 0.11 * s,                             // by the cheek, inside the shoulders
   ];
-  // a small breath so the guard is alive — NOT a swing. At 0.34 rad this was as big
+  // a small breath so the guard is alive, NOT a swing. At 0.34 rad this was as big
   // as a punch (measured: 0.518 m of idle sway against 0.516 m of punch travel), so
   // every strike disappeared into the noise.
   const idleSwing = sway * 0.07 * side * (1 - excursion);
@@ -213,7 +213,7 @@ export function fistLocal(state: ArmState, chassis: Chassis, side: -1 | 1) {
     guardPos[1] + (committed[1] - guardPos[1]) * k,
     guardPos[2] + (committed[2] - guardPos[2]) * k,
   ];
-  // measured, not assumed — the arena's hit test reads this
+  // measured, not assumed, the arena's hit test reads this
   const extend = Math.min(1, Math.hypot(
     fist[0] - sho[0], fist[1] - sho[1], fist[2] - sho[2]) / reach);
 
@@ -240,16 +240,16 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   const P = (x: number, y: number, z: number): [number, number, number] => [x, y, z];
 
   /**
-   * SECONDARY MOTION — the goose rig's waddle, at a boxer's amplitude.
+   * SECONDARY MOTION, the goose rig's waddle, at a boxer's amplitude.
    *
    * Everything above the waist used to be rigid: unless a punch was in flight the
    * arms sat in the guard and the torso did not move at all, so between exchanges
    * the figure read as a statue sliding around the ring. Measured, the arm verts
-   * moved 0.027 of a body height over two thirds of a second — about five pixels.
+   * moved 0.027 of a body height over two thirds of a second, about five pixels.
    *
    * These are the terms the goose uses, driven by the same gait phase the legs
    * already run on: the hips sway, the chest counter-rotates against them, and the
-   * head holds near level — the reflex that keeps a walking bird's eyes steady.
+   * head holds near level, the reflex that keeps a walking bird's eyes steady.
    * `z` is the lateral axis in this frame (the sides sit at ±halfHip / ±halfSho).
    */
   const sway = Math.sin(phase);
@@ -268,13 +268,13 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   bones.push({ name: "head",  a: head,   b: P(head[0] - 0.1 * s, head[1] + 0.02 * s, 0), radius: 0.13 * s });
 
   /**
-   * LEGS — the foot goes where the SIMULATION planted it.
+   * LEGS, the foot goes where the SIMULATION planted it.
    *
    * This used to place each foot in body-local space at cos(phase)·stride, which
    * cannot produce a planted foot at any gait rate: the foot is re-derived from the
    * body's own frame every tick, so it travels with the body and merely oscillates
    * about it. Matching the phase rate to ground speed made that right on average
-   * over a half cycle while the foot still swept back and forth inside it — the
+   * over a half cycle while the foot still swept back and forth inside it, the
    * "gliding" look, and no amount of retiming fixes it.
    *
    * `state.feet` carries a world coordinate per foot that the arena HOLDS FIXED for
@@ -305,7 +305,7 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
     const knee = solveKnee(hip, foot, thigh, shin, [1, 0, 0]);  // knees bend forward
 
     /**
-     * ANKLE — heel strike, roll flat, toe off, and lift the toe clear on the swing.
+     * ANKLE, heel strike, roll flat, toe off, and lift the toe clear on the swing.
      *
      * The toe used to sit at a FIXED offset from the ankle, so the foot never
      * rotated relative to the shin at all: measured 0.039 rad of ankle motion over a
@@ -336,14 +336,14 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   }
 
   // arms: the sim runs each arm as an angular body swinging about the vertical axis.
-  // `armL`/`armR` are that swing angle — they rest at ±ARM_REST and a punch adds a
-  // large angular impulse — and `armLv`/`armRv` are the rate, which is what the strike
+  // `armL`/`armR` are that swing angle: they rest at ±ARM_REST and a punch adds a
+  // large angular impulse, and `armLv`/`armRv` are the rate, which is what the strike
   // test actually reads. So the angle steers the arm and the SPEED extends it: a fist
   // at rest stays tucked into a guard, a committed swing snaps out to full reach.
   //
   // Taking reach from cos(angle) instead, as this did, never went negative over the
   // real range (−0.94 to 0.63 rad), so both arms sat permanently extended and a punch
-  // became a 40% stretch with no sweep — which is why the boxing did not read.
+  // became a 40% stretch with no sweep, which is why the boxing did not read.
   for (const side of [-1, 1] as const) {
     // Geometry comes from fistLocal, which the ARENA also calls to resolve strikes,
     // so the arm you see and the arm that hits are the same arm.
@@ -356,7 +356,7 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
                  radius: 0.075 * s });
   }
 
-  // wing spars, folded back — they read as a fly without needing to flap
+  // wing spars, folded back: they read as a fly without needing to flap
   for (const side of [-1, 1] as const) {
     const root: [number, number, number] = [chest[0] + 0.04 * s, chest[1] + 0.08 * s,
                                             chest[2] + side * 0.07 * s];
@@ -373,7 +373,7 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   // ── RAGDOLL ────────────────────────────────────────────────────────────────
   // The simulation has been running a ragdoll the whole time: `lean` is the torso
   // pitching over the feet, `tilt` is roll, and `down` counts the ticks left on the
-  // floor after a knockdown. None of it reached the rig — the pose above derives its
+  // floor after a knockdown. None of it reached the rig, the pose above derives its
   // own lean from speed and ignored the three fields the arena streams every frame,
   // so a bot that had been knocked flat still walked around bolt upright.
   //
@@ -385,12 +385,12 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   // Over about ten ticks, lie there, then come back up over the last dozen. The sim
   // freezes `lean` at the tipping angle while you are down, so the rest of the fall
   // is rendered here rather than integrated there.
-  // Over about sixteen ticks, not ten. Ten put the body through 1.45 rad in 0.17 s
-  // — 8.7 rad/s, where a real body toppling about its feet comes down nearer 3.8 —
+  // Over about sixteen ticks, not ten. Ten put the body through 1.45 rad in 0.17 s,
+  // 8.7 rad/s, where a real body toppling about its feet comes down nearer 3.8,
   // and the fists covered enough ground per frame to read as a snap rather than a
   // fall. The tail is unchanged, so getting up still takes the last dozen ticks.
   const fall = state.down > 0 ? Math.min(1, (1 - downT) * 3.2, downT * 4) : 0;
-  const FLOOR_PITCH = 1.45;   // radians — flat out, head a little off the deck
+  const FLOOR_PITCH = 1.45;   // radians, flat out, head a little off the deck
   const sign = state.lean >= 0 ? 1 : -1;
   const pitch = lean + state.lean + fall * (sign * FLOOR_PITCH - state.lean);
   const roll = state.tilt * (1 - fall * 0.5);
@@ -409,7 +409,7 @@ export function poseBot(state: ArenaBotState, chassis: Chassis): Pose {
   }
 
   // Nothing may end up under the floor. Lifting the whole pose keeps the limbs
-  // rigid — clamping each joint on its own would stretch the body instead.
+  // rigid, clamping each joint on its own would stretch the body instead.
   let floor = Infinity;
   for (const b of bones) floor = Math.min(floor, b.a[1] - b.radius, b.b[1] - b.radius);
   if (floor < 0) for (const b of bones) { b.a[1] -= floor; b.b[1] -= floor; }

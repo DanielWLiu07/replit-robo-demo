@@ -8,7 +8,7 @@ import { valueNoise } from "./vendor/blender-to-threejs/comp/custom-nodes";
  * A ragged radial wipe: broad ink lobes with a smaller torn edge, growing from a
  * point at the centre out past every corner. The pattern stays anchored while its
  * strength grows, so the reveal starts as a dot rather than a blotch, and the
- * front always outruns the roughness — which is what stops an already-revealed
+ * front always outruns the roughness, which is what stops an already-revealed
  * pixel from being covered again as it expands.
  *
  * Drive `impactReturn` from 0 to 1; `impactNoise` (0..5) sets how torn the edge is.

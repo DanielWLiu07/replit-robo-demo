@@ -1,5 +1,5 @@
 /**
- * Blender node ops — TS reference implementations, verified against Blender's
+ * Blender node ops, TS reference implementations, verified against Blender's
  * own GPU shader sources (vendor/blender-glsl/v4.5.3, fetch via
  * tools/fetch-blender-glsl.sh). Every function cites the file it mirrors.
  *
@@ -65,7 +65,7 @@ function smoothMin(a: number, b: number, c: number): number {
  * common/gpu_shader_common_math.glsl. The guarded ones are the point: Blender
  * refuses to emit NaN or Inf where an artist would see a black surface, so
  * SQRT, LOGARITHM, ARCSINE and friends return 0 outside their domain rather
- * than the IEEE answer. INVERSE_SQRT is deliberately NOT guarded — Blender
+ * than the IEEE answer. INVERSE_SQRT is deliberately NOT guarded, Blender
  * leaves that one bare.
  */
 export const mathOps: Record<string, (a: number, b: number, c: number) => number> = {
@@ -129,7 +129,7 @@ export function evalMath(operation: string, a: number, b: number, c: number, use
 
 /* ---------------- ShaderNodeMix RGBA (common/gpu_shader_common_mix_rgb.glsl) ----------------
  * clamp_factor clamps ONLY Fac to [0,1] (node_mix_clamp_value on fac);
- * clamp_result clamps the OUTPUT color. They are independent flags — do not
+ * clamp_result clamps the OUTPUT color. They are independent flags, do not
  * conflate them (the sketch graph sets clamp_factor only).
  */
 
@@ -203,7 +203,7 @@ export function mixSoftLight(fac: number, col1: Vec4, col2: Vec4, flags: MixFlag
  * mix_overlay, per channel (branch on col1 < 0.5), facm = 1 - fac:
  *   col1 <  0.5:  col1 * (facm + 2*fac*col2)
  *   col1 >= 0.5:  1 - (facm + 2*fac*(1 - col2)) * (1 - col1)
- * NO built-in result clamp — stays in [0,1] only for in-range inputs.
+ * NO built-in result clamp, stays in [0,1] only for in-range inputs.
  */
 export function mixOverlay(fac: number, col1: Vec4, col2: Vec4, flags: MixFlags = {}): Vec4 {
   const f = flags.clampFactor ? clamp01(fac) : fac;
@@ -218,11 +218,11 @@ export function mixOverlay(fac: number, col1: Vec4, col2: Vec4, flags: MixFlags 
 
 /**
  * map_range_linear: fromMax == fromMin yields 0 (not NaN). With clamp, the
- * output is clamped ORDER-AWARE between toMin/toMax — NOT to [0,1]:
+ * output is clamped ORDER-AWARE between toMin/toMax, NOT to [0,1]:
  *   (toMin > toMax) ? clamp(r, toMax, toMin) : clamp(r, toMin, toMax)
  *
  * The clamp applies to the degenerate 0 as well. In Blender the GLSL
- * map_range_linear takes use_clamp but never reads it — the clamp is a separate
+ * map_range_linear takes use_clamp but never reads it, the clamp is a separate
  * linked step applied to whatever the function returned, including that 0. So a
  * to-range that excludes 0 pulls it in rather than letting a bare 0 through.
  */
@@ -259,7 +259,7 @@ export function invert(fac: number, col: Vec4): Vec4 {
 // Blender does NOT evaluate a ramp as exact piecewise interpolation. It bakes
 // the ramp into a 257-texel 1D texture at build time and samples that with
 // hardware linear filtering, which quantises the result. Evaluating it exactly
-// would be *more* accurate and therefore WRONG for our purposes — the whole
+// would be *more* accurate and therefore WRONG for our purposes, the whole
 // point is to match what Blender puts on screen.
 //
 // The two-stop cases skip the texture entirely via dedicated fast paths, which
@@ -327,7 +327,7 @@ export function bakeColorRamp(stops: ColorStop[], interpolation: RampInterpolati
   return lut;
 }
 
-/** valtorgb_opti_linear — the exact two-stop fast path. */
+/** valtorgb_opti_linear, the exact two-stop fast path. */
 export function colorRampTwoStopLinear(fac: number, a: ColorStop, b: ColorStop): Vec4 {
   const span = b.position - a.position;
   const mul = span !== 0 ? 1 / span : 0;
@@ -335,7 +335,7 @@ export function colorRampTwoStopLinear(fac: number, a: ColorStop, b: ColorStop):
   return lerp4(a.color, b.color, clamp01(fac * mul + bias));
 }
 
-/** valtorgb_opti_ease — same mapping, then a smoothstep. */
+/** valtorgb_opti_ease, same mapping, then a smoothstep. */
 export function colorRampTwoStopEase(fac: number, a: ColorStop, b: ColorStop): Vec4 {
   const span = b.position - a.position;
   const mul = span !== 0 ? 1 / span : 0;

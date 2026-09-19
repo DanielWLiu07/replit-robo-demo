@@ -8,7 +8,7 @@
  * AUTH CONFIGURATION: To manage users, enable/disable login providers
  * (Google, GitHub, etc.), change app branding, or configure OAuth credentials,
  * use the Auth pane in the workspace toolbar. There is no external Clerk
- * dashboard — all auth configuration is done through the Auth pane.
+ * dashboard, all auth configuration is done through the Auth pane.
  *
  * IMPORTANT:
  * - Only active in production (Clerk proxying doesn't work for dev instances)
@@ -40,7 +40,7 @@ export const CLERK_PROXY_PATH = '/api/__clerk';
  * In the multi-value case, the leftmost value is the original client-
  * facing host. Take that one in all forms. Exported so that app.ts
  * (clerkMiddleware callback) and this proxy middleware agree on which
- * hostname is canonical — otherwise multi-domain/custom-domain flows
+ * hostname is canonical, otherwise multi-domain/custom-domain flows
  * break.
  */
 export function getClerkProxyHost(req: {
@@ -53,7 +53,7 @@ export function getClerkProxyHost(req: {
 }
 
 export function clerkProxyMiddleware(): RequestHandler {
-  // Only run proxy in production — Clerk proxying doesn't work for dev instances
+  // Only run proxy in production, Clerk proxying doesn't work for dev instances
   if (process.env.NODE_ENV !== 'production') {
     return (_req, _res, next) => next();
   }
@@ -91,7 +91,7 @@ export function clerkProxyMiddleware(): RequestHandler {
       },
       // Clerk's dynamic Frontend API responses (/v1/environment, /v1/client,
       // JWKS, ...) arrive without a Content-Length, so relaying them would use
-      // Transfer-Encoding: chunked — which the deployment edge (Cloud Run)
+      // Transfer-Encoding: chunked, which the deployment edge (Cloud Run)
       // rejects, turning the app's 200 into a 500. Buffer only those so they can
       // be re-sent with a Content-Length; the body is forwarded untouched so
       // Content-Encoding is preserved. Length-known responses (e.g. /npm/*

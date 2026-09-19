@@ -23,7 +23,7 @@ export function NeuralScope({ history, bot, index }: { history: MatchFrame[]; bo
     ctx.stroke();
    });
    const slot = bot.brain.slots.find(s => s.module === 'LPLC2_DNP01') ?? bot.brain.slots[0];
-   ctx.fillStyle = '#8e8f98'; ctx.fillText('Vm / ' + (slot ? MODULES[slot.module].circuit : '—'), 0, 145);
+   ctx.fillStyle = '#8e8f98'; ctx.fillText('Vm / ' + (slot ? MODULES[slot.module].circuit : ','), 0, 145);
    ctx.setLineDash([3, 4]); ctx.strokeStyle = '#4a4b54'; ctx.beginPath(); ctx.moveTo(left, 148); ctx.lineTo(w - 12, 148); ctx.stroke(); ctx.setLineDash([]);
    ctx.strokeStyle = '#e8e8e4'; ctx.lineWidth = 1.2; ctx.beginPath(); let begun = false;
    if (slot) for (const f of history) { if (f.tick < start) continue; const potential = f.bots[index ? f.teamSplit : 0]?.potentials[slot.module] ?? 0; const x = left + (f.tick - start) / 360 * width; const y = 195 - Math.min(1.25, potential / slot.threshold) * 47; if (!begun) {ctx.moveTo(x,y);begun=true;} else ctx.lineTo(x,y); }

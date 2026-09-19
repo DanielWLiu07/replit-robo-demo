@@ -18,7 +18,7 @@ const THRESHOLD_REST = 0.8;
  * The old lab asked the player to pick circuits off a shelf, which is the model's
  * job dressed up as a choice: you cannot tell from "LC11 / 127 cells" whether you
  * want it. What a player actually has an opinion about is how the fly should
- * FIGHT — press forward, stay out of reach, hold the line — and the interesting
+ * FIGHT, press forward, stay out of reach, hold the line, and the interesting
  * part is that you cannot have all three.
  *
  * That makes this a real constrained optimisation, not a menu. `profileBrain` is
@@ -45,7 +45,7 @@ export interface StatTargets {
 
 export interface Solution {
   brain: BrainSpec;
-  /** what the brain ACTUALLY scores — read back off the result, never assumed */
+  /** what the brain ACTUALLY scores, read back off the result, never assumed */
   achieved: StatTargets;
   /** weight each stat consumed */
   spend: Record<StatName, number>;
@@ -79,7 +79,7 @@ export function planStat(stat: StatName, points: number) {
   }
   const weight = plan.reduce((s, p) => s + p.weight, 0);
   // `shortfall` is what the weight cap alone could not deliver, before the budget
-  // is even considered — a stat asked past its own ceiling.
+  // is even considered, a stat asked past its own ceiling.
   return { plan, weight, shortfall: need };
 }
 
@@ -87,7 +87,7 @@ export function planStat(stat: StatName, points: number) {
 export const statCeiling = (stat: StatName): number =>
   Math.min(100, Math.round(STAT_GAINS[stat].reduce((s, [, g]) => s + WEIGHT_MAX * g, 0)));
 
-/** Weight a target costs right now — what the panel prints next to each slider. */
+/** Weight a target costs right now, what the panel prints next to each slider. */
 export const statCost = (stat: StatName, points: number): number =>
   planStat(stat, points).weight;
 
@@ -97,7 +97,7 @@ const totalWeight = (targets: StatTargets, scale: number) =>
 export function solveBrain(
   targets: StatTargets,
   opts: { leak?: number; refractory?: number } = {},
-  /** Weight the player may actually spend — grows as the campaign is cleared. */
+  /** Weight the player may actually spend, grows as the campaign is cleared. */
   budget: number = BRAIN_WEIGHT_BUDGET,
 ): Solution {
   // Scale every target by the SAME factor until the plan fits. Proportional
@@ -130,13 +130,13 @@ export function solveBrain(
     for (const p of plan) {
       /**
        * Below WEIGHT_MIN a circuit cannot be expressed as an intensity, so it used
-       * to be dropped outright — and dropping it deletes the points the player just
+       * to be dropped outright, and dropping it deletes the points the player just
        * spent on it. Measured across every way of spending the pool, the worst case
        * loses 17: ask for 90/10/40 and the 10 of evasion buys LPLC2 at 0.357 weight,
        * under the floor, so evasion comes back 0. The dial snaps to nothing and the
        * points are neither on the fly nor back in the pool.
        *
-       * The smallest amount of a stat that EXISTS is therefore WEIGHT_MIN * gain —
+       * The smallest amount of a stat that EXISTS is therefore WEIGHT_MIN * gain,
        * 11 evasion, 10 aggression, 10 tracking. Asking for less than that is asking
        * for something unbuildable, and the honest answer is the minimum, not zero:
        * round up to the floor when the budget can still carry it. The pool charges
@@ -173,7 +173,7 @@ export function solveBrain(
    * `toSlot` rounds each weight to 2dp, and rounding is not free: three slots each
    * rounded UP can push the total past BRAIN_WEIGHT_BUDGET even though the plan the
    * bisection found fits exactly. Measured over the ask space, 17 of 1331 asks came
-   * out at 8.01 and were REJECTED by the schema — and because the lab only disables
+   * out at 8.01 and were REJECTED by the schema, and because the lab only disables
    * its buttons on an invalid spec, the player saw a build they could not launch and
    * no reason why. Shave the overflow off the largest slot, which is the one whose
    * stat notices it least.
@@ -187,7 +187,7 @@ export function solveBrain(
 
   const brain: BrainSpec = {
     /**
-     * A brain with no slots is not a legal brain — the schema demands at least one.
+     * A brain with no slots is not a legal brain, the schema demands at least one.
      * An empty ask therefore has to produce SOMETHING, and it used to get
      * `toSlot("LC10A", 0)`, whose intensity-zero still carries WEIGHT_MIN: 0.4 of
      * pursuit, which profiles as 10 aggression. So "spend nothing" silently spent
@@ -222,7 +222,7 @@ export function solveBrain(
  * Wins by refractory period: 216 matches, identical brains, only refractoryTicks
  * differs, three seeds per ordered pair so every level plays 48. Re-run with
  * `tsx lib/sim/src/__refractory.ts`. These are measured, not chosen, and they have
- * moved once already — they inverted when the boxing physics landed, because a long
+ * moved once already: they inverted when the boxing physics landed, because a long
  * refractory period used to be all cost and stamina is the benefit it was missing.
  * A neuron that never goes deaf throws every punch it can, gasses out, and gets
  * countered on an empty tank.

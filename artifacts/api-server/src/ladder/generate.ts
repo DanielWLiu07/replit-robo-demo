@@ -15,13 +15,13 @@ import { budgetFor, progressAt, type RoundPlan } from "./difficulty";
  * A purely random loadout usually has no steering neuron, or nothing that can
  * see a target, so it drifts until the walls close in. Measured over 8 runs,
  * that produced 9 of 17 fights hitting the 90-second cap with a mean length of
- * 68s — and, worse, a passive TANK *wins* those, because the timeout tiebreak
+ * 68s, and, worse, a passive TANK *wins* those, because the timeout tiebreak
  * is hull fraction and a fly that never fights never takes damage. The ladder
  * was ending at round 1 to opponents that did nothing.
  *
  * So every generated fly is guaranteed a way to engage: DNa02 to steer, and a
  * target cell to steer at. That is the same lesson the hand-built roster
- * taught — a bot without DNa02 cannot turn toward anything — applied to
+ * taught, a bot without DNa02 cannot turn toward anything, applied to
  * generated brains. Everything else stays random.
  */
 
@@ -32,8 +32,8 @@ const TARGETS: NeuronModule[] = ["LC10A", "LC11"];
 /**
  * Reverse. A strong MDN makes a fly back away every time it sees anything, and
  * a ladder full of kiters is a ladder of 90-second chases nobody can finish.
- * It stays available as spice — reversing out of a losing exchange is real fly
- * behaviour — but it is not allowed to be the whole personality.
+ * It stays available as spice, reversing out of a losing exchange is real fly
+ * behaviour, but it is not allowed to be the whole personality.
  */
 const REVERSE: NeuronModule = "MDN";
 const REVERSE_MAX_WEIGHT = 0.5;
@@ -66,7 +66,7 @@ function upsert(
 /**
  * Bring the total at or under `cap`, deterministically and without ever going
  * over. Scaling rounds *down* (floor, not round) because rounding up five slots
- * by half a thousandth each is enough to breach the contract's ceiling — which
+ * by half a thousandth each is enough to breach the contract's ceiling, which
  * is exactly how the first version of this failed BrainSpec validation. Any
  * residue left by the per-slot minimum comes off the heaviest slot.
  */
@@ -128,7 +128,7 @@ function fitBudget(slots: ModuleSlot[], budget: number, floor: number): ModuleSl
 
 /**
  * One candidate opponent brain. Deterministic in `rng`, and validated against
- * BrainSpec on the way out — a generated loadout gets no exemption from the
+ * BrainSpec on the way out, a generated loadout gets no exemption from the
  * schema a human loadout has to satisfy.
  */
 export function generateCandidate(
@@ -144,7 +144,7 @@ export function generateCandidate(
   //
   // The first attempt raised thresholds to make early flies easy, which made
   // them *inert* instead of *fragile*: they never fired, never closed, never
-  // died, and round 1 became a 90-second stalemate the player won on hull —
+  // died, and round 1 became a 90-second stalemate the player won on hull,
   // 10 of 25 round-1 fights hit the cap, median 57s. An easy opponent should
   // charge in and lose quickly, not stand still. So early flies commit just as
   // readily as late ones, they simply have far less to commit with.

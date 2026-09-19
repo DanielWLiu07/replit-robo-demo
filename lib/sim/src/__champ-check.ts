@@ -4,7 +4,7 @@
  * champion.json was evolved against these four archetypes under the physics of the
  * day, and the pitch makes a measured claim about it ("20W 0L 0D on seeds it never
  * trained on"). Any change to the arena can invalidate that, and the brain is also
- * transcribed into the API seed and the client roster — so re-evolving is expensive
+ * transcribed into the API seed and the client roster, so re-evolving is expensive
  * in more than CPU. This re-measures the claim instead of assuming it.
  */
 import { runMatch } from "@workspace/sim";

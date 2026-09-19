@@ -36,7 +36,7 @@ export function assertOwns(identity: Identity, bot: BotRow): void {
   if (!owns(identity, bot)) {
     throw forbidden(
       bot.isSeed
-        ? "Roster bots can't be edited — clone one instead"
+        ? "Roster bots can't be edited. Clone one instead"
         : "That bot belongs to someone else",
     );
   }
@@ -217,6 +217,6 @@ export async function pickOpponent(excludeBotId: string): Promise<LoadedBot> {
     .where(and(ne(botsTable.id, excludeBotId), eq(botsTable.isGenerated, false)))
     .orderBy(sql`random()`)
     .limit(1);
-  if (!bot) throw notFound("No opponent available — the roster is empty");
+  if (!bot) throw notFound("No opponent available: the roster is empty");
   return loadBot(bot.id);
 }

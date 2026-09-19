@@ -105,7 +105,7 @@ function StatPanel({ entry, profile }: { entry: RosterEntry; profile: BotProfile
         ))}
       </ul>
       <p className="stat-footnote">
-        These bars are read off the equipped circuits and the chassis — the same numbers
+        These bars are read off the equipped circuits and the chassis, the same numbers
         that drive the fight, not decoration.
       </p>
     </aside>
@@ -147,7 +147,7 @@ export function RosterSelect({
   setP2: (bot: BotSpec) => void;
   squad: number;
   setSquad: (n: number) => void;
-  /** advance to the brain lab — the roster never starts a fight itself */
+  /** advance to the brain lab, the roster never starts a fight itself */
   onNext: () => void;
 }) {
   const [highlight, setHighlight] = useState(0);
@@ -161,13 +161,13 @@ export function RosterSelect({
   const profile = profileBot(active.bot);
 
   /**
-   * One seat to fill. The opponent is not picked here any more — the campaign
-   * generates it from the round you are on — so this screen is only ever about
+   * One seat to fill. The opponent is not picked here any more, the campaign
+   * generates it from the round you are on, so this screen is only ever about
    * your own fighter, and clicking a card no longer silently flips you into
    * "now choose their bot" mode.
    *
    * A card hands over the BODY, not the brain. It used to hand over the whole spec,
-   * which quietly threw away everything the player had spent in the lab — and worse,
+   * which quietly threw away everything the player had spent in the lab, and worse,
    * the lab did not read it back: it edits the saved build, so a roster pick was
    * discarded on the very next screen. Now the class is the choice this screen makes
    * and the points stay the player's, which is the only reading under which the two

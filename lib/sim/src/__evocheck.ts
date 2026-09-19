@@ -1,6 +1,6 @@
 /**
  * Mirrors sim.test.ts's neuroevolution test EXACTLY (same panel, same settings, same
- * call order — `fitness` is evaluated in sequence and the order is part of the
+ * call order, `fitness` is evaluated in sequence and the order is part of the
  * fixture), then adds the context the test cannot see: where the single random brain
  * it draws sits in the distribution of random brains.
  */

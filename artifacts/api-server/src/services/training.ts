@@ -29,7 +29,7 @@ import { createBot, listBots, loadBot, toBotSpec } from "./bots";
  * One core's worth of training at a time.
  *
  * Each run pins a CPU for ~30 seconds. Autoscale containers are small, and two
- * concurrent runs do not finish in half the time — they finish in the same
+ * concurrent runs do not finish in half the time: they finish in the same
  * total time while making every *other* request slower. Queueing is out of
  * scope tonight, so the honest answer is a 429 that says when to come back.
  */
@@ -106,7 +106,7 @@ async function resolvePanel(
   }
   const roster = (await listBots(identity)).filter(({ bot }) => bot.isSeed);
   if (roster.length === 0) {
-    throw badRequest("No opponents to train against — seed the roster first");
+    throw badRequest("No opponents to train against. Seed the roster first");
   }
   return roster.slice(0, 4).map(({ bot, brain }) => toBotSpec(bot, brain));
 }
@@ -160,8 +160,8 @@ export class TrainingBusyError extends Error {
   readonly status = 429;
   constructor() {
     super(
-      "A training run is already using the CPU. Evolution is not parallel work — " +
-        "wait for the current run to finish (about 30 seconds).",
+      "A training run is already using the CPU. Evolution is not parallel work. " +
+        "Wait for the current run to finish (about 30 seconds).",
     );
     this.name = "TrainingBusyError";
   }
@@ -255,7 +255,7 @@ function spawnTrainer(row: TrainingRunRow, panel: BotSpec[]): void {
 }
 
 /**
- * Terminal transition. On success the evolved brain becomes a real bot — same
+ * Terminal transition. On success the evolved brain becomes a real bot, same
  * table, same brain-revision rules, same leaderboard row as a hand-built one,
  * so it can be fought and inspected like anything else.
  */

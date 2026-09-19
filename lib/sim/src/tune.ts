@@ -8,8 +8,8 @@ import { bodyRatios, resolveBody } from "./body.js";
  * The bench could have scored a build off a formula, and that would have been a
  * lie dressed as analysis: the thing that decides whether long arms beat heavy
  * hands is the arena, with its pocket discipline, its stamina drain and its
- * knockdowns, not a weighted sum we chose. So this runs real matches — the same
- * `runMatch` the fight screen streams — and climbs on what actually wins.
+ * knockdowns, not a weighted sum we chose. So this runs real matches, the same
+ * `runMatch` the fight screen streams: and climbs on what actually wins.
  *
  * Coordinate ascent rather than anything cleverer, for two reasons: there are only
  * four parameters, and every evaluation costs ~24ms of simulation, so the budget is

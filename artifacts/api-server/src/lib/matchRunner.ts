@@ -14,7 +14,7 @@ import { runMatch as simRunMatch } from "@workspace/sim";
  */
 export const runMatch: MatchRunner = simRunMatch;
 
-/** No stub any more — `@workspace/sim` is wired in. Reported on /api/healthz. */
+/** No stub any more, `@workspace/sim` is wired in. Reported on /api/healthz. */
 export const SIM_IS_STUB = false;
 
 /**
@@ -23,7 +23,7 @@ export const SIM_IS_STUB = false;
  * hundred milliseconds, so there is no reason to make anyone wait 90 seconds
  * of wall clock to find out who won.
  *
- * `matchId` comes back empty — the sim does not know its own id — and is filled
+ * `matchId` comes back empty: the sim does not know its own id, and is filled
  * in by the caller that owns the row.
  */
 export function runMatchHeadless(

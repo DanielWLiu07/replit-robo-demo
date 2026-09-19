@@ -12,7 +12,7 @@ const ang = (u: number[], v: number[]) =>
 /**
  * Sweep WITHIN one gait cycle, which is what the goose's clip amplitudes describe.
  * Measuring across a whole match instead mixes in turning, leaning and speed changes
- * and flatters every number — the first pass read spine at 1.62 rad against the
+ * and flatters every number, the first pass read spine at 1.62 rad against the
  * goose's 0.08 and called it fine.
  */
 const NAMES = ["spine","neck","head","thighL","shinL","footL",
@@ -63,5 +63,5 @@ for (const n of NAMES) {
   let v = "";
   if (g !== undefined) v = m >= g * 0.7 ? "comparable" : m >= g * 0.35 ? "thin" : "MISSING";
   console.log(`  ${n.padEnd(11)} ${m.toFixed(3)} rad` +
-    (g !== undefined ? `        ${g.toFixed(2)} rad` : "              —   ") + `    ${v}`);
+    (g !== undefined ? `        ${g.toFixed(2)} rad` : ", ") + `    ${v}`);
 }

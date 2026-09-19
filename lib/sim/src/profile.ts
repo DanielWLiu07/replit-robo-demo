@@ -22,7 +22,7 @@ export interface BotProfile {
   agility: number;
   /** one-line read on how it fights */
   playstyle: string;
-  /** total cells across every equipped population — the "brain size" stat */
+  /** total cells across every equipped population, the "brain size" stat */
   neuronCount: number;
   modules: Array<{ module: NeuronModule; weight: number; cells: number; transmitter: string }>;
 }
@@ -80,10 +80,10 @@ export function profileBrain(brain: BrainSpec, chassis: BotSpec["chassis"]): Bot
   const twitchy = reflex > 62;
   const playstyle =
     top === "evasion"
-      ? (twitchy ? "Flinches early and often — hard to corner" : "Breaks away under pressure")
+      ? (twitchy ? "Flinches early and often, hard to corner" : "Breaks away under pressure")
       : top === "tracking"
       ? (twitchy ? "Locks on fast and never loses the line" : "Patient, deliberate pursuit")
-      : (twitchy ? "Commits instantly — all forward pressure" : "Grinds forward and wears you down");
+      : (twitchy ? "Commits instantly, all forward pressure" : "Grinds forward and wears you down");
 
   return { aggression, evasion, tracking, reflex, hull, speed, agility, playstyle, neuronCount, modules };
 }

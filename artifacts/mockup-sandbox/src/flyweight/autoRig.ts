@@ -1,7 +1,7 @@
 /**
  * Automatic skinning for the Meshy chassis meshes.
  *
- * The generated .glb files are a single welded island each — 12k triangles, no
+ * The generated .glb files are a single welded island each, 12k triangles, no
  * skin, no animation, no parts to detach. Cutting one into limbs would leave the
  * shoulder and hip sockets open, and a rotating arm would show straight through a
  * hollow torso. So instead of splitting the mesh we bind it: every vertex gets
@@ -14,7 +14,7 @@
  * centroids recovers a limb centreline without any authoring. That matters because
  * the three chassis have different proportions and are regenerated from prompts.
  *
- * Pure array maths, no three.js — so it can be checked in node against the raw .glb
+ * Pure array maths, no three.js, so it can be checked in node against the raw .glb
  * before it is ever asked to render.
  */
 
@@ -35,7 +35,7 @@ export interface RestBone {
  *
  * IN THE ORDER fitSkeleton ACTUALLY PUSHES THEM: the torso, then one whole side
  * (leg, then arm, then wing), then the other. It used to list every leg and then
- * every arm, which is not what the loop below builds — nothing read it, so nothing
+ * every arm, which is not what the loop below builds: nothing read it, so nothing
  * broke, but it cost an afternoon of chasing a skinning bug that was not there.
  * Rig code should index through `rest`, which carries its own names.
  */
@@ -48,7 +48,7 @@ export const BONE_NAMES = [
 const sub = (p: V3, q: V3): V3 => [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
 const len = (v: V3) => Math.hypot(v[0], v[1], v[2]);
 
-/** Distance from point p to segment ab, and nothing else — the whole weighting rule. */
+/** Distance from point p to segment ab, and nothing else, the whole weighting rule. */
 function distToSegment(px: number, py: number, pz: number, a: V3, b: V3): number {
   const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
   const dd = dx * dx + dy * dy + dz * dz;
@@ -89,10 +89,10 @@ export function normalise(src: ArrayLike<number>): Normalised {
  * Does this mesh face +Z, and so need turning around?
  *
  * The arena drives everything with forward on local −Z, but the generator emits these
- * facing +Z — which is why an unturned fighter moonwalks and throws its punches out of
+ * facing +Z, which is why an unturned fighter moonwalks and throws its punches out of
  * its own back. Decide it from the feet: a biped's foot is strongly asymmetric about
  * the ankle, with the toe reaching several times further than the heel, and that holds
- * on all three chassis. The head is not usable for this — on these models the greatest
+ * on all three chassis. The head is not usable for this, on these models the greatest
  * protrusion at head height is the swept-back wing spar, which points the other way.
  */
 export function facesPositiveZ(positions: ArrayLike<number>): boolean {
@@ -133,7 +133,7 @@ function lobe(pos: Float32Array, lo: number, hi: number, side: number, minAbsX: 
   return count ? { x: sx / count, z: sz / count, count } : null;
 }
 
-/** Fraction of a band's points that sit near the midline — near zero means two limbs. */
+/** Fraction of a band's points that sit near the midline, near zero means two limbs. */
 function midlineShare(pos: Float32Array, lo: number, hi: number, halfGap: number) {
   let inner = 0, total = 0;
   for (let i = 0; i < pos.length / 3; i++) {
@@ -182,7 +182,7 @@ export function fitSkeleton(positions: Float32Array): RestBone[] {
   chestTop = Math.min(0.86, Math.max(0.70, chestTop));
 
   // arm pivot: an arm hanging at the side leaves a gap in the lateral profile, so
-  // look for a radius with almost nothing at it and real mass still outboard of it —
+  // look for a radius with almost nothing at it and real mass still outboard of it,
   // torso shell, air, then arm. The socket sits a little above the top of that gap.
   const armSeparated = (y: number) => {
     let sides = 0;
@@ -252,20 +252,20 @@ export function fitSkeleton(positions: Float32Array): RestBone[] {
      * Arms: the outer lobe between crotch and shoulder.
      *
      * This depends entirely on the model being posed with its arms OUT, away from
-     * the torso. The first fly models were generated in a boxing guard — elbows bent,
-     * forearms folded up beside the head — and a folded limb doubles back on itself,
+     * the torso. The first fly models were generated in a boxing guard, elbows bent,
+     * forearms folded up beside the head, and a folded limb doubles back on itself,
      * so no silhouette fit can separate forearm from bicep. Measured on those: the
      * hand bone owned 57 and 50 vertices while the shoulder owned 1414, and a punch
      * visibly rotated the shoulder plate instead of an arm.
      *
-     * Regenerating the chassis with arms extended fixed it at the source — the same
+     * Regenerating the chassis with arms extended fixed it at the source, the same
      * code now gives the hands 830 and 749. If the models are ever regenerated again,
      * keep the arms out and straight, and keep a distinct forearm and fist.
      */
     // the outer lobe between crotch and shoulder is the arm held out at the side
     const shoY = shoulder - 0.035;
     /**
-     * Where this side's arm sits, laterally, at the shoulder — the line the limb
+     * Where this side's arm sits, laterally, at the shoulder, the line the limb
      * follows down. Everything below keys off it rather than off a fixed 0.11,
      * which is close enough to the midline to also catch hip and abdomen armour:
      * the downward walk then ran past the real hand and the fist bone swept up a
@@ -284,7 +284,7 @@ export function fitSkeleton(positions: Float32Array): RestBone[] {
      *
      * The elbow and wrist used to be placed at fixed fractions between the shoulder
      * and the crotch, on the assumption that an arm hangs the full height of the
-     * torso. This model's does not — so the lower two bones were left dangling below
+     * torso. This model's does not, so the lower two bones were left dangling below
      * the geometry. Measured: `upperArm` owned 1436 vertices of shoulder plate while
      * `foreArm` owned 214 and `fist` owned FOUR on one side and ZERO on the other.
      * Throwing a punch therefore rotated the pauldron and moved nothing that looks
@@ -297,7 +297,7 @@ export function fitSkeleton(positions: Float32Array): RestBone[] {
     // The walk must STOP at the hips. Below the crotch the "outer lobe" this samples
     // is the LEG, not the arm, so an unbounded search ran the chain down the thigh
     // and the hand ended up owning 243 vertices of upper leg (y 0.28-0.42 against a
-    // thigh spanning 0.25-0.54) — a punch would then drag the thigh with it.
+    // thigh spanning 0.25-0.54), a punch would then drag the thigh with it.
     let armBottom = shoY;
     const floorY = crotch + 0.04;
     for (let yn = shoY; yn > floorY; yn -= 0.01) {
@@ -348,11 +348,11 @@ export function fitSkeleton(positions: Float32Array): RestBone[] {
  *
  * Distance to the nearest bone segment decides ownership, and only bones within
  * `band` of that nearest one get any share. A robot wants stiff joints, so the blend
- * zone is deliberately narrow — wide enough that the shoulder stretches instead of
+ * zone is deliberately narrow, wide enough that the shoulder stretches instead of
  * tearing, tight enough that the torso does not follow a punch.
  */
 /**
- * Smooth skin weights by inverse-power falloff — the goose rig's scheme.
+ * Smooth skin weights by inverse-power falloff, the goose rig's scheme.
  *
  * This used to keep only bones within a 0.05 BAND of the nearest one, which on a
  * long thin limb is not a blend at all: `upperArm` is closest to nearly every arm
@@ -376,14 +376,14 @@ export function computeSkinWeights(positions: ArrayLike<number>, bones: RestBone
    * Which bones may share a vertex: itself, its parent, and its children.
    *
    * Distance alone cannot rig this model. `fitSkeleton` hangs the arms down to
-   * crotch height, so the fist bone ends up sitting almost exactly on the thigh —
+   * crotch height, so the fist bone ends up sitting almost exactly on the thigh,
    * measured, the fist centroid is at x −0.107 against the thigh's −0.104. Any
    * purely spatial weighting therefore hands arm bones real ownership of leg
    * geometry, and a thrown punch drags part of the leg with it (worst vertex: 60%
    * arm-driven).
    *
    * The skeleton already knows what is connected to what. A thigh and an upper arm
-   * are SIBLINGS — both children of the spine — so they never share a vertex, while
+   * are SIBLINGS, both children of the spine, so they never share a vertex, while
    * a forearm still blends smoothly into its own upper arm and fist. This is the
    * cheap stand-in for geodesic (along-the-surface) distance that a real rigger
    * would use, and it costs one lookup.

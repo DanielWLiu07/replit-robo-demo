@@ -16,7 +16,7 @@ export function newId(prefix: string, length = 12): string {
   return `${prefix}_${out}`;
 }
 
-/** Match seeds are ids too — they are the whole replay, so they get shown. */
+/** Match seeds are ids too: they are the whole replay, so they get shown. */
 export function newSeed(): string {
   return newId("seed", 10);
 }

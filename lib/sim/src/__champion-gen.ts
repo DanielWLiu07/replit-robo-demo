@@ -18,4 +18,4 @@ writeFileSync(new URL("./champion.json", import.meta.url),
     curve: history.map(h => ({ gen: h.generation, best: h.bestScore, mean: h.meanScore })),
     brain: best,
   }, null, 2) + "\n");
-console.log("wrote champion.json — fitness", history[0]!.bestScore, "->", history.at(-1)!.bestScore);
+console.log("wrote champion.json, fitness", history[0]!.bestScore, "->", history.at(-1)!.bestScore);

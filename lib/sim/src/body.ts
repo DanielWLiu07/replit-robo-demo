@@ -23,8 +23,8 @@ import { BODY_BY_CHASSIS, type BodySpec, type Chassis } from "@workspace/contrac
  *      goes as M^(2/3), while the mass you must shift goes as M. So a = F/M ∝
  *      M^(-1/3): the square-cube law, which is also why big animals are slow.
  *
- *   3. Stance fights turning. A wide base tips over at a larger angle —
- *      θ = atan((s/2)/h) — but puts the feet further from the yaw axis, raising
+ *   3. Stance fights turning. A wide base tips over at a larger angle,
+ *      θ = atan((s/2)/h), but puts the feet further from the yaw axis, raising
  *      rotational inertia. Stability and agility are the same parameter, opposed.
  */
 
@@ -34,15 +34,15 @@ const ARM_FRACTION = 0.053;
 const SWING_TIME = 0.085;
 /** Height of the centre of mass above the feet, metres. */
 const COM_HEIGHT = 0.62;
-/** Shoulder-to-shoulder width, metres — the other axis of the yaw inertia. */
+/** Shoulder-to-shoulder width, metres, the other axis of the yaw inertia. */
 const BODY_WIDTH = 0.34;
 
 export interface Mechanics {
   /** m/s at the fist at the end of a swing */
   tipSpeed: number;
-  /** joules delivered by that fist — ½mv², what a hit is actually worth */
+  /** joules delivered by that fist, ½mv², what a hit is actually worth */
   impactEnergy: number;
-  /** shoulder to fist, metres — straight through from the spec */
+  /** shoulder to fist, metres, straight through from the spec */
   reach: number;
   /** linear acceleration, arbitrary units, comparable between bodies */
   accel: number;

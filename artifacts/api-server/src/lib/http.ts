@@ -79,7 +79,7 @@ export function errorHandler(
     return;
   }
   if (err instanceof ZodError) {
-    // A response failed its own contract — our bug, not the caller's.
+    // A response failed its own contract, our bug, not the caller's.
     logger.error({ err }, "response failed contract validation");
     res.status(500).json({ error: "Response failed validation" } satisfies ApiError);
     return;

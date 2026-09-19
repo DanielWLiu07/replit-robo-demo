@@ -10,9 +10,9 @@
  *
  * Measured cost, 600 ticks with ~0.9% of cells active: 0.34 ms per fly per tick.
  * One fly uses 2% of a 60 Hz frame and eleven use 23%, so a whole-brain wave
- * fight runs live. A headless match is the expensive direction — roughly 0.5 s
+ * fight runs live. A headless match is the expensive direction, roughly 0.5 s
  * for 1v1 and 6 s for an eleven-fly wave against ~30 ms for the six-module
- * model — which is what any batch path (training, opponent search, verification)
+ * model, which is what any batch path (training, opponent search, verification)
  * has to be budgeted against.
  *
  * What this does NOT solve: the fly's descending neurons drive wings and legs,
@@ -31,7 +31,7 @@ export const TRANSMITTERS = [
 /** Drosophila: ACh excites, GABA and glutamate inhibit, modulators are neutral here. */
 export const TRANSMITTER_SIGN = new Float32Array([1, -1, -1, 0, 0, 0, 0]);
 
-/** The graph, loaded once and shared by every fly in a match — it is read-only. */
+/** The graph, loaded once and shared by every fly in a match: it is read-only. */
 export interface Connectome {
   neurons: number;
   /** CSR out-edges: offsets[i]..offsets[i+1] index into targets/weights */

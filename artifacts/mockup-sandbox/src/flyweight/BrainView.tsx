@@ -15,7 +15,7 @@ import {
  * v783 coordinates, one point per cell, the whole adult fly.
  *
  * What replaced what: this used to draw one bezier per *counted* cell in an
- * arrangement that was anatomical by hand — honest about the counts, invented
+ * arrangement that was anatomical by hand, honest about the counts, invented
  * about the positions. Every coordinate here is measured. The six circuits the
  * simulation drives sit inside the real brain and light where they actually
  * are, so a Giant Fiber spike lights two cells in the right place rather than
@@ -106,8 +106,8 @@ export function BrainView({
     element.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    // The brain is wide and shallow — x spans the full normalised unit, y only
-    // ~0.42 of it — so the panel is filled by fitting height, not width.
+    // The brain is wide and shallow, x spans the full normalised unit, y only
+    // ~0.42 of it, so the panel is filled by fitting height, not width.
     const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 40);
     camera.position.set(0, 0.06, 0.92);
     camera.lookAt(0, 0, 0);
@@ -218,7 +218,7 @@ export function BrainView({
         ))}
       </ul>
       <p className="brainview-note">
-        Every neuron in the adult fly at its measured position —{" "}
+        Every neuron in the adult fly at its measured position ,{" "}
         {cloud?.count.toLocaleString() ?? "139,248"} cells, FlyWire FAFB v783. The equipped
         circuits light where they actually sit.
       </p>

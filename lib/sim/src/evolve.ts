@@ -8,7 +8,7 @@ import { makeRng } from "./rng.js";
 /**
  * Neuroevolution over spiking brains.
  *
- * Spikes are not differentiable, so there is no gradient to descend — evolution is
+ * Spikes are not differentiable, so there is no gradient to descend, evolution is
  * the standard tool for training spiking networks, and it is what the fly's own
  * circuits were shaped by. The deterministic simulator is what makes it work: a
  * (brain, opponent, seed) triple always yields the same match, so fitness is an
@@ -50,7 +50,7 @@ function repair(slots: ModuleSlot[]): ModuleSlot[] {
     // Round DOWN, not to nearest. Rounding five slots to the nearest milli-unit can
     // round *up*, the schema's cap is inclusive, and the repaired brain is then
     // rejected by exactly the gate that is meant to keep evolution inside the
-    // contract — an evolved champion that cannot be saved. Latent until a physics
+    // contract, an evolved champion that cannot be saved. Latent until a physics
     // change made a five-slot genome win: the boxing pass is what surfaced it.
     out = out.map((s) => ({ ...s, weight: Math.max(0.05, Math.floor(s.weight * k * 1000) / 1000) }));
     // The 0.05 floor can put a wide loadout back over on its own, so shave the

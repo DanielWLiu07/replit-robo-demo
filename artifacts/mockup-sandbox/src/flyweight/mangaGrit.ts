@@ -7,14 +7,14 @@ import { paperGrain } from "./vendor/blender-to-threejs/comp/custom-nodes";
  * in a dark room.
  *
  * `manga-comp` prints black ink on white paper, so coverage rises as the frame
- * gets DARKER. Inverting the page is not a matter of swapping the two colours —
+ * gets DARKER. Inverting the page is not a matter of swapping the two colours,
  * that just prints a photographic negative. The tone itself has to be flipped,
  * so that coverage rises as the frame gets BRIGHTER and the halftone lands on
  * the lit side of the subject with the unlit room staying bare paper. Same
  * nesting property as the daylight version: layers are unioned, never
  * exchanged, so a stroke that exists at one tone exists at every brighter one.
  *
- * Grittier than the daylight print on purpose — a finer screen, tighter hatch
+ * Grittier than the daylight print on purpose, a finer screen, tighter hatch
  * and a much heavier tooth, because grain reads as film on black where it
  * reads as paper on white.
  */
@@ -95,7 +95,7 @@ export function mangaGritGraph(c: CompGraph, opts: MangaGritOptions = {}): CompN
   cover = c.math("MAXIMUM", cover, layerSolid);
 
   // Sobel on luminance still finds the silhouette, and on black it reads as a
-  // chalk rim rather than an outline — which is what sells the darkness.
+  // chalk rim rather than an outline, which is what sells the darkness.
   const edges = c.filter(c.luminance(scene), "SOBEL");
   const edge = c.mapRange(c.separate(edges, "r"), { from: [0, 1.1], to: [0, 1], clamp: true });
   cover = c.math("MAXIMUM", cover, edge);

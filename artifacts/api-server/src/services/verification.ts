@@ -66,7 +66,7 @@ function decide(
       explanation:
         `This match was fought under sim v${row.simVersion} and the server now runs ` +
         `v${SIM_VERSION}. The replay is self-consistent but it is a different simulation, ` +
-        `so it ends on tick ${result.ticks} rather than ${row.ticks}. Not a defect — a ` +
+        `so it ends on tick ${result.ticks} rather than ${row.ticks}. Not a defect, a ` +
         `different fight.`,
     };
   }

@@ -3,7 +3,7 @@ import type { NeuronModule } from "@workspace/contract";
 /**
  * The whole brain, not a diagram of one.
  *
- * 139,248 neurons at their real FlyWire FAFB v783 positions — every annotated
+ * 139,248 neurons at their real FlyWire FAFB v783 positions, every annotated
  * cell in the adult fly. The previous view drew one bezier per counted cell in
  * an arrangement that was anatomical only in spirit; this is the reconstruction.
  *
@@ -11,7 +11,7 @@ import type { NeuronModule } from "@workspace/contract";
  * because the headline numbers are misleading: the popular ones render a
  * handful of hand-placed spheres and tori standing in for brain regions and
  * light those, and show the 139k figure in a separate 2D panel. Nothing was
- * copied from them — this draws the real coordinate of every neuron.
+ * copied from them: this draws the real coordinate of every neuron.
  *
  * Packed as uint16 per axis (quantisation error is ~3 nm against a 190 um brain,
  * far under a soma) plus one byte of metadata, which is 952 KB for the lot. The
@@ -25,7 +25,7 @@ export interface ConnectomeCloud {
   count: number;
   /** xyz per neuron, centred on the brain and normalised to the longest axis */
   positions: Float32Array;
-  /** super_class index per neuron — what kind of cell it is */
+  /** super_class index per neuron, what kind of cell it is */
   classes: Uint8Array;
   /** 0, or 1..6 for the six circuits the simulation drives */
   modules: Uint8Array;

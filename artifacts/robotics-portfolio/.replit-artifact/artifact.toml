@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "FLYWEIGHT — Small brain. Big fight."
+title = "FLYWEIGHT: Small brain. Big fight."
 description = "FLYWEIGHT is a browser-based robotics experiment where users build connectome-inspired battle bots and watch their brains compete."
 version = "1.0.0"
 id = "artifacts/robotics-portfolio"

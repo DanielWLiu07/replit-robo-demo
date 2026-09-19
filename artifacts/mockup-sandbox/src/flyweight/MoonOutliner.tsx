@@ -8,7 +8,7 @@ import type { SceneEditorNode } from "./vendor/blender-to-threejs/stage/scene-ed
  *
  * It renders `editor.tree()` and nothing else: the editor owns selection, so a
  * row click, a viewport pick and a G/S/R gesture all agree by construction.
- * Rows are keyed by id — never by name or index, both of which move.
+ * Rows are keyed by id, never by name or index, both of which move.
  */
 const ADD: { kind: AddKind; label: string }[] = [
   { kind: "star", label: "Star" },
@@ -92,7 +92,7 @@ export function MoonOutliner({ editor }: { editor: MoonEditor }) {
 
       <div className="moon-editor-head">
         <span>SELECTED</span>
-        <span>{selected ? selected.name : "—"}</span>
+        <span>{selected ? selected.name : "-"}</span>
       </div>
       <div className="moon-editor-actions">
         <button onClick={copy}>{copied ? "copied ✓" : "copy layout"}</button>

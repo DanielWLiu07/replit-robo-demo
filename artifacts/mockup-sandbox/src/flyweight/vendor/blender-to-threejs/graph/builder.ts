@@ -1,5 +1,5 @@
 /**
- * The authoring surface — how a material gets written by hand.
+ * The authoring surface, how a material gets written by hand.
  *
  * Why a builder at all, when TSL is already a node system: TSL is an open field.
  * Nothing stops you writing a `mix` that clamps where Blender's does not, or a
@@ -29,7 +29,7 @@ export interface MathOptions {
 
 export interface MixOptions {
   /**
-   * Clamps Fac to [0,1]. Independent of clampResult — Blender exposes these as
+   * Clamps Fac to [0,1]. Independent of clampResult, Blender exposes these as
    * two separate checkboxes and conflating them is a classic porting bug.
    */
   clampFactor?: boolean;
@@ -41,7 +41,7 @@ export interface MapRangeOptions {
   from: readonly [number, number];
   to: readonly [number, number];
   /**
-   * Blender clamps ORDER-AWARE between toMin and toMax, not to [0,1] — so a
+   * Blender clamps ORDER-AWARE between toMin and toMax, not to [0,1], so a
    * range like [4.56, -0.62] still clamps correctly. See mapRangeLinear.
    */
   clamp?: boolean;
@@ -68,7 +68,7 @@ export class Graph {
     return this.make('ShaderNodeValue', { value: initial, uniform: name }, []);
   }
 
-  /** ShaderNodeValue — a named float constant. */
+  /** ShaderNodeValue, a named float constant. */
   value(v: number): GraphNode {
     return this.make('ShaderNodeValue', { value: v }, []);
   }
@@ -173,7 +173,7 @@ export class Graph {
    * Blender's Color Ramp.
    *
    * Two stops take an exact fast path. Three or more are baked into a 257-texel
-   * map and sampled with linear filtering — quantised, exactly as Blender does
+   * map and sampled with linear filtering, quantised, exactly as Blender does
    * it. Evaluating a many-stop ramp exactly would be more accurate and
    * therefore wrong: it would not match the render you are trying to reproduce.
    */
@@ -196,7 +196,7 @@ export class Graph {
   }
 
   /* ---------------- varying inputs ----------------
-   * These differ per fragment, so they have no CPU value — evaluating a graph
+   * These differ per fragment, so they have no CPU value, evaluating a graph
    * that reaches one is an error, not a number. Everything above this line can
    * still be constant-folded.
    */
@@ -225,7 +225,7 @@ export class Graph {
   }
 
   /**
-   * Per-vertex colour — Blender's Color Attribute node.
+   * Per-vertex colour, Blender's Color Attribute node.
    *
    * Reads opaque white on a mesh with no colour attribute, the same way Blender
    * reads an absent layer, so a graph that multiplies by this still shows the
@@ -262,7 +262,7 @@ export class Graph {
     return this.make('GraphSeparate', { channel }, [vector]);
   }
 
-  /** Build a vector from components — the inverse of separate. */
+  /** Build a vector from components, the inverse of separate. */
   combine(x: NodeInput, y: NodeInput, z: NodeInput = 0): GraphNode {
     return this.make('GraphCombine', {}, [x, y, z]);
   }

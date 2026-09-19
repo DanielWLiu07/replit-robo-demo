@@ -1,5 +1,5 @@
 /**
- * TSL emission — turns an authored graph into Three node-material code.
+ * TSL emission, turns an authored graph into Three node-material code.
  *
  * This is the second consumer of the same graph the CPU evaluator walks. Two
  * backends over one structure is deliberate: the evaluator is testable without a
@@ -8,7 +8,7 @@
  * tests/compile.test.ts fails if a node type ever gains one without the other.
  *
  * Where a socket is a compile-time constant, the arithmetic is done in JS and
- * baked in rather than emitted as shader work — a range's clamp bounds, say, are
+ * baked in rather than emitted as shader work, a range's clamp bounds, say, are
  * known before a single pixel is shaded.
  */
 import { MeshBasicNodeMaterial } from 'three/webgpu';
@@ -204,7 +204,7 @@ const MATH_EMITTERS: Record<string, (a: TSLNode, b: TSLNode, c: TSLNode) => TSLN
       ZERO,
     ),
   SQRT: (a) => select(a.greaterThan(ZERO), sqrt(max(a, ZERO)), ZERO),
-  // Blender leaves this one bare — no domain guard.
+  // Blender leaves this one bare, no domain guard.
   INVERSE_SQRT: (a) => inverseSqrt(a),
   EXPONENT: (a) => exp(a),
   ABSOLUTE: (a) => abs(a),
@@ -226,7 +226,7 @@ const MATH_EMITTERS: Record<string, (a: TSLNode, b: TSLNode, c: TSLNode) => TSLN
   TRUNC: (a) => trunc(a),
   FRACT: (a) => fract(a),
 
-  // compatible_mod truncates toward zero — not GLSL's mod, which floors. Both
+  // compatible_mod truncates toward zero, not GLSL's mod, which floors. Both
   // need an explicit zero-divisor guard: guarding only the division leaves
   // `a - 0 * b`, which is a, where Blender returns 0.
   MODULO: (a, b) => select(b.equal(ZERO), ZERO, a.sub(trunc(guardedDiv(a, b)).mul(b))),
@@ -303,7 +303,7 @@ const EMITTERS: Record<string, Emitter> = {
     const floatMode = inA.kind === 'scalar' && inB.kind === 'scalar';
 
     // The blend formulas are componentwise, so the same expressions serve both
-    // modes — only the channel type and the 0.5 threshold constant differ.
+    // modes, only the channel type and the 0.5 threshold constant differ.
     const a: TSLNode = floatMode ? inA.node : toColor(inA).xyz;
     const b: TSLNode = floatMode ? inB.node : toColor(inB).xyz;
     const zero: TSLNode = floatMode ? float(0) : vec3(0);
@@ -353,7 +353,7 @@ const EMITTERS: Record<string, Emitter> = {
     if (n.params.clampResult) out = clamp(out, zero, one);
     if (floatMode) return scalar(out);
 
-    // Alpha always comes from the first colour, never the blend — but
+    // Alpha always comes from the first colour, never the blend, but
     // clamp_result still applies to it. Blender's node_mix_clamp_color clamps a
     // float4, so an out-of-range alpha on col1 is pinned along with the RGB.
     const src = toColor(inA);
@@ -367,13 +367,13 @@ const EMITTERS: Record<string, Emitter> = {
     const toMin = n.params.toMin as number;
     const toMax = n.params.toMax as number;
 
-    // Blender clamps between toMin and toMax, NOT to [0,1] — so a descending
+    // Blender clamps between toMin and toMax, NOT to [0,1], so a descending
     // range still clamps correctly. Both bounds are constants, so order them
     // here rather than emitting a comparison.
     const lo = Math.min(toMin, toMax);
     const hi = Math.max(toMin, toMax);
 
-    // Degenerate range yields 0 — but the clamp is a SEPARATE step in Blender,
+    // Degenerate range yields 0, but the clamp is a SEPARATE step in Blender,
     // applied after, so a to-range that excludes 0 pulls the result into it
     // rather than letting a bare 0 through. Every value here is constant, so
     // this collapses to a literal instead of reaching the GPU at all.
@@ -445,7 +445,7 @@ const EMITTERS: Record<string, Emitter> = {
 
   // Blender's Color Attribute node. TSL returns opaque white where the mesh
   // carries no colour attribute, which matches Blender reading an absent layer
-  // as white — so an unpainted mesh shades as if the node were not there rather
+  // as white, so an unpainted mesh shades as if the node were not there rather
   // than turning black.
   GraphVertexColor: (n) => color(vertexColor(n.params.layer as number)),
 
@@ -697,7 +697,7 @@ const EMITTERS: Record<string, Emitter> = {
 /**
  * Blender's compute_color_map_coordinate, in TSL. Half a texel in, scaled so a
  * coordinate of 1.0 lands on the CENTRE of the last texel. Sampling the raw fac
- * instead shifts the whole ramp by half a texel — invisible on a smooth ramp,
+ * instead shifts the whole ramp by half a texel, invisible on a smooth ramp,
  * obvious on a hard-edged one.
  */
 function rampCoord(fac: TSLNode): TSLNode {
@@ -781,7 +781,7 @@ export function emitMapRange(
   return useClamp ? clamp(out, float(lo), float(hi)) : out;
 }
 
-/** Node types with an emitter — used by the parity test against the evaluator. */
+/** Node types with an emitter, used by the parity test against the evaluator. */
 export const emittableTypes = (): string[] => Object.keys(EMITTERS);
 
 /**

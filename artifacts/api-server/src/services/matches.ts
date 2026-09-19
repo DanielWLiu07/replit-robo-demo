@@ -77,7 +77,7 @@ export async function listMatches(opts: { botId?: string; limit?: number } = {})
 }
 
 /**
- * Create, fight, persist — in that order, synchronously.
+ * Create, fight, persist, in that order, synchronously.
  *
  * The sim runs headless here rather than lazily on the socket, because the
  * result is what the leaderboard and the match list are about and it costs
@@ -99,7 +99,7 @@ export async function startMatch(
     : await pickOpponent(input.botId);
 
   if (a.bot.id === b.bot.id) {
-    // Not a 404 — both bots exist, the pairing is the problem.
+    // Not a 404, both bots exist, the pairing is the problem.
     throw badRequest("A bot cannot fight itself");
   }
 

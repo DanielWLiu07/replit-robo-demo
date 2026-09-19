@@ -30,7 +30,7 @@ function play(seed: string, a = RUSHER, b = DODGER) {
   return { frames, result: r.value };
 }
 
-test("same seed replays identically — this is what makes replay free", () => {
+test("same seed replays identically: this is what makes replay free", () => {
   const x = play("determinism"), y = play("determinism");
   assert.equal(x.frames.length, y.frames.length);
   assert.deepEqual(x.result, y.result);
@@ -71,7 +71,7 @@ test("bots stay inside the arena walls", () => {
 test("arena closes in after sudden death", () => {
   assert.equal(arenaHalfAt(0), ARENA_SIZE / 2);
   assert.equal(arenaHalfAt(SUDDEN_DEATH_TICK), ARENA_SIZE / 2);
-  // Proportional, not "minus three metres" — that literal assumed a 14 m ring and
+  // Proportional, not "minus three metres": that literal assumed a 14 m ring and
   // asserted a NEGATIVE half-width once the arena was scaled to the drawn bodies.
   assert.ok(arenaHalfAt(MATCH_MAX_TICKS) < ARENA_SIZE / 2 * 0.75, "walls never closed");
   assert.ok(arenaHalfAt(MATCH_MAX_TICKS) <= ARENA_MIN_HALF * 1.01,
@@ -83,7 +83,7 @@ test("matches are decisive and watchable", () => {
   const seeds = ["m1","m2","m3","m4","m5","m6"];
   const results = seeds.map(s => play(s).result);
   const draws = results.filter(r => r.winnerBotId === null).length;
-  assert.ok(draws <= 1, `${draws}/6 draws — escape is dominant again`);
+  assert.ok(draws <= 1, `${draws}/6 draws, escape is dominant again`);
   const avgSec = results.reduce((s, r) => s + r.ticks, 0) / results.length / 60;
   assert.ok(avgSec > 2 && avgSec < 90, `average match ${avgSec.toFixed(1)}s is unwatchable`);
 });
@@ -112,7 +112,7 @@ test("bots hold punching range instead of closing to a clinch", () => {
   // Asserted against the ARENA'S OWN geometry, not literals. These used to be
   // hardcoded metres (clinch < 1.3, pocket 1.3-2.0, overlap > 0.9) which silently
   // encoded a 1.2 m torso, and all of it failed the moment the bodies were scaled
-  // down to the ones actually drawn — a test that was measuring a constant rather
+  // down to the ones actually drawn, a test that was measuring a constant rather
   // than a behaviour.
   for (const seed of ["r1", "r2", "r3"]) {
     const g = gaps(seed);
@@ -138,7 +138,7 @@ test("a punch that lands during recovery is a counter, and counters hurt more", 
   // counter bonus has to show through the swing-speed spread, or it is not a bonus.
   let counterDmg = 0, counterN = 0, plainDmg = 0, plainN = 0;
   // Ten matches, not four. Counters run about 10% of hits against a 7.1% recovery
-  // window — the mechanic is intact and pays above chance — but a match now ends in
+  // window, the mechanic is intact and pays above chance, but a match now ends in
   // fewer exchanges than when this was written, so four samples could turn up two
   // counters and fail on sample size rather than on behaviour.
   for (const seed of ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10"]) {
@@ -152,8 +152,8 @@ test("a punch that lands during recovery is a counter, and counters hurt more", 
       }
     }
   }
-  assert.ok(counterN > 5, `only ${counterN} counters landed in ten matches — baiting a whiff pays nothing`);
-  assert.ok(plainN > 5, `only ${plainN} ordinary hits — everything is a counter, which means nothing is`);
+  assert.ok(counterN > 5, `only ${counterN} counters landed in ten matches, baiting a whiff pays nothing`);
+  assert.ok(plainN > 5, `only ${plainN} ordinary hits: everything is a counter, which means nothing is`);
   assert.ok(counterDmg / counterN > plainDmg / plainN,
     `counters (${(counterDmg / counterN).toFixed(2)}) did not outdamage clean hits (${(plainDmg / plainN).toFixed(2)})`);
 });
@@ -164,7 +164,7 @@ test("stamina drains under pressure and comes back when you stop throwing", () =
     assert.ok(b.stamina >= 0 && b.stamina <= 1, `stamina ${b.stamina} out of range`);
   const series = frames.map((f: any) => f.bots[0].stamina as number);
   const low = Math.min(...series);
-  assert.ok(low < 0.5, `tank never dropped below ${low.toFixed(2)} — throwing is free`);
+  assert.ok(low < 0.5, `tank never dropped below ${low.toFixed(2)}, throwing is free`);
   // And it must REFILL, or a gassed bot is finished rather than paced.
   //
   // Asserted as "does the tank ever climb", not "does it climb 0.15 before the bell".
@@ -177,7 +177,7 @@ test("stamina drains under pressure and comes back when you stop throwing", () =
     const d = series[i]! - series[i - 1]!;
     if (d > 0) { climbed += d; climbTicks++; }
   }
-  assert.ok(climbTicks > 60, `stamina only rose on ${climbTicks} ticks — it is not refilling`);
+  assert.ok(climbTicks > 60, `stamina only rose on ${climbTicks} ticks: it is not refilling`);
   assert.ok(climbed > 0.25, `only ${climbed.toFixed(2)} of stamina was ever regained across the match`);
 });
 
@@ -194,7 +194,7 @@ test("bots circle at range rather than only driving straight in", () => {
     }
   }
   assert.ok(n > 100, "not enough engaged ticks to judge footwork");
-  assert.ok(lateral / n > 0.3, `mean lateral speed ${(lateral / n).toFixed(2)} m/s — the bots only shuttle in and out`);
+  assert.ok(lateral / n > 0.3, `mean lateral speed ${(lateral / n).toFixed(2)} m/s, the bots only shuttle in and out`);
   assert.ok(lateral > forward * 0.3, "movement is still almost entirely along the line of attack");
 });
 
@@ -220,7 +220,7 @@ test("Giant Fiber habituates to repeated weak looming but never to a real charge
   const weak = windows(gf(), stim(0.45), 6);
   assert.ok(weak.at(-1)! < weak[0]!, `no habituation to weak looming: ${weak.join(",")}`);
 
-  // A genuine charge must still get an escape every time — habituation filters
+  // A genuine charge must still get an escape every time, habituation filters
   // noise, it does not blind the fly.
   const charge = windows(gf(), stim(1.4), 6);
   assert.ok(charge.at(-1)! >= charge[0]! - 1, `habituated away a real threat: ${charge.join(",")}`);
@@ -274,7 +274,7 @@ test("neuroevolution actually learns, and generalises past its training seeds", 
     { populationSize: 14, generations: 6, seedsPerOpponent: 1 }, "test-evolution");
 
   // Elites carry forward, so best is monotonic and cannot regress. Population mean
-  // is too noisy to assert on at this size — it bounces with every mutation batch.
+  // is too noisy to assert on at this size: it bounces with every mutation batch.
   // The operational definition of "it learned" is the one that matters: the evolved
   // champion should beat an unevolved random brain.
   assert.ok(history.at(-1)!.bestScore >= history[0]!.bestScore,
@@ -298,7 +298,7 @@ test("neuroevolution actually learns, and generalises past its training seeds", 
   }
   assert.ok(wins / total >= 0.5, `champion won only ${wins}/${total} on unseen seeds`);
 
-  // every evolved brain must still satisfy the contract — mutation cannot be allowed
+  // every evolved brain must still satisfy the contract, mutation cannot be allowed
   // to produce a loadout the schema would reject
   BrainSpec.parse(best);
   for (const h of history) BrainSpec.parse(h.best);
@@ -362,7 +362,7 @@ test("the arena grows with squad size so big fights are not instant scrums", () 
 test("the one-dial builder can never produce a brain the schema rejects", () => {
   // Every dial position, including all five circuits maxed, must round-trip into a
   // legal BrainSpec. Rounding after budget-scaling used to push five-slot brains
-  // fractionally over the cap — invisible in the UI, and it would have surfaced as
+  // fractionally over the cap, invisible in the UI, and it would have surfaced as
   // a Launch button that silently did nothing.
   const mods = ["LC10A", "DNA02", "LPLC2_DNP01", "P1", "MDN"] as const;
   for (let i = 0; i <= 20; i++) {
@@ -391,7 +391,7 @@ test("a body's mechanics follow from its measurements, and stock builds change n
   }
 
   // Reach fights power: rotational inertia goes with L², so a longer arm is slower
-  // at the fist. This is the trade the bench is built around — if it ever inverts,
+  // at the fist. This is the trade the bench is built around, if it ever inverts,
   // long arms become free and there is no decision left to make.
   const short = bodyMechanics({ mass: 80, reach: 0.45, torque: 120, stance: 0.4 });
   const long  = bodyMechanics({ mass: 80, reach: 0.70, torque: 120, stance: 0.4 });
@@ -411,7 +411,7 @@ test("a body's mechanics follow from its measurements, and stock builds change n
 
 test("no pose ever puts a bone through the floor, knocked down or upright", () => {
   // The floor plant used to measure the feet alone, which is correct until somebody
-  // is lying down — then the feet are the HIGHEST part of the bot and the lift went
+  // is lying down, then the feet are the HIGHEST part of the bot and the lift went
   // negative, burying the body in the surface. Sweep the whole ragdoll range.
   const base = {
     botId: "t", x: 0, y: 0, heading: 0, vx: 0, vy: 0, hull: 100, spiked: [],
@@ -452,7 +452,7 @@ test("no pose ever puts a bone through the floor, knocked down or upright", () =
 test("feet are planted in the world, not slid along under the body", () => {
   // The difference between walking and gliding, and invisible in any still frame.
   // The rig used to place feet in BODY-LOCAL space at cos(phase)*stride, which
-  // cannot plant a foot at any gait rate — it is re-derived from the body's own
+  // cannot plant a foot at any gait rate: it is re-derived from the body's own
   // frame every tick, so it rides along and merely oscillates about it.
   //
   // The arena now holds a world coordinate per foot fixed for the whole stance, and
@@ -478,7 +478,7 @@ test("feet are planted in the world, not slid along under the body", () => {
           if (down && wasDown) {
             const moved = Math.hypot(u.feet[o]! - prev.feet[o]!, u.feet[o + 1]! - prev.feet[o + 1]!);
             stance++;
-            // A foot that jumps is taking a PIVOT STEP — the body turned too far to
+            // A foot that jumps is taking a PIVOT STEP, the body turned too far to
             // keep it, so it picks up and puts down. That is a step, not a glide, and
             // lumping the two together made a correct behaviour read as 94% slip.
             // Only sub-centimetre movement under a foot that stayed down is drag.
@@ -494,15 +494,15 @@ test("feet are planted in the world, not slid along under the body", () => {
     }
   }
   assert.ok(travelled > 10, `bots barely moved (${travelled.toFixed(1)} m), so this proves nothing`);
-  assert.ok(steps > 30, `only ${steps} footfalls — the gait is not running`);
-  assert.ok(arc > 0.05, `swing foot only reached ${arc.toFixed(3)} m — it is dragging, not stepping`);
+  assert.ok(steps > 30, `only ${steps} footfalls, the gait is not running`);
+  assert.ok(arc > 0.05, `swing foot only reached ${arc.toFixed(3)} m: it is dragging, not stepping`);
   const cleanPct = (clean / stance) * 100;
   assert.ok(cleanPct > 85, `only ${cleanPct.toFixed(1)}% of stance ticks were perfectly planted`);
   assert.ok(slip / travelled < 0.06,
-    `feet slid ${slip.toFixed(2)} m over ${travelled.toFixed(1)} m of travel — that is gliding`);
+    `feet slid ${slip.toFixed(2)} m over ${travelled.toFixed(1)} m of travel: that is gliding`);
   // pivot steps are legitimate but must stay occasional, not become the gait
   assert.ok(pivots < steps * 4,
-    `${pivots} pivot re-plants against ${steps} footfalls — the feet are being reset, not walking`);
+    `${pivots} pivot re-plants against ${steps} footfalls, the feet are being reset, not walking`);
   assert.ok(worstReach < reach * 2,
     `a foot sat ${worstReach.toFixed(2)} m from the hip against a ${reach.toFixed(2)} m reach`);
 });

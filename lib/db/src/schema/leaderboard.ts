@@ -6,7 +6,7 @@ export const STARTING_ELO = 1200;
 
 /**
  * Derived state, recomputed on match end in the same transaction that writes
- * the result — so the board can never claim a win that no match row backs.
+ * the result, so the board can never claim a win that no match row backs.
  * One row per bot; the bot id is the primary key.
  */
 export const leaderboardTable = pgTable(

@@ -3,14 +3,14 @@ import type { BotSpec, BrainSpec, NeuronModule } from "@workspace/contract";
 /**
  * The selectable roster: one entry per chassis class, and that is the whole list.
  *
- * It used to hold five named archetypes across three chassis — two HORNETs and an
- * evolved boss — which made "pick a fighter" and "pick a class" two different
+ * It used to hold five named archetypes across three chassis, two HORNETs and an
+ * evolved boss, which made "pick a fighter" and "pick a class" two different
  * questions with no obvious relationship. There are three models and three
  * chassis, so there are three classes, and each one arrives with the loadout that
  * suits its body: the light frame evades, the middleweight presses, the heavy one
  * grinds. Escalation is the campaign's job now, not the roster's.
  *
- * The evolved champion is not gone — it is still seeded server-side and still the
+ * The evolved champion is not gone: it is still seeded server-side and still the
  * thing to beat on the Elo board; it is simply not one of the three bodies you
  * can wear.
  */

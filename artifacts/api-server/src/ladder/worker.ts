@@ -2,7 +2,7 @@
  * Ladder round, in its own process.
  *
  * Building a late-round opponent means generating up to eight brains and
- * fighting each against the player to pick the meanest — then fighting the real
+ * fighting each against the player to pick the meanest, then fighting the real
  * round on top. That is up to nine simulated matches, which is CPU-bound and
  * synchronous, so it forks for the same reason training and verification do:
  * on the request thread it would stutter every live match socket at 60 Hz.
@@ -36,7 +36,7 @@ function buildOpponent(input: LadderWorkerInput): {
   const plan = planRound(input.round);
 
   // Every opponent in a run derives from (runSeed, round): same run, same
-  // ladder, forever — which is what makes a run shareable the way a match is.
+  // ladder, forever, which is what makes a run shareable the way a match is.
   const rng = makeRng(`${input.runSeed}:round:${input.round}`);
   const name = opponentName(rng, input.round);
 
@@ -51,7 +51,7 @@ function buildOpponent(input: LadderWorkerInput): {
       id: `gen:${input.runSeed}:${input.round}`,
       name,
       chassis: plan.chassis,
-      // Already validated in generateCandidate — a generated loadout goes
+      // Already validated in generateCandidate, a generated loadout goes
       // through the same gate a human loadout does.
       brain: picked.brain,
     },

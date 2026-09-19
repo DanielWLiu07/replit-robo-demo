@@ -23,9 +23,9 @@ router.get("/matches/:id", async (req, res) => {
 
 /**
  * Re-fight the persisted match from `seed + snapshots` and report whether it
- * comes out identical. The whole architecture rests on this being true — replay
+ * comes out identical. The whole architecture rests on this being true, replay
  * is free and a match costs one row *only* because the seed reproduces the
- * fight — so it is checkable from the product rather than asserted in a README.
+ * fight, so it is checkable from the product rather than asserted in a README.
  *
  * Runs in a forked process (a 5v5 double replay is ~2.4s of CPU) and returns
  * the verdict directly; nothing is cached, because a cached "verified" is a

@@ -1,5 +1,5 @@
 /**
- * Seeds the house roster. Idempotent — re-running it is a no-op.
+ * Seeds the house roster. Idempotent, re-running it is a no-op.
  *
  *   cd artifacts/api-server && set -a; . ../../.env; set +a \
  *     && pnpm dlx tsx src/cli/seed.ts
@@ -91,7 +91,7 @@ const ROSTER: CreateBotRequest[] = [
  * The boss: not hand-designed, evolved. 1.1's neuroevolution run found it over
  * 14 generations against the four archetypes above (fitness 26.34 -> 27.66), and
  * it beat all four on seeds it never trained on (39W 1L 0D). It goes through the same
- * BrainSpec gate as everything else — an evolved loadout gets no exemption from
+ * BrainSpec gate as everything else, an evolved loadout gets no exemption from
  * the rules a human loadout has to satisfy, which is the point of having one
  * schema rather than two code paths.
  *
@@ -101,7 +101,7 @@ const ROSTER: CreateBotRequest[] = [
  * hold punching range it lost 40 matches out of 40. This one equips all five modules
  * and goes deaf for 6 ticks between spikes. A champion is an artifact of the physics
  * it was trained against, which is exactly why it is transcribed here rather than
- * imported — see below.
+ * imported, see below.
  */
 const BOSS: CreateBotRequest = {
   name: "CHAMPION",

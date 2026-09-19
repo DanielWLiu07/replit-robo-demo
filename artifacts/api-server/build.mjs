@@ -17,7 +17,7 @@ async function buildAll() {
   await esbuild({
     // The server plus every worker it forks. Workers are separate processes
     // (their work is CPU-bound), so each needs its own file. The trainer is a
-    // separate process (evolution is CPU-bound), so it needs its own file —
+    // separate process (evolution is CPU-bound), so it needs its own file,
     // `src/lib/forkJob.ts` resolves them as `./<name>/worker.mjs` next to the
     // bundle. esbuild roots the output at the common ancestor (`src/`), so
     // these land at `dist/train/worker.mjs` and `dist/verify/worker.mjs`.

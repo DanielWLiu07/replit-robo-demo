@@ -111,8 +111,8 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
    },undefined,()=>{/* Keep the procedural bot if an asset cannot load. */});
   };
   // Fighters wear the generated model, bound to a skeleton rather than carved into
-  // pieces. Each chassis .glb is a single welded island — one mesh, no skin, no
-  // animation, ~6k unique positions with every limb fused to the torso — so slicing
+  // pieces. Each chassis .glb is a single welded island: one mesh, no skin, no
+  // animation, ~6k unique positions with every limb fused to the torso, so slicing
   // it into parts leaves the shoulder and hip sockets open and the pieces drift off
   // their pivots. The limbs are still spatially separate even though the surface is
   // not, which is enough to fit a skeleton to the silhouette and weight the vertices
@@ -159,8 +159,8 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
   const wordmark=landing?buildWordmark('FLYWEIGHT',inkMaterial(),{size:1,depth:2.6}):null;
   if(wordmark)scene.add(wordmark);
   const c=compGraph();
-  // The landing runs pomme's night graph — gouache compose, charcoal ground, one
-  // lamp pool — held to a neutral grey so the whole page stays black and white.
+  // The landing runs pomme's night graph, gouache compose, charcoal ground, one
+  // lamp pool, held to a neutral grey so the whole page stays black and white.
   let paperTexture:THREE.Texture|null=null;
   if(landing){
    paperTexture=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}models/paper-delivery.webp`);
@@ -214,7 +214,7 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
     const rig=rigs.get(bot);
     const limbs=bot.getObjectByName('limbs');
     if(rig&&unit&&!showcase){
-     // The bound mesh takes its whole pose from poseBot — stride, guard, recovery and
+     // The bound mesh takes its whole pose from poseBot, stride, guard, recovery and
      // the swing arrive together, and the bob falls out of planting the lower foot.
      poseSkinnedBot(rig,unit,chassis[team]);
      // The procedural rig kept its legs in a sibling group, so leaning the assembly
@@ -232,7 +232,7 @@ export function Arena({frame,arenaSize=14,showcase=false,chassis=DEFAULT_CHASSIS
       const al=limbs.getObjectByName('arm-L'),ar=limbs.getObjectByName('arm-R');
       // Guard, recovery and the swing all live on the same two arms, so the pose is a
       // blend: a raised guard tucks the fists in and up, recovery drops them, and a
-      // punch overrides both. Without this the boxing is invisible — the sim has
+      // punch overrides both. Without this the boxing is invisible, the sim has
       // been tracking guard and recovery all along with nothing showing it.
       const guard=unit.guard??0, open=unit.recovery>0;
       const tuck=guard*0.95;                       // elbows in when blocking

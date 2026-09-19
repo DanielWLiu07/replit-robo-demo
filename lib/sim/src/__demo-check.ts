@@ -1,7 +1,7 @@
 /**
  * The two matchups the demo actually ships: the stock Brain Lab build against the
  * default opponent, and the same build against the boss. The client's copy states how
- * long each takes and why the boss is opt-in — a stranger opening the link sees
+ * long each takes and why the boss is opt-in, a stranger opening the link sees
  * exactly these two fights, so the claim has to be re-measured when the arena changes.
  */
 import { runMatch } from "@workspace/sim";
